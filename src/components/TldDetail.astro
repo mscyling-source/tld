@@ -1,0 +1,174 @@
+---
+// TldDetail.astro — detailed view component for a single TLD record.
+import { siteConfig } from '../config/site.js';
+import { toUnicodeLabel, categoryUrlForType } from '../lib/iana.js';
+
+interface Props {
+  record: {
+    suffix: string;
+    ascii_name: string;
+    unicode_name: string | null;
+    source_type: string;
+    normalized_type: string | null;
+    manager_name: string | null;
+    source_url: string;
+    official_url: string | null;
+    whois_server: string | null;
+    rdap_server: string | null;
+    references: Array<{ title: string; url: string }>;
+    description: string;
+    registration_restrictions: string | null;
+    last_verified_at: string | null;
+    source_updated_at: string | null;
+    delegated_since: string | null;
+    is_active: boolean;
+    is_idn: boolean;
+    has_editorial: boolean;
+    data_quality_status: string;
+    letter: string;
+  };
+}
+
+const { record } = Astro.props;
+const displayName = record.unicode_name || (record.is_idn ? toUnicodeLabel(record.ascii_name) : null);
+const typeLabel = record.normalized_type?.replace(/-/g, ' ') ?? record.source_type;
+
+/**
+ * Map a record's normalised type to a category page that actually exists.
+ * Legacy values ("sponsored", "generic-restricted", …) are folded into the
+ * pages IANA's 2026 taxonomy now generates.
+ */
+function categoryHrefFor(type: string | null): string {
+  return categoryUrlForType(type);
+}
+const qualityLabels: Record<string, string> = {
+  'verified': 'Verified against IANA sources',
+  'verified-editorial': 'Verified + editorial review',
+  'incomplete': 'Incomplete — missing manager info',
+};
+const qualityText = qualityLabels[record.data_quality_status] ?? record.data_quality_status;
+---
+
+<article class="prose prose-ink max-w-none" itemscope itemtype="https://schema.org/TopLevelDomain">
+  <header class="mb-8 pb-6 border-b border-ink-200">
+    <div class="flex flex-wrap items-baseline gap-3 mb-4">
+      <h1 class="text-3xl sm:text-4xl font-bold text-ink-900" itemprop="name">
+        {record.suffix}
+        {displayName && <span class="text-xl font-normal text-ink-500">({displayName})</span>}
+      </h1>
+      {record.is_idn && <span class="px-3 py-1 text-sm font-medium bg-brand-100 text-brand-700 rounded-full" aria-label="Internationalized domain name">IDN</span>}
+      {record.data_quality_status === 'verified-editorial' && <span class="px-3 py-1 text-sm font-medium bg-emerald-100 text-emerald-700 rounded-full">Editorial review</span>}
+      {record.data_quality_status === 'incomplete' && <span class="px-3 py-1 text-sm font-medium bg-amber-100 text-amber-700 rounded-full">Incomplete data</span>}
+    </div>
+
+    <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+      <div>
+        <dt class="text-ink-500">Type</dt>
+        <dd class="text-ink-900 font-medium" itemprop="category">{typeLabel}</dd>
+      </div>
+      <div>
+        <dt class="text-ink-500">Status</dt>
+        <dd class="text-ink-900">{record.is_active ? 'Active (delegated)' : 'Not delegated'}</dd>
+      </div>
+      <div>
+        <dt class="text-ink-500">Manager</dt>
+        <dd class="text-ink-900" itemprop="provider">{record.manager_name ?? 'Not assigned'}</dd>
+      </div>
+      <div>
+        <dt class="text-ink-500">Data quality</dt>
+        <dd class="text-ink-900">{qualityText}</dd>
+      </div>
+      {record.delegated_since && (
+        <div>
+          <dt class="text-ink-500">Delegated since</dt>
+          <dd class="text-ink-900"><time datetime={record.delegated_since}>{record.delegated_since}</time></dd>
+        </div>
+      )}
+      {record.source_updated_at && (
+        <div>
+          <dt class="text-ink-500">IANA record updated</dt>
+          <dd class="text-ink-900"><time datetime={record.source_updated_at}>{record.source_updated_at}</time></dd>
+        </div>
+      )}
+      <div>
+        <dt class="text-ink-500">Last verified</dt>
+        <dd class="text-ink-900"><time datetime={record.last_verified_at}>{record.last_verified_at?.split('T')[0]}</time></dd>
+      </div>
+    </dl>
+  </header>
+
+  <section class="mb-8" aria-labelledby="description-heading">
+    <h2 id="description-heading" class="text-xl font-semibold text-ink-900 mb-3">Overview</h2>
+    <p class="text-ink-700" itemprop="description">{record.description}</p>
+  </section>
+
+  {record.registration_restrictions && (
+    <section class="mb-8" aria-labelledby="restrictions-heading">
+      <h2 id="restrictions-heading" class="text-xl font-semibold text-ink-900 mb-3">Registration restrictions</h2>
+      <div class="prose prose-ink max-w-none text-ink-700" itemprop="registrationRestrictions">
+        {record.registration_restrictions}
+      </div>
+    </section>
+  )}
+
+  <section class="mb-8" aria-labelledby="official-links-heading">
+    <h2 id="official-links-heading" class="text-xl font-semibold text-ink-900 mb-3">Official sources</h2>
+    <ul class="space-y-2" role="list">
+      <li>
+        <a href={record.source_url} target="_blank" rel="noopener" class="text-brand-600 hover:underline flex items-center gap-2">
+          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+          IANA delegation record
+        </a>
+      </li>
+      {record.official_url && (
+        <li>
+          <a href={record.official_url} target="_blank" rel="noopener" class="text-brand-600 hover:underline flex items-center gap-2">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            Registry registration services
+          </a>
+        </li>
+      )}
+      {record.whois_server && (
+        <li class="flex items-center gap-2 text-ink-700">
+          <svg class="w-5 h-5 flex-shrink-0 text-ink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <code>WHOIS:</code> <code>{record.whois_server}</code>
+        </li>
+      )}
+      {record.rdap_server && (
+        <li>
+          <a href={record.rdap_server} target="_blank" rel="noopener" class="text-brand-600 hover:underline flex items-center gap-2">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            RDAP endpoint
+          </a>
+        </li>
+      )}
+    </ul>
+  </section>
+
+  {record.references.length > 0 && (
+    <section class="mb-8" aria-labelledby="references-heading">
+      <h2 id="references-heading" class="text-xl font-semibold text-ink-900 mb-3">Reference documents</h2>
+      <ul class="space-y-2" role="list">
+        {record.references.map(ref => (
+          <li>
+            <a href={ref.url} target="_blank" rel="noopener" class="text-brand-600 hover:underline">{ref.title}</a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )}
+
+  <footer class="pt-6 border-t border-ink-200">
+    <nav class="flex flex-wrap gap-4" aria-label="Related pages">
+      <a href="/tlds/" class="text-brand-600 hover:text-brand-700 font-medium">← All TLDs</a>
+      {record.normalized_type && (
+        <a href={categoryHrefFor(record.normalized_type)} class="text-brand-600 hover:text-brand-700 font-medium">
+          All {typeLabel} TLDs
+        </a>
+      )}
+      <a href={`/tlds/${record.letter}/`} class="text-brand-600 hover:text-brand-700 font-medium">
+        Letter {record.letter.toUpperCase()} index
+      </a>
+    </nav>
+  </footer>
+</article>

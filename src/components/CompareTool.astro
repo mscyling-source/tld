@@ -1,0 +1,167 @@
+---
+// CompareTool.astro — client-side TLD comparison tool.
+import { siteConfig } from '../config/site.js';
+---
+
+<section class="bg-white border border-ink-200 rounded-xl p-6" aria-labelledby="compare-title">
+  <h2 id="compare-title" class="text-xl font-semibold text-ink-900 mb-4">Compare TLDs</h2>
+  <p class="text-ink-600 mb-6 max-w-2xl">
+    Select two or more TLDs to compare their type, manager, and verified details side by side.
+  </p>
+
+  <form id="compare-form" class="space-y-4 mb-6" aria-label="Select TLDs to compare">
+    <div id="compare-slots" class="space-y-3">
+      <!-- Slots added dynamically -->
+    </div>
+    <div class="flex flex-wrap gap-3">
+      <button type="button" id="add-slot" class="px-4 py-2 text-sm font-medium text-brand-600 bg-brand-50 border border-brand-200 rounded-lg hover:bg-brand-100">Add another TLD</button>
+      <button type="button" id="compare-btn" class="px-6 py-2 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled>Compare</button>
+    </div>
+  </form>
+
+  <div id="compare-results" class="hidden">
+    <h3 class="text-lg font-semibold text-ink-900 mb-4">Comparison Results</h3>
+    <div class="overflow-x-auto">
+      <table class="data-table" role="grid">
+        <thead>
+          <tr>
+            <th scope="col">Property</th>
+            <!-- Columns filled by JS -->
+          </tr>
+        </thead>
+        <tbody id="compare-body"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Simple client-side comparison tool.
+  // It fetches record data from the pre-rendered JSON index.
+  const slotsContainer = document.getElementById('compare-slots') as HTMLDivElement;
+  const addBtn = document.getElementById('add-slot') as HTMLButtonElement;
+  const compareBtn = document.getElementById('compare-btn') as HTMLButtonElement;
+  const resultsDiv = document.getElementById('compare-results') as HTMLDivElement;
+  const compareHead = document.querySelector('#compare-results thead tr') as HTMLTableRowElement;
+  const compareBody = document.getElementById('compare-body') as HTMLTableSectionElement;
+
+  let recordsCache: Array<Record<string, any>> | null = null;
+  let slotCount = 0;
+
+  async function loadIndex() {
+    if (recordsCache) return recordsCache;
+    try {
+      const res = await fetch('/tlds-index.json');
+      if (res.ok) recordsCache = await res.json();
+    } catch { }
+    return recordsCache ?? [];
+  }
+
+  function createSlot() {
+    slotCount++;
+    const slot = document.createElement('div');
+    slot.className = 'flex flex-col sm:flex-row gap-3';
+    slot.innerHTML = `
+      <label for="compare-tld-${slotCount}" class="sr-only">TLD ${slotCount}</label>
+      <input type="search" id="compare-tld-${slotCount}" name="tld" placeholder="e.g. com, .org, ai" list="tld-suggestions" class="flex-1 px-4 py-2.5 text-sm border border-ink-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" autocomplete="off" />
+      <button type="button" class="px-3 py-2.5 text-sm text-ink-500 hover:text-ink-700" aria-label="Remove this TLD" data-remove="${slotCount}">Remove</button>
+    `;
+    slotsContainer.appendChild(slot);
+    updateCompareButton();
+    return slot;
+  }
+
+  function updateCompareButton() {
+    const inputs = slotsContainer.querySelectorAll('input[name="tld"]');
+    const filled = Array.from(inputs).filter(i => i.value.trim().length > 0).length;
+    compareBtn.disabled = filled < 2;
+  }
+
+  function getSelectedTlds() {
+    const inputs = slotsContainer.querySelectorAll('input[name="tld"]');
+    return Array.from(inputs)
+      .map(i => i.value.trim().toLowerCase().replace(/^\.+/, ''))
+      .filter(v => v.length > 0);
+  }
+
+  function normalizeLabel(label: string) {
+    if (label.includes('.')) return label.split('.').pop()?.toLowerCase() ?? '';
+    return label.toLowerCase();
+  }
+
+  async function doCompare() {
+    const selected = getSelectedTlds();
+    if (selected.length < 2) return;
+
+    const index = await loadIndex();
+    const map = new Map(index.map(r => [r.ascii_name, r]));
+    const results = selected.map(s => map.get(s) ?? { ascii_name: s, suffix: '.' + s, missing: true });
+
+    // Build table
+    compareHead.innerHTML = '<th scope="col">Property</th>' + results.map(r => `<th scope="col"><code>${r.suffix}</code>${r.missing ? ' <span class="text-red-600">(not found)</span>' : ''}</th>`).join('');
+    compareBody.innerHTML = '';
+
+    const fields = [
+      { key: 'suffix', label: 'Suffix' },
+      { key: 'ascii_name', label: 'ASCII label' },
+      { key: 'unicode_name', label: 'Unicode name' },
+      { key: 'normalized_type', label: 'Type' },
+      { key: 'manager_name', label: 'Manager' },
+      { key: 'is_idn', label: 'Internationalized (IDN)' },
+      { key: 'official_url', label: 'Official URL' },
+      { key: 'whois_server', label: 'WHOIS server' },
+      { key: 'rdap_server', label: 'RDAP server' },
+      { key: 'data_quality_status', label: 'Data quality' },
+    ];
+
+    fields.forEach(f => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<th scope="row" class="font-medium text-ink-700">${f.label}</th>` +
+        results.map(r => {
+          if (r.missing) return '<td class="text-ink-400">—</td>';
+          let val = r[f.key];
+          if (val === null || val === undefined || val === '') val = '—';
+          if (typeof val === 'boolean') val = val ? 'Yes' : 'No';
+          if (f.key === 'official_url' && val !== '—') val = `<a href="${val}" target="_blank" rel="noopener" class="text-brand-600 hover:underline">${val}</a>`;
+          if (f.key === 'whois_server' && val !== '—') val = `<code>${val}</code>`;
+          if (f.key === 'rdap_server' && val !== '—') val = `<a href="${val}" target="_blank" rel="noopener" class="text-brand-600 hover:underline">${val}</a>`;
+          return `<td>${val}</td>`;
+        }).join('');
+      compareBody.appendChild(tr);
+    });
+
+    resultsDiv.classList.remove('hidden');
+    resultsDiv.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  slotsContainer.addEventListener('click', e => {
+    const btn = (e.target as HTMLElement).closest('[data-remove]');
+    if (btn) {
+      btn.closest('div')?.remove();
+      updateCompareButton();
+    }
+  });
+
+  addBtn.addEventListener('click', () => {
+    if (slotCount < 6) createSlot();
+  });
+
+  compareBtn.addEventListener('click', doCompare);
+
+  // Initialize with 2 slots
+  createSlot();
+  createSlot();
+
+  // Build datalist for autocomplete
+  loadIndex().then(index => {
+    const dl = document.createElement('datalist');
+    dl.id = 'tld-suggestions';
+    index.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r.ascii_name;
+      if (r.unicode_name) opt.label = `${r.ascii_name} (${r.unicode_name})`;
+      dl.appendChild(opt);
+    });
+    document.body.appendChild(dl);
+  });
+</script>

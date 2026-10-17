@@ -1,0 +1,121 @@
+---
+// guides/how-to-choose-a-domain-extension.astro
+import Layout from '../../components/Layout.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+---
+
+<Layout
+  title="How to Choose a Domain Extension — TLD Directory"
+  description="A practical framework for picking the right TLD for your project, business, or personal site."
+>
+  <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
+    <Breadcrumb items={[
+      { label: 'Home', href: '/' },
+      { label: 'Guides', href: '/guides/' },
+      { label: 'How to Choose a TLD' }
+    ]} />
+
+    <article class="prose prose-ink max-w-none">
+      <header class="mb-8">
+        <h1 class="text-3xl font-bold text-ink-900">How to Choose a Domain Extension</h1>
+        <p class="mt-3 text-ink-600 text-lg">A step-by-step framework for picking the right TLD — without overthinking it.</p>
+      </header>
+
+      <section>
+        <h2>Step 1: Define your audience</h2>
+        <ul>
+          <li><strong>Global / no specific country</strong> → gTLD (<code>.com</code>, <code>.net</code>, <code>.org</code>, <code>.dev</code>, <code>.app</code>, etc.)</li>
+          <li><strong>One primary country</strong> → that country's ccTLD (<code>.uk</code>, <code>.de</code>, <code>.fr</code>, <code>.jp</code>, etc.)</li>
+          <li><strong>Multiple countries</strong> → gTLD with subdirectories (<code>example.com/uk/</code>, <code>example.com/de/</code>) or subdomains, plus hreflang.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Step 2: Consider trust & familiarity</h2>
+        <p><code>.com</code> is still the gold standard for trust. Users instinctively type <code>.com</code>. If you're building a consumer brand, <strong>get the .com if you can</strong>.</p>
+        <p>For tech/developer audiences, <code>.io</code>, <code>.dev</code>, <code>.app</code>, <code>.ai</code> are well-recognised. For non-profits, <code>.org</code> signals mission-driven work.</p>
+      </section>
+
+      <section>
+        <h2>Step 3: Check registration requirements</h2>
+        <p>Before falling in love with a TLD, verify you can actually register it:</p>
+        <ul>
+          <li>Open gTLDs (<code>.com</code>, <code>.net</code>, <code>.dev</code>, <code>.app</code>) — anyone, anywhere.</li>
+          <li>Restricted gTLDs (<code>.biz</code>, <code>.pro</code>, <code>.name</code>) — eligibility rules apply.</li>
+          <li>Open ccTLDs (<code>.ai</code>, <code>.io</code>, <code>.co</code>, <code>.me</code>, <code>.tv</code>) — usually open globally.</li>
+          <li>Restricted ccTLDs (<code>.fr</code>, <code>.de</code>, <code>.jp</code>, <code>.ca</code>, <code>.au</code>) — local presence, trademark, or paperwork required.</li>
+        </ul>
+        <p>Use our <a href="/tlds/">TLD directory</a> to check the manager and official URL for any TLD.</p>
+      </section>
+
+      <section>
+        <h2>Step 4: Evaluate total cost of ownership</h2>
+        <table>
+          <thead><tr><th>Cost factor</th><th>What to check</th></tr></thead>
+          <tbody>
+            <tr><td>First-year price</td><td>Promo pricing often applies only to year 1.</td></tr>
+            <tr><td>Renewal price</td><td>The real recurring cost — can be 3–10× the promo.</td></tr>
+            <tr><td>Transfer fee</td><td>Usually one year renewal; some registrars charge extra.</td></tr>
+            <tr><td>Privacy/WHOIS</td><td>Free at most registrars; some charge.</td></tr>
+            <tr><td>Premium tier</td><td>Some TLDs have premium names priced higher.</td></tr>
+          </tbody>
+        </table>
+        <p>Always compare <strong>renewal prices</strong>, not first-year promos.</p>
+      </section>
+
+      <section>
+        <h2>Step 5: Check technical requirements</h2>
+        <ul>
+          <li><code>.dev</code>, <code>.app</code>, <code>.page</code> — <strong>require HTTPS</strong> (HSTS preloaded). Your site must have a valid TLS certificate.</li>
+          <li><code>.bank</code>, <code>.insurance</code> — strict security requirements, manual vetting.</li>
+          <li>Some ccTLDs require specific name server configurations or DNSSEC.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Step 6: Protect your brand</h2>
+        <p>If you register <code>example.com</code>, consider registering:</p>
+        <ul>
+          <li><code>example.net</code>, <code>example.org</code>, <code>example.io</code> — common alternatives.</li>
+          <li>Relevant ccTLDs for your target markets.</li>
+          <li>Common misspellings if budget allows.</li>
+        </ul>
+        <p>Use a single registrar for easier management.</p>
+      </section>
+
+      <section>
+        <h2>Decision checklist</h2>
+        <ol>
+          <li>☐ Audience: global vs country-specific?</li>
+          <li>☐ Trust: is <code>.com</code> available? If not, which alternative feels credible?</li>
+          <li>☐ Eligibility: can I legally register this TLD?</li>
+          <li>☐ Cost: what's the 5-year total (renewal × 5)?</li>
+          <li>☐ Technical: any HTTPS/DNSSEC/other requirements?</li>
+          <li>☐ Brand protection: which defensive registrations make sense?</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>Common scenarios</h2>
+        <table>
+          <thead><tr><th>Scenario</th><th>Recommended primary</th><th>Defensive / alternatives</th></tr></thead>
+          <tbody>
+            <tr><td>Global SaaS startup</td><td><code>.com</code></td><td><code>.io</code>, <code>.dev</code>, <code>.app</code></td></tr>
+            <tr><td>UK local business</td><td><code>.co.uk</code> or <code>.uk</code></td><td><code>.com</code></td></tr>
+            <tr><td>Personal blog/portfolio</td><td><code>.me</code>, <code>.name</code>, <code>.com</code></td><td><code>.dev</code> (if dev)</td></tr>
+            <tr><td>Non-profit/NGO</td><td><code>.org</code></td><td><code>.com</code>, <code>.ngo</code></td></tr>
+            <tr><td>AI/ML company</td><td><code>.ai</code> (if .com taken)</td><td><code>.com</code>, <code>.io</code></td></tr>
+            <tr><td>Open source project</td><td><code>.dev</code>, <code>.io</code>, <code>.org</code></td><td><code>.com</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <footer class="mt-12 pt-8 border-t border-ink-200">
+        <nav class="flex flex-wrap gap-4" aria-label="Related guides">
+          <a href="/guides/generic-vs-country-code-tlds/" class="text-brand-600 hover:text-brand-700 font-medium">← gTLD vs ccTLD</a>
+          <a href="/guides/evaluate-domain-extension-for-business/" class="text-brand-600 hover:text-brand-700 font-medium">Evaluating for Business →</a>
+        </nav>
+      </footer>
+    </article>
+  </div>
+</Layout>

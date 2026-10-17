@@ -1,0 +1,103 @@
+---
+// guides/how-dns-and-domain-names-work.astro
+import Layout from '../../components/Layout.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+---
+
+<Layout
+  title="How DNS and Domain Names Work Together — TLD Directory"
+  description="From the root zone to your browser — a clear explanation of the DNS resolution process."
+>
+  <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
+    <Breadcrumb items={[
+      { label: 'Home', href: '/' },
+      { label: 'Guides', href: '/guides/' },
+      { label: 'How DNS Works' }
+    ]} />
+
+    <article class="prose prose-ink max-w-none">
+      <header class="mb-8">
+        <h1 class="text-3xl font-bold text-ink-900">How DNS and Domain Names Work Together</h1>
+        <p class="mt-3 text-ink-600 text-lg">The journey from typing a domain to loading a website — step by step.</p>
+      </header>
+
+      <section>
+        <h2>The big picture</h2>
+        <p>DNS (Domain Name System) is a distributed, hierarchical database that maps human-readable names (<code>example.com</code>) to machine-readable addresses (<code>93.184.216.34</code> or <code>2606:2800:220:1:248:1893:25c8:1946</code>).</p>
+      </section>
+
+      <section>
+        <h2>Resolution walkthrough</h2>
+        <p>When you type <code>https://www.example.com</code> in your browser:</p>
+        <ol>
+          <li><strong>Browser checks cache</strong> — Has it resolved this recently? If yes, skip to step 8.</li>
+          <li><strong>OS resolver checks cache</strong> — Same idea at the OS level.</li>
+          <li><strong>Recursive resolver</strong> — Your ISP, Google (8.8.8.8), Cloudflare (1.1.1.1), or a custom resolver. It starts the recursive query.</li>
+          <li><strong>Root name servers</strong> — Resolver asks a root server (a.root-servers.net through m.root-servers.net): "Where is <code>.com</code>?" Root responds with the <code>.com</code> TLD name servers (a.gtld-servers.net through m.gtld-servers.net).</li>
+          <li><strong>TLD name servers</strong> — Resolver asks a <code>.com</code> TLD server: "Where is <code>example.com</code>?" TLD responds with the authoritative name servers for <code>example.com</code> (e.g. <code>ns1.example.com</code>, <code>ns2.example.com</code>).</li>
+          <li><strong>Authoritative name servers</strong> — Resolver asks <code>ns1.example.com</code>: "What is the A record for <code>www.example.com</code>?" Authoritative responds with the IP address.</li>
+          <li><strong>Response cached</strong> — Resolver caches the answer (TTL seconds) and returns it to your OS/browser.</li>
+          <li><strong>Browser connects</strong> — Browser opens a TCP/TLS connection to the IP, sends HTTP request, receives the page.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>Key DNS record types</h2>
+        <table>
+          <thead><tr><th>Type</th><th>Purpose</th><th>Example</th></tr></thead>
+          <tbody>
+            <tr><td>A</td><td>IPv4 address</td><td><code>93.184.216.34</code></td></tr>
+            <tr><td>AAAA</td><td>IPv6 address</td><td><code>2606:2800:220:1:248:1893:25c8:1946</code></td></tr>
+            <tr><td>CNAME</td><td>Alias to another name</td><td><code>www → example.com</code></td></tr>
+            <tr><td>MX</td><td>Mail exchanger</td><td><code>10 mail.example.com</code></td></tr>
+            <tr><td>TXT</td><td>Arbitrary text (SPF, DKIM, verification)</td><td><code>v=spf1 include:_spf.google.com ~all</code></td></tr>
+            <tr><td>NS</td><td>Name server delegation</td><td><code>ns1.example.com</code></td></tr>
+            <tr><td>SOA</td><td>Start of authority (zone metadata)</td><td>Serial, refresh, retry, expire, minimum</td></tr>
+            <tr><td>CAA</td><td>Certification Authority Authorization</td><td><code>0 issue "letsencrypt.org"</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>TTL (Time To Live)</h2>
+        <p>Every record has a TTL (seconds) telling resolvers how long to cache it.</p>
+        <ul>
+          <li>Low TTL (60–300s) = fast changes, more query load.</li>
+          <li>High TTL (3600–86400s) = slower changes, less load.</li>
+          <li>Common pattern: 300–1800s for active records; 86400s for stable ones.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>DNSSEC</h2>
+        <p>DNSSEC adds cryptographic signatures to DNS records so resolvers can verify authenticity. It prevents cache poisoning and spoofing.</p>
+        <ul>
+          <li>Chain of trust: Root → TLD → Domain.</li>
+          <li>Not universally deployed, but growing.</li>
+          <li>Your registrar/registry manages keys; you just enable it.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Common misconceptions</h2>
+        <dl>
+          <dt>"DNS is a single database"</dt>
+          <dd>It's distributed — millions of servers, no central database for all records.</dd>
+          <dt>"Changing DNS is instant"</dt>
+          <dd>Propagation = cache expiry. Old TTLs must expire globally.</dd>
+          <dt>"My registrar controls my DNS"</dt>
+          <dd>You can point NS records to any DNS provider.</dd>
+          <dt>"A record = website"</dt>
+          <dd>A record = IP. The web server at that IP serves the site.</dd>
+        </dl>
+      </section>
+
+      <footer class="mt-12 pt-8 border-t border-ink-200">
+        <nav class="flex flex-wrap gap-4" aria-label="Related guides">
+          <a href="/guides/what-is-a-top-level-domain/" class="text-brand-600 hover:text-brand-700 font-medium">← What Is a TLD?</a>
+          <a href="/guides/evaluate-domain-extension-for-business/" class="text-brand-600 hover:text-brand-700 font-medium">Evaluating for Business →</a>
+        </nav>
+      </footer>
+    </article>
+  </div>
+</Layout>

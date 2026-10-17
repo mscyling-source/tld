@@ -1,0 +1,129 @@
+---
+// category/index.astro — Category overview.
+//
+// Reflects IANA's current Root Zone Database taxonomy (2026-10-16):
+//   "Generic", "Country Code", "Special Use" — plus our cross-cutting
+//   "Internationalized" view, which is derived from the punycode label and is
+//   not an IANA type.
+import Layout from '../../components/Layout.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { loadAllRecords, getTypeCounts } from '../../lib/store.js';
+
+const allRecords = await loadAllRecords();
+const typeCounts = await getTypeCounts();
+const idnCount = allRecords.filter(r => r.is_idn).length;
+---
+
+<Layout
+  title="TLD Categories — TLD Directory"
+  description="Browse delegated top-level domains by IANA's published type: generic, country-code and special-use, plus a cross-cutting internationalized (IDN) view."
+>
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+    <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Categories' }]} />
+
+    <header class="mb-10">
+      <h1 class="text-3xl font-bold text-ink-900">TLD Categories</h1>
+      <p class="mt-2 text-ink-600 max-w-3xl">
+        Categories follow the type IANA publishes in the Root Zone Database. As of the IANA page
+        redesign in 2026 the published values are <strong>Generic</strong>, <strong>Country
+        Code</strong> and <strong>Special Use</strong>. The internationalized view below is derived
+        from the punycode label and cuts across the IANA types.
+      </p>
+    </header>
+
+    <div class="grid gap-6 sm:grid-cols-2">
+      <a href="/category/generic/" class="group bg-white border border-ink-200 rounded-xl p-6 hover:border-brand-300 hover:shadow-md transition-all duration-200">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl font-semibold text-ink-900 group-hover:text-brand-600">Generic TLDs</h2>
+          <span class="px-3 py-1 text-sm font-medium bg-brand-100 text-brand-700 rounded-full">{typeCounts.generic ?? 0}</span>
+        </div>
+        <p class="mt-3 text-ink-600">
+          The classic gTLDs (.com, .net, .org) plus newer generic extensions. In IANA's current
+          taxonomy this group also includes the TLDs older pages called <em>sponsored</em>
+          (.gov, .edu, .museum, .aero, .post) and <em>generic-restricted</em> (.biz, .name, .pro).
+        </p>
+      </a>
+
+      <a href="/category/country-code/" class="group bg-white border border-ink-200 rounded-xl p-6 hover:border-brand-300 hover:shadow-md transition-all duration-200">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl font-semibold text-ink-900 group-hover:text-brand-600">Country-code TLDs</h2>
+          <span class="px-3 py-1 text-sm font-medium bg-brand-100 text-brand-700 rounded-full">{typeCounts['country-code'] ?? 0}</span>
+        </div>
+        <p class="mt-3 text-ink-600">
+          Two-letter codes assigned to countries and territories — .uk, .de, .jp, .cn, .ai, .io.
+          Each is run by a national registry that sets its own eligibility and transfer rules.
+        </p>
+      </a>
+
+      <a href="/category/internationalized/" class="group bg-white border border-ink-200 rounded-xl p-6 hover:border-brand-300 hover:shadow-md transition-all duration-200">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl font-semibold text-ink-900 group-hover:text-brand-600">Internationalized TLDs (IDNs)</h2>
+          <span class="px-3 py-1 text-sm font-medium bg-brand-100 text-brand-700 rounded-full">{idnCount}</span>
+        </div>
+        <p class="mt-3 text-ink-600">
+          TLDs stored as punycode (<code>xn--…</code>) and displayed in non-Latin scripts such as
+          Arabic, CJK, Cyrillic and Devanagari — for example .中国, .рф and .भारत.
+        </p>
+      </a>
+
+      <a href="/category/special-use/" class="group bg-white border border-ink-200 rounded-xl p-6 hover:border-brand-300 hover:shadow-md transition-all duration-200">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl font-semibold text-ink-900 group-hover:text-brand-600">Special-use TLDs</h2>
+          <span class="px-3 py-1 text-sm font-medium bg-brand-100 text-brand-700 rounded-full">{typeCounts['special-use'] ?? 0}</span>
+        </div>
+        <p class="mt-3 text-ink-600">
+          IANA labels .arpa as "Special Use" — a technical infrastructure TLD delegated for reverse
+          DNS. The eight reserved names (.test, .example, .invalid, …) share this label but are not
+          delegated and have no pages here.
+        </p>
+      </a>
+    </div>
+
+    <section class="mt-12" aria-labelledby="legend-heading">
+      <h2 id="legend-heading" class="text-xl font-semibold text-ink-900 mb-4">Definitions</h2>
+      <dl class="space-y-4 text-ink-700">
+        <div class="bg-white border border-ink-200 rounded-xl p-5">
+          <dt class="font-medium text-ink-900">Generic TLD (gTLD)</dt>
+          <dd class="mt-1">
+            The largest group. IANA's current pages publish this as "Generic"; the older, finer
+            labels "Sponsored" and "Generic Restricted" are no longer published by IANA.
+          </dd>
+        </div>
+        <div class="bg-white border border-ink-200 rounded-xl p-5">
+          <dt class="font-medium text-ink-900">Country-code TLD (ccTLD)</dt>
+          <dd class="mt-1">
+            Two-letter codes for countries and territories, managed by national registries under
+            local law. Registration may require a local presence or nexus.
+          </dd>
+        </div>
+        <div class="bg-white border border-ink-200 rounded-xl p-5">
+          <dt class="font-medium text-ink-900">Internationalized Domain Name (IDN)</dt>
+          <dd class="mt-1">
+            A cross-cutting view: TLDs whose labels are encoded as punycode in the DNS and shown to
+            users in a native script. Both generic and country-code IDNs exist.
+          </dd>
+        </div>
+        <div class="bg-white border border-ink-200 rounded-xl p-5">
+          <dt class="font-medium text-ink-900">Special-use TLD</dt>
+          <dd class="mt-1">
+            Names reserved for a defined technical purpose rather than public registration.
+            .arpa is the delegated one; .test/.example/.invalid/.localhost/.local/.internal/.alt/.onion
+            are reserved but not delegated.
+          </dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="mt-12 rounded-xl border border-ink-200 bg-ink-50 p-6">
+      <h2 class="text-lg font-semibold text-ink-900 mb-2">Why categories changed</h2>
+      <p class="text-sm text-ink-700">
+        IANA's Root Zone Database index page was redesigned during 2026. Previous pages published six
+        type values (generic, generic-restricted, country-code, sponsored, infrastructure, test);
+        the current pages publish three (Generic, Country Code, Special Use). We follow what IANA
+        publishes and record the change here rather than guessing at the old labels. The
+        <code>/category/sponsored/</code> and <code>/category/restricted/</code> URLs from the
+        earlier version now redirect to the generic category.
+      </p>
+    </section>
+  </div>
+</Layout>

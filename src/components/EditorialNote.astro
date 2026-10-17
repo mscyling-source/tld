@@ -1,0 +1,105 @@
+---
+// EditorialNote.astro — sourced editorial context for a TLD detail page.
+//
+// This component is intentionally explicit about what IS and IS NOT verified:
+//   - "facts" come only from the listed sources (mostly the IANA record)
+//   - registration rules show as "not independently verified" unless
+//     policy_verified === true, in which case policy_note is a quote of the
+//     source
+//   - the badge says "Editorial note (script-sourced)" — never
+//     "verified-editorial", because no human sign-off is recorded here.
+import type { TldNote } from '../content/tldNotes.js';
+
+interface Props {
+  note: TldNote;
+  /** Display suffix, e.g. ".com". */
+  suffix: string;
+}
+
+const { note, suffix } = Astro.props;
+---
+
+<section class="mb-8" aria-labelledby="editorial-heading" itemscope itemtype="https://schema.org/Article">
+  <div class="flex items-center gap-2 mb-3">
+    <h2 id="editorial-heading" class="text-xl font-semibold text-ink-900">Editorial note</h2>
+    <span
+      class="px-2.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-700 rounded-full"
+      title="Compiled from the linked sources by a script. Not a human-reviewed claim."
+    >
+      Editorial note ({note.status === 'human-reviewed' ? 'human-reviewed' : 'script-sourced'})
+    </span>
+  </div>
+
+  <p class="text-ink-700 mb-6" itemprop="description">{note.summary}</p>
+
+  <div class="rounded-xl border border-ink-200 divide-y divide-ink-200 mb-6">
+    <div class="flex items-start gap-3 p-4">
+      <span class="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold" aria-hidden="true">✓</span>
+      <div>
+        <h3 class="text-sm font-semibold text-ink-900">Verified facts</h3>
+        <p class="text-sm text-ink-600">
+          Type, sponsoring organisation and technical endpoints are confirmed against the
+          <a href={note.sources[0]?.url ?? 'https://www.iana.org/domains/root/db'} target="_blank" rel="noopener" class="text-brand-600 hover:underline">IANA Root Zone Database</a>
+          on {note.sources[0]?.checked_on}.
+        </p>
+      </div>
+    </div>
+
+    <div class="flex items-start gap-3 p-4">
+      {note.policy_verified ? (
+        <span class="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold" aria-hidden="true">✓</span>
+      ) : (
+        <span class="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-bold" aria-hidden="true">!</span>
+      )}
+      <div>
+        <h3 class="text-sm font-semibold text-ink-900">Registration rules</h3>
+        {note.policy_verified && note.policy_note ? (
+          <p class="text-sm text-ink-600">{note.policy_note}</p>
+        ) : (
+          <p class="text-sm text-ink-600">
+            <strong class="text-ink-900">Not independently verified.</strong>
+            IANA's delegation record does not publish registration eligibility, restrictions or pricing.
+            {note.policy_url ? (
+              <>Check the registry's own page before registering.</>
+            ) : (
+              <>No registry page is listed for this TLD.</>
+            )}
+          </p>
+        )}
+        {note.policy_url && (
+          <p class="mt-2 text-sm">
+            <a href={note.policy_url} target="_blank" rel="noopener" class="text-brand-600 hover:underline">
+              Registry / official {suffix} information →
+            </a>
+          </p>
+        )}
+      </div>
+    </div>
+
+    {note.practical_note && (
+      <div class="flex items-start gap-3 p-4">
+        <span class="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-xs font-bold" aria-hidden="true">i</span>
+        <div>
+          <h3 class="text-sm font-semibold text-ink-900">Practical context</h3>
+          <p class="text-sm text-ink-600">{note.practical_note}</p>
+        </div>
+      </div>
+    )}
+  </div>
+
+  <details class="text-sm">
+    <summary class="cursor-pointer text-ink-600 hover:text-brand-600 font-medium">Sources used for this note</summary>
+    <ul class="mt-3 space-y-2" role="list">
+      {note.sources.map(s => (
+        <li class="text-sm text-ink-600">
+          <a href={s.url} target="_blank" rel="noopener" class="text-brand-600 hover:underline break-all">{s.url}</a>
+          <span class="ml-2 text-ink-500">— {s.used_for} (checked {s.checked_on})</span>
+        </li>
+      ))}
+    </ul>
+    <p class="mt-3 text-xs text-ink-500">
+      This note is compiled automatically from the sources above and is not a substitute for the
+      registry's own current policy document.
+    </p>
+  </details>
+</section>

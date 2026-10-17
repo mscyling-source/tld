@@ -1,0 +1,50 @@
+---
+// tools/compare/index.astro
+import Layout from '../../../components/Layout.astro';
+import Breadcrumb from '../../../components/Breadcrumb.astro';
+import CompareTool from '../../../components/CompareTool.astro';
+---
+
+<Layout
+  title="TLD Comparison Tool — TLD Directory"
+  description="Compare top-level domains side by side: type, manager, technical details, and official links."
+>
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+    <Breadcrumb items={[
+      { label: 'Home', href: '/' },
+      { label: 'Tools' },
+      { label: 'Compare TLDs' }
+    ]} />
+
+    <header class="mb-8">
+      <h1 class="text-3xl font-bold text-ink-900">Compare TLDs</h1>
+      <p class="mt-2 text-ink-600 max-w-2xl">Select two or more TLDs to compare their type, manager, and verified details side by side.</p>
+    </header>
+
+    <CompareTool />
+
+    <section class="mt-12" aria-labelledby="how-it-works">
+      <h2 id="how-it-works" class="text-xl font-semibold text-ink-900 mb-4">How it works</h2>
+      <ul class="space-y-2 text-ink-700" role="list">
+        <li>Enter TLD names (e.g. <code>com</code>, <code>.org</code>, <code>ai</code>, <code>example.com</code>).</li>
+        <li>Data is fetched from our pre-built IANA-sourced index — no external API calls.</li>
+        <li>Comparison includes type, manager, IDN status, official URLs, WHOIS/RDAP servers, and data quality.</li>
+        <li>Missing TLDs are flagged — they may not be delegated or may use a different label.</li>
+      </ul>
+    </section>
+
+    <section class="mt-8" aria-labelledby="other-tools">
+      <h2 id="other-tools" class="text-xl font-semibold text-ink-900 mb-4">Other tools</h2>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <a href="/tlds/" class="bg-white border border-ink-200 rounded-xl p-5 hover:border-brand-300 transition">
+          <h3 class="font-semibold text-ink-900">Search & Filter</h3>
+          <p class="mt-1 text-ink-600 text-sm">Find TLDs by name, registry, type, or letter.</p>
+        </a>
+        <a href="/guides/" class="bg-white border border-ink-200 rounded-xl p-5 hover:border-brand-300 transition">
+          <h3 class="font-semibold text-ink-900">Domain Guides</h3>
+          <p class="mt-1 text-ink-600 text-sm">Learn how domains work and how to choose.</p>
+        </a>
+      </div>
+    </section>
+  </div>
+</Layout>

@@ -1,0 +1,102 @@
+---
+// guides/what-is-an-internationalized-domain-name.astro
+import Layout from '../../components/Layout.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+---
+
+<Layout
+  title="What Is an Internationalized Domain Name (IDN)? — TLD Directory"
+  description="IDNs, punycode, and why they matter for global audiences — explained clearly."
+>
+  <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
+    <Breadcrumb items={[
+      { label: 'Home', href: '/' },
+      { label: 'Guides', href: '/guides/' },
+      { label: 'What Is an IDN?' }
+    ]} />
+
+    <article class="prose prose-ink max-w-none">
+      <header class="mb-8">
+        <h1 class="text-3xl font-bold text-ink-900">What Is an Internationalized Domain Name?</h1>
+        <p class="mt-3 text-ink-600 text-lg">How non-Latin scripts work in the DNS, what punycode is, and why it matters.</p>
+      </header>
+
+      <section>
+        <h2>The problem</h2>
+        <p>The DNS was designed for ASCII (A–Z, 0–9, hyphen). But the world writes in Arabic, Chinese, Cyrillic, Devanagari, Hebrew, Korean, and hundreds of other scripts. IDNs solve this.</p>
+      </section>
+
+      <section>
+        <h2>How IDNs work: punycode</h2>
+        <p>The DNS still only understands ASCII. IDNs use a standard encoding called <strong>punycode</strong> (RFC 3492) to represent Unicode labels as ASCII.</p>
+        <p>Example: <code>例子.测试</code> (Chinese for "example.test") becomes:</p>
+        <pre><code>xn--fsqu00a.xn--0zwm56d</code></pre>
+        <p>The <code>xn--</code> prefix signals "this is punycode". The rest is the encoded form.</p>
+      </section>
+
+      <section>
+        <h2>Two types of IDNs</h2>
+        <table>
+          <thead><tr><th>Type</th><th>Example</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>IDN TLD (top-level)</td><td><code>.中国</code> (<code>.xn--fiqs8s</code>), <code>.рф</code> (<code>.xn--p1ai</code>)</td><td>Delegated in the root zone like any TLD.</td></tr>
+            <tr><td>IDN second-level</td><td><code>例子.com</code> (<code>xn--fsqu00a.com</code>)</td><td>Registered under an ASCII TLD; supported by most registries.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>IDN TLDs in the root zone</h2>
+        <p>As of 2026, there are <strong>over 150 IDN TLDs</strong> delegated. They include:</p>
+        <ul>
+          <li><code>.中国</code> / <code>.cn</code> (China)</li>
+          <li><code>.рф</code> (Russia)</li>
+          <li><code>.السعودية</code> (Saudi Arabia)</li>
+          <li><code>.भारत</code> (India)</li>
+          <li><code>.台湾</code> / <code>.台灣</code> (Taiwan)</li>
+          <li><code>.한국</code> (Korea)</li>
+          <li><code>.香港</code> (Hong Kong)</li>
+        </ul>
+        <p>Browse all of them in our <a href="/category/internationalized/">IDN category</a>.</p>
+      </section>
+
+      <section>
+        <h2>Registration considerations</h2>
+        <ul>
+          <li><strong>Not all registrars support IDNs</strong> — check before buying.</li>
+          <li><strong>Email support varies</strong> — SMTP UTF-8 (RFC 6531) is required for email addresses with Unicode. Many providers still don't support it fully.</li>
+          <li><strong>SSL/TLS certificates</strong> — modern CAs support IDNs, but you may need to specify the punycode form in CSR.</li>
+          <li><strong>Browser display</strong> — modern browsers show the Unicode form in the address bar, but may show punycode for security (homograph protection).</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Homograph attacks</h2>
+        <p>Characters from different scripts can look identical (e.g. Latin <code>a</code> vs Cyrillic <code>а</code>). Attackers register lookalike domains for phishing.</p>
+        <p>Defences:</p>
+        <ul>
+          <li>Browsers show punycode for mixed-script domains.</li>
+          <li>Registries apply script-mixing rules (e.g. <code>.com</code> allows Latin + Cyrillic but not Latin + Greek in one label).</li>
+          <li>Always verify the punycode form (<code>xn--...</code>) for important transactions.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Practical tips</h2>
+        <ul>
+          <li>If your audience uses a non-Latin script, an IDN TLD or second-level domain builds trust.</li>
+          <li>Always <strong>also register the ASCII transliteration</strong> if possible (e.g. register both <code>例子.com</code> and <code>lizi.com</code>).</li>
+          <li>Test email delivery thoroughly before relying on an IDN email address.</li>
+          <li>Use our <a href="/tlds/">directory</a> to find IDN TLDs — filter by "IDN only".</li>
+        </ul>
+      </section>
+
+      <footer class="mt-12 pt-8 border-t border-ink-200">
+        <nav class="flex flex-wrap gap-4" aria-label="Related guides">
+          <a href="/category/internationalized/" class="text-brand-600 hover:text-brand-700 font-medium">Browse IDN TLDs →</a>
+          <a href="/guides/before-registering-country-code-domain/" class="text-brand-600 hover:text-brand-700 font-medium">Before Registering a Country-Code Domain →</a>
+        </nav>
+      </footer>
+    </article>
+  </div>
+</Layout>

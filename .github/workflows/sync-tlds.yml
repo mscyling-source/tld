@@ -1,0 +1,114 @@
+name: Sync TLD Data
+
+# Architecture: A
+#   This workflow ONLY syncs IANA data and pushes the resulting
+#   `data/*.json` commit to `main`. The site build + deploy is handled
+#   independently by Cloudflare Pages' Git integration, which watches
+#   `main`, runs `npm ci && npm run build` and publishes `dist/`.
+#
+#   Deliberately NOT used here:
+#   - `cloudflare/pages-action` (needs CLOUDFLARE_API_TOKEN/ACCOUNT_ID
+#     secrets that are not configured, and would deploy *in addition to*
+#     the Git-triggered build, causing a duplicate deploy / race).
+#   - A build step that publishes: the job verifies the build succeeds but
+#     does not publish, so there is exactly one deploy per commit.
+
+on:
+  schedule:
+    - cron: '30 6 * * 1' # Every Monday 06:30 UTC (after IANA's weekly update window)
+  workflow_dispatch: {} # Manual trigger
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-tlds
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # Keep the lockfile as the single source of truth, matching Cloudflare
+      # Pages' default `npm ci`-style install.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run sync
+        id: sync
+        run: |
+          npm run sync:tlds 2>&1 | tee sync-output.log
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload sync log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-log
+          path: sync-output.log
+          retention-days: 30
+
+      # A sync that "succeeded" but can no longer build must fail loudly,
+      # otherwise Cloudflare Pages would deploy a broken site.
+      - name: Verify build
+        if: steps.sync.outputs.exit_code == '0'
+        run: |
+          npm run build
+          echo "Build OK. Pages built: $(find dist -name '*.html' | wc -l)"
+          # Sanity-check the dataset the build was generated from.
+          node -e "
+            const d = require('./data/tlds.json');
+            if (!d.records || d.records.length < 1000) {
+              console.error('Dataset implausibly small: ' + (d.records || []).length);
+              process.exit(1);
+            }
+            console.log('Dataset OK: ' + d.records.length + ' records');
+          "
+
+      - name: Run unit tests
+        if: steps.sync.outputs.exit_code == '0'
+        run: npm test
+
+      - name: Check for changes
+        if: steps.sync.outputs.exit_code == '0'
+        id: changes
+        run: |
+          if git diff --quiet data/tlds.json data/meta.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No data changes."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Data changed — will commit."
+          fi
+
+      # Only this commit triggers the Cloudflare Pages Git-integration build.
+      # `skip ci` is not used, so Pages sees the push and builds once.
+      - name: Commit and push changes
+        if: steps.sync.outputs.exit_code == '0' && steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/tlds.json data/meta.json
+          git commit -m "chore: sync TLD data ($(date -u +'%Y-%m-%d'))"
+          git push
+
+      - name: Fail job on sync error
+        if: steps.sync.outputs.exit_code != '0'
+        run: |
+          echo "Sync failed with exit code ${{ steps.sync.outputs.exit_code }}"
+
+          echo "Existing data on main is left untouched — Cloudflare Pages"
+          echo "continues to serve the last successfully built deploy."
+          exit 1

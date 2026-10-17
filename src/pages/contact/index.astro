@@ -1,0 +1,62 @@
+---
+// contact/index.astro
+import Layout from '../../components/Layout.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { siteConfig } from '../../config/site.js';
+---
+
+<Layout
+  title="Contact — TLD Directory"
+  description="Get in touch with TLD Directory for corrections, suggestions, or questions."
+>
+  <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
+    <Breadcrumb items={[
+      { label: 'Home', href: '/' },
+      { label: 'Contact' }
+    ]} />
+
+    <article class="prose prose-ink max-w-none">
+      <header class="mb-8">
+        <h1 class="text-3xl font-bold text-ink-900">Contact</h1>
+        <p class="mt-3 text-ink-600 text-lg">We welcome corrections, suggestions, and questions.</p>
+      </header>
+
+      <section>
+        <h2>Email</h2>
+        <p><a href="mailto:{siteConfig.contactEmail}" class="text-brand-600 hover:underline">{siteConfig.contactEmail}</a></p>
+        <p class="text-sm text-ink-500">Best for: data corrections, source suggestions, partnership inquiries.</p>
+      </section>
+
+      <section>
+        <h2>What we can help with</h2>
+        <ul>
+          <li>Report an error in TLD data (type, manager, link).</li>
+          <li>Suggest a source for editorial notes.</li>
+          <li>Request a new guide topic.</li>
+          <li>Technical issues with the site.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>What we cannot help with</h2>
+        <ul>
+          <li>Domain registration, transfer, or renewal issues — contact your registrar.</li>
+          <li>WHOIS privacy or data removal — contact the registry/registrar.</li>
+          <li>Legal disputes — consult a qualified attorney.</li>
+          <li>Pricing or availability checks — use a registrar's website.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Response time</h2>
+        <p>We aim to respond within 2–3 business days. Data corrections are typically fixed in the next weekly sync.</p>
+      </section>
+
+      <footer class="mt-12 pt-8 border-t border-ink-200">
+        <p class="text-sm text-ink-500">
+          {siteConfig.name} is an independent project. <a href="/privacy/" class="underline hover:text-brand-600">Privacy policy</a> · <a href="/terms/" class="underline hover:text-brand-600">Terms of use</a>
+        </p>
+      </footer>
+    </article>
+  </div>
+</Layout>

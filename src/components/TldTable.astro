@@ -1,0 +1,57 @@
+---
+// TldTable.astro — responsive table for TLD directory pages.
+import { toUnicodeLabel } from '../lib/iana.js';
+
+interface Props {
+  records: Array<{
+    suffix: string;
+    ascii_name: string;
+    unicode_name: string | null;
+    manager_name: string | null;
+    normalized_type: string | null;
+    is_idn: boolean;
+  }>;
+}
+
+const { records } = Astro.props;
+---
+
+<div class="overflow-x-auto">
+  <table class="data-table" role="grid">
+    <thead>
+      <tr>
+        <th scope="col">TLD</th>
+        <th scope="col">Type</th>
+        <th scope="col">Manager</th>
+        <th scope="col"><span class="sr-only">Actions</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {records.map(r => {
+        const displayName = r.unicode_name || (r.is_idn ? toUnicodeLabel(r.ascii_name) : null);
+        const typeLabel = r.normalized_type?.replace(/-/g, ' ') ?? 'Unknown';
+        return (
+          <tr>
+            <td>
+              <a href={`/tld/${r.ascii_name}/`} class="font-mono font-medium text-ink-900 hover:text-brand-600" itemprop="name">
+                {r.suffix}
+                {displayName && <span class="ml-2 text-base font-normal text-ink-500">({displayName})</span>}
+                {r.is_idn && <span class="ml-2 px-1.5 py-0.5 text-xs font-medium bg-brand-100 text-brand-700 rounded-full">IDN</span>}
+              </a>
+            </td>
+            <td class="text-sm text-ink-700">{typeLabel}</td>
+            <td class="text-sm text-ink-700 truncate-suffix max-w-xs">{r.manager_name ?? 'Not assigned'}</td>
+            <td class="text-right">
+              <a href={`/tld/${r.ascii_name}/`} class="text-sm font-medium text-brand-600 hover:text-brand-700">View</a>
+            </td>
+          </tr>
+        );
+      })}
+    </tbody>
+  </table>
+</div>
+
+<style is:global>
+  .data-table th:nth-child(3), .data-table td:nth-child(3) { width: 30%; }
+  .data-table th:last-child, .data-table td:last-child { width: 1%; white-space: nowrap; }
+</style>

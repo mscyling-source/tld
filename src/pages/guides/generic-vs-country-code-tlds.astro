@@ -1,0 +1,108 @@
+---
+// guides/generic-vs-country-code-tlds.astro
+import Layout from '../../components/Layout.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+---
+
+<Layout
+  title="Generic vs Country-Code TLDs — TLD Directory"
+  description="Compare generic TLDs (gTLDs) and country-code TLDs (ccTLDs): governance, policies, use cases, and practical differences."
+>
+  <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
+    <Breadcrumb items={[
+      { label: 'Home', href: '/' },
+      { label: 'Guides', href: '/guides/' },
+      { label: 'gTLD vs ccTLD' }
+    ]} />
+
+    <article class="prose prose-ink max-w-none">
+      <header class="mb-8">
+        <h1 class="text-3xl font-bold text-ink-900">Generic TLDs vs Country-Code TLDs</h1>
+        <p class="mt-3 text-ink-600 text-lg">The two largest categories of TLDs — how they differ and when to choose each.</p>
+      </header>
+
+      <section>
+        <h2>Quick comparison</h2>
+        <table>
+          <thead><tr><th>Aspect</th><th>Generic TLD (gTLD)</th><th>Country-code TLD (ccTLD)</th></tr></thead>
+          <tbody>
+            <tr><td>Format</td><td>3+ characters (<code>.com</code>, <code>.dev</code>, <code>.photography</code>)</td><td>Exactly 2 letters (<code>.uk</code>, <code>.de</code>, <code>.jp</code>)</td></tr>
+            <tr><td>Governance</td><td>ICANN contracts, global policy</td><td>National laws, local registry policies</td></tr>
+            <tr><td>Eligibility</td><td>Usually open worldwide</td><td>Often requires local presence / nexus</td></tr>
+            <tr><td>Registry operator</td><td>Commercial or non-profit under ICANN contract</td><td>National registry (often non-profit/government)</td></tr>
+            <tr><td>Transfer rules</td><td>Standardised (ICANN transfer policy)</td><td>Varies by registry</td></tr>
+            <tr><td>Dispute resolution</td><td>UDRP (uniform)</td><td>Local policies (often UDRP-like but not identical)</td></tr>
+            <tr><td>SEO geo-targeting</td><td>Not tied to a country (can set in Search Console)</td><td>Strong signal for that country</td></tr>
+            <tr><td>Price stability</td><td>Registry agreement caps increases</td><td>Can change with less notice</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Generic TLDs (gTLDs)</h2>
+        <p>gTLDs are operated under contract with ICANN. The original set (<code>.com</code>, <code>.org</code>, <code>.net</code>, <code>.int</code>, <code>.edu</code>, <code>.gov</code>, <code>.mil</code>, <code>.arpa</code>) has been joined by hundreds of new gTLDs since 2014 (<code>.dev</code>, <code>.app</code>, <code>.blog</code>, <code>.shop</code>, <code>.xyz</code>, etc.).</p>
+        <h3>Characteristics</h3>
+        <ul>
+          <li><strong>Global by default</strong> — no geographic restriction.</li>
+          <li><strong>Predictable policies</strong> — ICANN contracts mandate UDRP, transfer rules, WHOIS/RDAP, etc.</li>
+          <li><strong>Price caps</strong> — registry agreements limit annual wholesale price increases.</li>
+          <li><strong>Many choices</strong> — descriptive extensions like <code>.photography</code>, <code>.tech</code>, <code>.design</code> can signal your niche.</li>
+        </ul>
+        <h3>When to choose a gTLD</h3>
+        <ul>
+          <li>Global audience or no specific geographic focus.</li>
+          <li>You want predictable renewal pricing and transfer rights.</li>
+          <li>You want a descriptive extension that matches your brand/industry.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Country-code TLDs (ccTLDs)</h2>
+        <p>ccTLDs are two-letter codes from ISO 3166-1. Each is delegated to a national registry that sets its own rules.</p>
+        <h3>Characteristics</h3>
+        <ul>
+          <li><strong>Local trust signal</strong> — users in that country often prefer the local ccTLD.</li>
+          <li><strong>Strong geo-targeting</strong> — search engines treat ccTLDs as a strong signal for that country.</li>
+          <li><strong>Varied policies</strong> — some are open globally (<code>.ai</code>, <code>.io</code>, <code>.co</code>, <code>.me</code>), others require local presence (<code>.fr</code>, <code>.de</code>, <code>.jp</code>, <code>.cn</code>).</li>
+          <li><strong>Different dispute processes</strong> — not all use UDRP; some have local arbitration.</li>
+          <li><strong>Transfer restrictions</strong> — some ccTLDs don't support standard transfers or require paperwork.</li>
+        </ul>
+        <h3>When to choose a ccTLD</h3>
+        <ul>
+          <li>Primary audience is a specific country.</li>
+          <li>You have (or can get) the required local presence/nexus.</li>
+          <li>You want the local trust/branding benefit.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>The "generic ccTLD" phenomenon</h2>
+        <p>Some ccTLDs are marketed globally and have open registration policies, effectively functioning like gTLDs:</p>
+        <ul>
+          <li><code>.ai</code> (Anguilla) — popular for AI companies.</li>
+          <li><code>.io</code> (British Indian Ocean Territory) — popular for tech startups.</li>
+          <li><code>.co</code> (Colombia) — marketed as "company" or "commerce".</li>
+          <li><code>.me</code> (Montenegro) — marketed for personal brands.</li>
+          <li><code>.tv</code> (Tuvalu) — video/streaming.</li>
+        </ul>
+        <p><strong>Caution:</strong> These are still ccTLDs. The registry can change policies, prices, or eligibility with less oversight than gTLDs. The <code>.io</code> controversy (2021–2024) over the Chagos Archipelago sovereignty is a reminder that ccTLDs have geopolitical risk.</p>
+      </section>
+
+      <section>
+        <h2>SEO considerations</h2>
+        <ul>
+          <li><strong>ccTLD</strong> = strongest geo-targeting signal. No need to set country in Search Console.</li>
+          <li><strong>gTLD</strong> = neutral. Use hreflang + Search Console country setting for multi-regional sites.</li>
+          <li>Google treats some ccTLDs as "generic" (e.g. <code>.ai</code>, <code>.io</code>, <code>.co</code>, <code>.me</code>, <code>.tv</code>) for ranking purposes — but this can change.</li>
+        </ul>
+      </section>
+
+      <footer class="mt-12 pt-8 border-t border-ink-200">
+        <nav class="flex flex-wrap gap-4" aria-label="Related guides">
+          <a href="/guides/how-to-choose-a-domain-extension/" class="text-brand-600 hover:text-brand-700 font-medium">How to Choose a Domain Extension →</a>
+          <a href="/guides/before-registering-country-code-domain/" class="text-brand-600 hover:text-brand-700 font-medium">Before Registering a Country-Code Domain →</a>
+        </nav>
+      </footer>
+    </article>
+  </div>
+</Layout>

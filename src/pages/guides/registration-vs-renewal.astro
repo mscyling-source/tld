@@ -1,0 +1,109 @@
+---
+// guides/registration-vs-renewal.astro
+import Layout from '../../components/Layout.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+---
+
+<Layout
+  title="Registration vs Renewal — TLD Directory"
+  description="Why the first-year price isn't the whole story — understanding the true cost of domain ownership."
+>
+  <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
+    <Breadcrumb items={[
+      { label: 'Home', href: '/' },
+      { label: 'Guides', href: '/guides/' },
+      { label: 'Registration vs Renewal' }
+    ]} />
+
+    <article class="prose prose-ink max-w-none">
+      <header class="mb-8">
+        <h1 class="text-3xl font-bold text-ink-900">Registration vs Renewal: The Real Cost of a Domain</h1>
+        <p class="mt-3 text-ink-600 text-lg">Promo pricing gets you in the door. Renewal pricing keeps you there.</p>
+      </header>
+
+      <section>
+        <h2>The pricing trap</h2>
+        <p>You see <code>.com</code> for <strong>$0.99/year</strong>. You buy. Next year, the invoice says <strong>$15.99</strong>.</p>
+        <p>This is normal. Registrars use <strong>loss-leader pricing</strong> on the first year to acquire customers, knowing most people don't transfer.</p>
+      </section>
+
+      <section>
+        <h2>Key terms</h2>
+        <dl>
+          <dt><strong>Registration (first year)</strong></dt>
+          <dd>The initial purchase. Often heavily discounted via promo codes, bundles, or intro offers.</dd>
+          <dt><strong>Renewal</strong></dt>
+          <dd>The recurring annual fee to keep the domain. Usually at the registrar's standard retail price.</dd>
+          <dt><strong>Transfer</strong></dt>
+          <dd>Moving to another registrar. Costs ~1 year renewal fee (extends expiry by 1 year).</dd>
+          <dt><strong>Redemption</strong></dt>
+          <dd>Recovering an expired domain after the grace period. Expensive (registry fee + registrar markup).</dd>
+        </dl>
+      </section>
+
+      <section>
+        <h2>Typical price ranges (2026, retail, USD)</h2>
+        <table>
+          <thead><tr><th>TLD</th><th>First-year promo</th><th>Standard renewal</th><th>5-year total (est.)</th></tr></thead>
+          <tbody>
+            <tr><td><code>.com</code></td><td>$0.99 – $5.99</td><td>$12 – $16</td><td>$60 – $80</td></tr>
+            <tr><td><code>.net</code></td><td>$5 – $8</td><td>$14 – $18</td><td>$70 – $90</td></tr>
+            <tr><td><code>.org</code></td><td>$5 – $9</td><td>$14 – $18</td><td>$70 – $90</td></tr>
+            <tr><td><code>.dev</code> / <code>.app</code></td><td>$12 – $15</td><td>$12 – $18</td><td>$60 – $90</td></tr>
+            <tr><td><code>.io</code></td><td>$30 – $40</td><td>$40 – $60</td><td>$200 – $300</td></tr>
+            <tr><td><code>.ai</code></td><td>$60 – $80</td><td>$70 – $100</td><td>$350 – $500</td></tr>
+            <tr><td><code>.co</code></td><td>$8 – $12</td><td>$25 – $35</td><td>$125 – $175</td></tr>
+          </tbody>
+        </table>
+        <p><em>Prices vary by registrar. Always check the current renewal price before buying.</em></p>
+      </section>
+
+      <section>
+        <h2>How to compare</h2>
+        <ol>
+          <li>Ignore first-year promos for long-term projects.</li>
+          <li>Compare <strong>renewal prices</strong> at 3–5 registrars.</li>
+          <li>Check if WHOIS privacy is included (most include it free now).</li>
+          <li>Check transfer-out fees (should be $0).</li>
+          <li>Calculate <strong>5-year total cost</strong> = renewal × 5.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>Strategies to save</h2>
+        <ul>
+          <li><strong>Multi-year registration</strong> — some registrars let you prepay 5–10 years at today's renewal rate.</li>
+          <li><strong>Transfer before renewal</strong> — move to a cheaper registrar 30+ days before expiry (avoids redemption risk).</li>
+          <li><strong>Cloudflare Registrar</strong> — sells at wholesale (no markup) for <code>.com</code>, <code>.net</code>, <code>.org</code>, etc. Requires Cloudflare account + DNS.</li>
+          <li><strong>Watch for price increase notices</strong> — ICANN requires registrars to notify you of renewal price changes.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>ccTLD quirks</h2>
+        <ul>
+          <li>Some ccTLDs don't have "promo" pricing — same price first year and renewal.</li>
+          <li>Currency fluctuations affect you if the registry bills in local currency.</li>
+          <li>Some registries only allow 1-year registrations (e.g. <code>.uk</code> historically).</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Red flags</h2>
+        <ul>
+          <li>Registrar hides renewal price until checkout.</li>
+          <li>High transfer-out fees or transfer locks you can't remove.</li>
+          <li>Forced add-ons (privacy, email, hosting) bundled at checkout.</li>
+          <li>Auto-renew enabled by default with no easy off switch.</li>
+        </ul>
+      </section>
+
+      <footer class="mt-12 pt-8 border-t border-ink-200">
+        <nav class="flex flex-wrap gap-4" aria-label="Related guides">
+          <a href="/guides/how-domain-registration-works/" class="text-brand-600 hover:text-brand-700 font-medium">← How Domain Registration Works</a>
+          <a href="/guides/evaluate-domain-extension-for-business/" class="text-brand-600 hover:text-brand-700 font-medium">Evaluating for Business →</a>
+        </nav>
+      </footer>
+    </article>
+  </div>
+</Layout>

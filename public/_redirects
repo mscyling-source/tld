@@ -1,0 +1,11 @@
+# Cloudflare Pages redirects
+#
+# These routes existed in the previous version of the site. IANA's 2026
+# page redesign removed the "Sponsored" and "Generic Restricted" type
+# labels, folding them into "Generic". The pages no longer exist, so old
+# inbound links (and any already-indexed URLs) need permanent redirects.
+#
+# Both destinations are current, generated pages on this site.
+
+/category/sponsored/  /category/generic/  301
+/category/restricted/  /category/generic/  301

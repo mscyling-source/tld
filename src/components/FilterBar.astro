@@ -1,0 +1,148 @@
+---
+// FilterBar.astro — client-side filter controls for TLD directory.
+import { siteConfig } from '../config/site.js';
+
+const typeOptions = [
+  { value: 'generic', label: 'Generic TLDs' },
+  { value: 'country-code', label: 'Country-code TLDs' },
+  { value: 'special-use', label: 'Special-use TLDs' },
+] as const;
+
+const letterOptions = [
+  { value: '', label: 'All letters' },
+  ...'abcdefghijklmnopqrstuvwxyz'.split('').map(l => ({ value: l, label: l.toUpperCase() })),
+  { value: '0-9', label: '0–9' },
+] as const;
+---
+
+<div class="bg-white border border-ink-200 rounded-xl p-4 sm:p-6 mb-6" role="search" aria-label="TLD filters">
+  <form id="filter-form" class="space-y-4 sm:grid sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 lg:gap-6" aria-label="Filter TLDs">
+    <div class="sm:col-span-2 lg:col-span-1">
+      <label for="filter-q" class="block text-sm font-medium text-ink-700 mb-1">Search</label>
+      <div class="relative">
+        <input
+          id="filter-q"
+          name="q"
+          type="search"
+          placeholder="Suffix, registry, domain…"
+          class="w-full px-4 py-2.5 pr-10 text-sm border border-ink-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+          autocomplete="off"
+        />
+        <button type="button" id="clear-q" class="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-600 hidden" aria-label="Clear search">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <label for="filter-type" class="block text-sm font-medium text-ink-700 mb-1">Type</label>
+      <select id="filter-type" name="type" class="w-full px-4 py-2.5 text-sm border border-ink-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" multiple aria-label="Filter by TLD type">
+        {typeOptions.map(opt => <option value={opt.value}>{opt.label}</option>)}
+      </select>
+    </div>
+
+    <div>
+      <label for="filter-letter" class="block text-sm font-medium text-ink-700 mb-1">Letter</label>
+      <select id="filter-letter" name="letter" class="w-full px-4 py-2.5 text-sm border border-ink-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" aria-label="Filter by first letter">
+        {letterOptions.map(opt => <option value={opt.value}>{opt.label}</option>)}
+      </select>
+    </div>
+
+    <div class="flex items-end">
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" id="filter-idn" name="idnOnly" class="w-4 h-4 text-brand-600 border-ink-300 rounded focus:ring-brand-500" aria-label="Show only internationalized TLDs" />
+        <span class="text-sm text-ink-700">IDN only</span>
+      </label>
+    </div>
+  </form>
+
+  <div class="mt-4 flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-ink-200">
+    <p id="result-count" class="text-sm text-ink-600" aria-live="polite"></p>
+    <button type="button" id="clear-all" class="text-sm font-medium text-brand-600 hover:text-brand-700 hidden" aria-label="Clear all filters">Clear all filters</button>
+  </div>
+</div>
+
+<script>
+  // All filter logic runs in the browser for instant feedback on static pages.
+  // The initial server-rendered HTML already contains the filtered results.
+  const form = document.getElementById('filter-form') as HTMLFormElement;
+  const qInput = document.getElementById('filter-q') as HTMLInputElement;
+  const clearQBtn = document.getElementById('clear-q') as HTMLButtonElement;
+  const clearAllBtn = document.getElementById('clear-all') as HTMLButtonElement;
+  const resultCount = document.getElementById('result-count') as HTMLParagraphElement;
+  const tableBody = document.querySelector('.data-table tbody') as HTMLTableSectionElement | null;
+  const rows = tableBody ? Array.from(tableBody.rows) : [];
+  const emptyRow = tableBody?.querySelector('[data-empty]') as HTMLTableRowElement | null;
+
+  function getFilterState() {
+    const fd = new FormData(form);
+    return {
+      q: fd.get('q')?.toString().trim().toLowerCase() ?? '',
+      types: fd.getAll('type').map(String),
+      letter: fd.get('letter')?.toString() ?? '',
+      idnOnly: fd.has('idnOnly'),
+    };
+  }
+
+  function normalizeQuery(q: string) {
+    if (!q) return '';
+    if (/^[a-z0-9.-]+$/.test(q) && q.includes('.')) {
+      const label = q.split('.').pop()?.toLowerCase();
+      if (label && /^[a-z0-9-]+$/.test(label) && !label.startsWith('-') && !label.endsWith('-')) {
+        return label;
+      }
+    }
+    return q.replace(/^\.+/, '');
+  }
+
+  function letterOf(label: string) {
+    const first = label.charAt(0);
+    return /^[a-z]$/.test(first) ? first : '0-9';
+  }
+
+  function matches(rec: HTMLTableRowElement, state: ReturnType<typeof getFilterState>) {
+    const nq = normalizeQuery(state.q);
+    const ascii = rec.dataset.ascii ?? '';
+    const unicode = rec.dataset.unicode ?? '';
+    const manager = rec.dataset.manager?.toLowerCase() ?? '';
+    const type = rec.dataset.type ?? '';
+    const isIdn = rec.dataset.idn === 'true';
+
+    if (nq && !ascii.includes(nq) && !unicode.toLowerCase().includes(nq) && !manager.includes(nq) && !type.includes(nq)) return false;
+    if (state.types.length && !state.types.includes(type)) return false;
+    if (state.letter && letterOf(ascii) !== state.letter) return false;
+    if (state.idnOnly && !isIdn) return false;
+    return true;
+  }
+
+  function update() {
+    const state = getFilterState();
+    let visible = 0;
+    rows.forEach(r => {
+      const ok = matches(r, state);
+      r.style.display = ok ? '' : 'none';
+      if (ok) visible++;
+    });
+    if (emptyRow) emptyRow.style.display = visible === 0 ? '' : 'none';
+
+    const parts = [];
+    if (state.q) parts.push(`“${state.q}”`);
+    if (state.types.length) parts.push(state.types.join(', '));
+    if (state.letter) parts.push(`letter ${state.letter.toUpperCase()}`);
+    if (state.idnOnly) parts.push('IDN only');
+    resultCount.textContent = visible === 1 ? '1 TLD' : `${visible} TLDs`;
+    if (parts.length) resultCount.textContent += ` (filtered by ${parts.join(' + ')})`;
+
+    clearQBtn.classList.toggle('hidden', !state.q);
+    clearAllBtn.classList.toggle('hidden', !state.q && !state.types.length && !state.letter && !state.idnOnly);
+  }
+
+  form.addEventListener('input', update);
+  form.addEventListener('change', update);
+
+  clearQBtn.addEventListener('click', () => { qInput.value = ''; update(); qInput.focus(); });
+  clearAllBtn.addEventListener('click', () => { form.reset(); update(); qInput.focus(); });
+
+  // Initial count
+  update();
+</script>

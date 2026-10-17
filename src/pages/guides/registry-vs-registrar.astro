@@ -1,0 +1,98 @@
+---
+// guides/registry-vs-registrar.astro
+import Layout from '../../components/Layout.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+---
+
+<Layout
+  title="Registry vs Registrar — TLD Directory"
+  description="Understand the difference between a registry (the TLD operator) and a registrar (the retailer you buy from)."
+>
+  <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
+    <Breadcrumb items={[
+      { label: 'Home', href: '/' },
+      { label: 'Guides', href: '/guides/' },
+      { label: 'Registry vs Registrar' }
+    ]} />
+
+    <article class="prose prose-ink max-w-none">
+      <header class="mb-8">
+        <h1 class="text-3xl font-bold text-ink-900">Registry vs Registrar: What's the Difference?</h1>
+        <p class="mt-3 text-ink-600 text-lg">Two distinct roles in the domain name ecosystem — often confused, but fundamentally different.</p>
+      </header>
+
+      <section>
+        <h2>The one-sentence summary</h2>
+        <p><strong>A registry operates the TLD.</strong> A <strong>registrar sells registrations to you.</strong></p>
+      </section>
+
+      <section>
+        <h2>Registry (the operator)</h2>
+        <ul>
+          <li>Runs the authoritative name servers for the TLD.</li>
+          <li>Maintains the master database of all registered domains under that TLD.</li>
+          <li>Sets wholesale prices, policies, and technical requirements.</li>
+          <li>Has a direct contract with ICANN (for gTLDs) or the relevant government (for ccTLDs).</li>
+          <li>Examples: VeriSign (<code>.com</code>, <code>.net</code>), Public Interest Registry (<code>.org</code>), Nominet (<code>.uk</code>), Google Registry (<code>.dev</code>, <code>.app</code>).</li>
+        </ul>
+        <p>There is exactly <strong>one registry per TLD</strong>. You generally cannot buy directly from a registry.</p>
+      </section>
+
+      <section>
+        <h2>Registrar (the retailer)</h2>
+        <ul>
+          <li>Accredited by ICANN (for gTLDs) or the ccTLD registry to sell registrations.</li>
+          <li>Provides the customer-facing interface: search, checkout, management panel, support.</li>
+          <li>Sets retail prices, bundles services (email, hosting, privacy), and handles billing.</li>
+          <li>Competes on price, UX, support, and extras.</li>
+          <li>Examples: Cloudflare, Namecheap, GoDaddy, Porkbun, Gandi, Google Domains (now Squarespace), etc.</li>
+        </ul>
+        <p>There are <strong>hundreds of registrars</strong> for popular gTLDs. For many ccTLDs, the number is smaller.</p>
+      </section>
+
+      <section>
+        <h2>Analogy: Wholesale vs Retail</h2>
+        <p>Think of it like electricity:</p>
+        <ul>
+          <li>The <strong>registry</strong> is the grid operator — they maintain the infrastructure.</li>
+          <li>The <strong>registrar</strong> is your energy supplier — they bill you and handle customer service.</li>
+        </ul>
+        <p>Or like a car manufacturer vs a dealership. The registry builds and maintains the "product" (the TLD namespace); the registrar sells it to you.</p>
+      </section>
+
+      <section>
+        <h2>What this means for you</h2>
+        <table>
+          <thead>
+            <tr><th>Question</th><th>Answer</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Who do I pay?</td><td>The registrar.</td></tr>
+            <tr><td>Who sets the renewal price?</td><td>The registry sets the wholesale price; the registrar adds their margin.</td></tr>
+            <tr><td>Can I switch registrars?</td><td>Yes, via a domain transfer (for most gTLDs and many ccTLDs).</td></tr>
+            <tr><td>Who handles DNS?</td><td>Either — you can use the registrar's DNS or point to any provider.</td></tr>
+            <tr><td>Who do I contact for abuse/legal issues?</td><td>Usually the registrar first; they forward to the registry if needed.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Registry–Registrar separation</h2>
+        <p>ICANN requires a strict separation for gTLDs: a registry cannot also act as a registrar for its own TLD (with very limited exceptions). This prevents anti-competitive behaviour and ensures a level playing field.</p>
+        <p>For some ccTLDs, the registry <em>also</em> acts as the sole registrar (e.g. some small country registries). This is allowed because ccTLDs follow national law, not ICANN policy.</p>
+      </section>
+
+      <section>
+        <h2>How to find the registry for a TLD</h2>
+        <p>Every TLD detail page on this site shows the <strong>Sponsoring Organisation</strong> (the registry) and a link to the <strong>IANA delegation record</strong>. Example: <a href="/tld/com/">.com</a> → VeriSign Global Registry Services.</p>
+      </section>
+
+      <footer class="mt-12 pt-8 border-t border-ink-200">
+        <nav class="flex flex-wrap gap-4" aria-label="Related guides">
+          <a href="/guides/what-is-a-top-level-domain/" class="text-brand-600 hover:text-brand-700 font-medium">← What Is a TLD?</a>
+          <a href="/guides/how-domain-registration-works/" class="text-brand-600 hover:text-brand-700 font-medium">How Domain Registration Works →</a>
+        </nav>
+      </footer>
+    </article>
+  </div>
+</Layout>

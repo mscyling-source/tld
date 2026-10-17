@@ -1,0 +1,121 @@
+---
+// guides/what-is-a-top-level-domain.astro
+import Layout from '../../components/Layout.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+---
+
+<Layout
+  title="What Is a Top-Level Domain? — TLD Directory"
+  description="Learn what a top-level domain (TLD) is, how it fits into the DNS hierarchy, and the main categories of TLDs."
+>
+  <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
+    <Breadcrumb items={[
+      { label: 'Home', href: '/' },
+      { label: 'Guides', href: '/guides/' },
+      { label: 'What Is a TLD?' }
+    ]} />
+
+    <article class="prose prose-ink max-w-none">
+      <header class="mb-8">
+        <h1 class="text-3xl font-bold text-ink-900">What Is a Top-Level Domain?</h1>
+        <p class="mt-3 text-ink-600 text-lg">A clear explanation of TLDs, the DNS hierarchy, and the main categories.</p>
+      </header>
+
+      <section>
+        <h2>The short answer</h2>
+        <p>A <strong>top-level domain (TLD)</strong> is the last segment of a domain name — the part after the final dot. In <code>example.com</code>, the TLD is <code>.com</code>. In <code>example.co.uk</code>, the TLD is <code>.uk</code> (with <code>.co</code> being a second-level domain).</p>
+        <p>TLDs sit at the top of the Domain Name System (DNS) hierarchy. They are the first stop when a resolver looks up a domain name.</p>
+      </section>
+
+      <section>
+        <h2>The DNS hierarchy</h2>
+        <p>The DNS is a distributed, hierarchical naming system. From top to bottom:</p>
+        <ol>
+          <li><strong>Root zone</strong> — represented by an empty label (the trailing dot in <code>example.com.</code>). Managed by IANA/ICANN.</li>
+          <li><strong>Top-level domains (TLDs)</strong> — <code>.com</code>, <code>.org</code>, <code>.uk</code>, <code>.中国</code>, etc.</li>
+          <li><strong>Second-level domains</strong> — <code>example</code> in <code>example.com</code>.</li>
+          <li><strong>Subdomains</strong> — <code>www</code>, <code>mail</code>, <code>blog</code>, etc.</li>
+        </ol>
+        <p>When you type a domain in a browser, a recursive resolver starts at the root, asks for the TLD's authoritative name servers, then asks those for the second-level domain, and so on.</p>
+      </section>
+
+      <section>
+        <h2>Main TLD categories</h2>
+        <p>
+          IANA's Root Zone Database index page was redesigned in 2026 and now publishes only three
+          type values. Earlier pages used six. Both are described below so the older terms you may
+          still find in blog posts still make sense.
+        </p>
+        <dl>
+          <dt><strong>Generic TLDs (gTLDs)</strong></dt>
+          <dd>
+            Open to global registration. Examples: <code>.com</code>, <code>.org</code>, <code>.net</code>,
+            <code>.dev</code>, <code>.app</code>, <code>.biz</code>. In IANA's current taxonomy
+            <code>.gov</code>, <code>.edu</code>, <code>.museum</code> and <code>.aero</code> are
+            also listed here, even though they were historically called <em>sponsored</em>.
+          </dd>
+
+          <dt><strong>Country-code TLDs (ccTLDs)</strong></dt>
+          <dd>
+            Two-letter codes from ISO 3166-1. Examples: <code>.uk</code>, <code>.de</code>, <code>.jp</code>,
+            <code>.ai</code>, <code>.io</code>. Each is managed by a national registry with its own rules.
+          </dd>
+
+          <dt><strong>Special-use TLDs</strong></dt>
+          <dd>
+            IANA labels <code>.arpa</code> as "Special Use" — it is delegated but reserved for technical
+            infrastructure. Eight further names (<code>.test</code>, <code>.example</code>,
+            <code>.invalid</code>, <code>.localhost</code>, <code>.local</code>, <code>.internal</code>,
+            <code>.alt</code>, <code>.onion</code>) share the label but are <strong>not delegated</strong>
+            and never appear in the public DNS.
+          </dd>
+
+          <dt><strong>Internationalized TLDs (IDN TLDs)</strong></dt>
+          <dd>
+            A cross-cutting view, not an IANA type: TLDs stored as punycode and displayed in a native
+            script (<code>.中国</code> → <code>.xn--fiqs8s</code>). Both generic and country-code IDNs exist.
+          </dd>
+        </dl>
+        <p class="text-sm text-ink-600">
+          Older IANA pages separated two further groups: <em>Sponsored TLDs</em> (.gov, .edu, .museum,
+          .aero, .post) and <em>Generic Restricted TLDs</em> (.biz, .name, .pro). IANA no longer publishes
+          those labels, so this site does not either — the eligibility rules they described are still set
+          by each registry and are linked from the individual TLD pages.
+        </p>
+      </section>
+
+      <section>
+        <h2>Who runs the TLD system?</h2>
+        <ul>
+          <li><strong>IANA (Internet Assigned Numbers Authority)</strong> — maintains the authoritative Root Zone Database and coordinates the root zone.</li>
+          <li><strong>ICANN (Internet Corporation for Assigned Names and Numbers)</strong> — policy development and oversight of the DNS root.</li>
+          <li><strong>Registry operators</strong> — run the authoritative name servers and registration database for a specific TLD (e.g. VeriSign for <code>.com</code>).</li>
+          <li><strong>Registrars</strong> — accredited retailers that sell domain registrations to end users.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>How many TLDs exist?</h2>
+        <p>As of October 2026, there are <strong>over 1,400 delegated TLDs</strong> in the IANA root zone. The exact number grows as new gTLDs are delegated and ccTLDs are added or retired.</p>
+        <p>You can browse the current list on our <a href="/tlds/">TLD directory</a> or download the authoritative list from <a href="https://data.iana.org/TLD/tlds-alpha-by-domain.txt" target="_blank" rel="noopener">IANA</a>.</p>
+      </section>
+
+      <section>
+        <h2>Key takeaways</h2>
+        <ul>
+          <li>A TLD is the highest level in the DNS hierarchy after the root.</li>
+          <li>Every TLD has a registry operator responsible for its technical operation.</li>
+          <li>IANA publishes three type values (Generic, Country Code, Special Use); the older "sponsored" and "generic-restricted" labels are no longer published.</li>
+          <li>The IANA Root Zone Database is the single authoritative source for TLD data.</li>
+        </ul>
+      </section>
+
+      <footer class="mt-12 pt-8 border-t border-ink-200">
+        <nav class="flex flex-wrap gap-4" aria-label="Related guides">
+          <a href="/guides/registry-vs-registrar/" class="text-brand-600 hover:text-brand-700 font-medium">Next: Registry vs Registrar →</a>
+          <a href="/guides/generic-vs-country-code-tlds/" class="text-brand-600 hover:text-brand-700 font-medium">Generic vs Country-Code TLDs →</a>
+        </nav>
+      </footer>
+    </article>
+  </div>
+</Layout>

@@ -1,0 +1,78 @@
+{
+  "last_success_at": "2026-10-16T07:31:16.592Z",
+  "last_attempt_at": "2026-10-16T07:31:12.651Z",
+  "status": "success",
+  "last_error": null,
+  "counts": {
+    "total": 1437,
+    "by_type": {
+      "generic": 1127,
+      "country-code": 309,
+      "special-use": 1
+    },
+    "idn": 151,
+    "editorial": 0
+  },
+  "last_changes": {
+    "added": [],
+    "removed": []
+  },
+  "history": [
+    {
+      "at": "2026-10-13T07:26:17.779Z",
+      "status": "success",
+      "total": 1437,
+      "added": 1437,
+      "removed": 0,
+      "note": "Initial dataset from IANA version 2026101200"
+    },
+    {
+      "at": "2026-10-16T07:00:51.519Z",
+      "status": "success",
+      "total": 1437,
+      "added": 0,
+      "removed": 0,
+      "note": "IANA version 2026101500"
+    },
+    {
+      "at": "2026-10-16T07:23:45.258Z",
+      "status": "success",
+      "total": 1437,
+      "added": 0,
+      "removed": 0,
+      "note": "IANA version 2026101500"
+    },
+    {
+      "at": "2026-10-16T07:24:16.327Z",
+      "status": "failed",
+      "total": 0,
+      "added": 0,
+      "removed": 0,
+      "note": "Failed to fetch delegated list: null"
+    },
+    {
+      "at": "2026-10-16T07:24:43.588Z",
+      "status": "success",
+      "total": 1437,
+      "added": 0,
+      "removed": 0,
+      "note": "IANA version 2026101500"
+    },
+    {
+      "at": "2026-10-16T07:24:44.043Z",
+      "status": "failed",
+      "total": 0,
+      "added": 0,
+      "removed": 0,
+      "note": "Failed to fetch delegated list: null"
+    },
+    {
+      "at": "2026-10-16T07:31:16.592Z",
+      "status": "success",
+      "total": 1437,
+      "added": 0,
+      "removed": 0,
+      "note": "IANA version 2026101500"
+    }
+  ]
+}

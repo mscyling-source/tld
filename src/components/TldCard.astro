@@ -1,0 +1,45 @@
+---
+// TldCard.astro — card component for a single TLD in lists/grids.
+import { toUnicodeLabel } from '../lib/iana.js';
+
+interface Props {
+  suffix: string;
+  ascii_name: string;
+  unicode_name: string | null;
+  manager_name: string | null;
+  normalized_type: string | null;
+  is_idn: boolean;
+}
+
+const { suffix, ascii_name, unicode_name, manager_name, normalized_type, is_idn } = Astro.props;
+const displayName = unicode_name || (is_idn ? toUnicodeLabel(ascii_name) : null);
+const typeLabel = normalized_type?.replace(/-/g, ' ') ?? 'Unknown';
+---
+
+<article class="bg-white border border-ink-200 rounded-xl p-5 hover:border-brand-300 hover:shadow-md transition-all duration-200" itemscope itemtype="https://schema.org/TopLevelDomain">
+  <header class="flex items-baseline gap-2 mb-3">
+    <a href={`/tld/${ascii_name}/`} class="text-xl font-mono font-semibold text-ink-900 hover:text-brand-600" itemprop="name">
+      {suffix}
+      {displayName && <span class="ml-2 text-base font-normal text-ink-500">({displayName})</span>}
+    </a>
+    {is_idn && <span class="px-2 py-0.5 text-xs font-medium bg-brand-100 text-brand-700 rounded-full" aria-label="Internationalized domain name">IDN</span>}
+  </header>
+
+  <dl class="space-y-2 text-sm">
+    <div class="flex gap-2">
+      <dt class="text-ink-500 w-24 shrink-0">Type</dt>
+      <dd class="text-ink-900" itemprop="category">{typeLabel}</dd>
+    </div>
+    <div class="flex gap-2">
+      <dt class="text-ink-500 w-24 shrink-0">Manager</dt>
+      <dd class="text-ink-900 truncate-suffix" itemprop="provider">{manager_name ?? 'Not assigned'}</dd>
+    </div>
+  </dl>
+
+  <footer class="mt-4 pt-3 border-t border-ink-100">
+    <a href={`/tld/${ascii_name}/`} class="text-sm font-medium text-brand-600 hover:text-brand-700 inline-flex items-center gap-1">
+      Details
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+    </a>
+  </footer>
+</article>

@@ -1,0 +1,14 @@
+.DS_Store
+node_modules/
+dist/
+.astro/
+.astro-old/
+*.log
+npm-debug.log*
+.env
+.env.*
+!.env.example
+# local sync artifacts (reports are summarised inside data/meta.json)
+.sync-report.json
+artifacts/
+coverage/

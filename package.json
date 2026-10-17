@@ -1,0 +1,32 @@
+{
+  "name": "tld-directory",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "description": "TLD Directory - an independent directory of top-level domains with verified IANA data, guides and tools.",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "sync:tlds": "tsx scripts/sync-tlds.ts",
+    "check": "astro check"
+  },
+  "dependencies": {
+    "astro": "^7.3.8",
+    "@astrojs/sitemap": "^3.7.4",
+    "tailwindcss": "^4.3.3",
+    "@tailwindcss/vite": "^4.3.3",
+    "punycode": "^2.3.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "vitest": "^5.0.4",
+    "tsx": "^4.20.0",
+    "@types/node": "^22.0.0"
+  }
+}

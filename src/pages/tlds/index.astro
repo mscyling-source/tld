@@ -1,0 +1,52 @@
+---
+// tlds/index.astro — TLD directory with search & filter.
+import Layout from '../../components/Layout.astro';
+import FilterBar from '../../components/FilterBar.astro';
+import TldTable from '../../components/TldTable.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { loadSearchIndex, loadAllRecords } from '../../lib/store.js';
+
+const searchIndex = await loadSearchIndex();
+const allRecords = await loadAllRecords();
+const totalCount = allRecords.length;
+
+const url = new URL(Astro.url);
+const q = url.searchParams.get('q') ?? '';
+const types = url.searchParams.getAll('type');
+const letter = url.searchParams.get('letter') ?? '';
+const idnOnly = url.searchParams.has('idnOnly');
+
+import { filterTlds } from '../../lib/search.js';
+const filtered = filterTlds(searchIndex, { q, types, letter, idnOnly });
+---
+
+<Layout
+  title="All TLDs — TLD Directory"
+  description="Browse and search all delegated top-level domains. Filter by type, first letter, or search by name, registry, or domain."
+>
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+    <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'All TLDs' }]} />
+
+    <header class="mb-6">
+      <h1 class="text-3xl font-bold text-ink-900">All Top-Level Domains</h1>
+      <p class="mt-2 text-ink-600 max-w-2xl">
+        {totalCount} delegated TLDs from the IANA Root Zone Database.
+        {filtered.length !== totalCount && <span class="ml-2 text-brand-600 font-medium">({filtered.length} matching)</span>}
+      </p>
+    </header>
+
+    <FilterBar />
+
+    {filtered.length === 0 ? (
+      <div class="text-center py-12">
+        <p class="text-ink-600" id="empty-state">No TLDs match the current filters.</p>
+      </div>
+    ) : (
+      <TldTable records={filtered} />
+    )}
+
+    <nav class="mt-8 flex justify-center gap-2" aria-label="Pagination">
+      <span class="text-sm text-ink-500">Showing {filtered.length} of {totalCount} TLDs</span>
+    </nav>
+  </div>
+</Layout>

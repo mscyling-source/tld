@@ -1,0 +1,135 @@
+---
+// adsense-readiness/index.astro
+import Layout from '../../components/Layout.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { loadAllRecords, loadRecordsByType, getGeneratedAt } from '../../lib/store.js';
+
+const allRecords = await loadAllRecords();
+const genericRecords = await loadRecordsByType('generic');
+const cctldRecords = await loadRecordsByType('country-code');
+const specialUseRecords = await loadRecordsByType('special-use');
+const idnRecords = allRecords.filter(r => r.is_idn);
+const generatedAt = await getGeneratedAt();
+
+const checks = [
+  { id: 'core-pages', label: 'Core pages exist', items: [
+    { name: 'Homepage', path: '/', required: true },
+    { name: 'TLD directory', path: '/tlds/', required: true },
+    { name: 'Category pages', path: '/category/', required: true },
+    { name: 'TLD detail pages', path: '/tld/com/', required: true, check: allRecords.length > 0 },
+    { name: 'Guides (10+)', path: '/guides/', required: true, check: true },
+    { name: 'Compare tool', path: '/tools/compare/', required: true },
+    { name: 'Data sources', path: '/data-sources/', required: true },
+    { name: 'About', path: '/about/', required: true },
+    { name: 'Contact', path: '/contact/', required: true },
+    { name: 'Privacy policy', path: '/privacy/', required: true },
+    { name: 'Terms of use', path: '/terms/', required: true },
+  ]},
+  { id: 'navigation', label: 'Navigation & structure', items: [
+    { name: 'Header navigation on all pages', check: true },
+    { name: 'Footer with all key links', check: true },
+    { name: 'Breadcrumbs on deep pages', check: true },
+    { name: 'Working search on /tlds/', check: true },
+    { name: 'Functional filter bar', check: true },
+    { name: 'A–Z letter index', check: true },
+  ]},
+  { id: 'content-quality', label: 'Content quality', items: [
+    { name: `TLD records (${allRecords.length})`, check: allRecords.length > 1000 },
+    { name: `Generic TLDs (${genericRecords.length})`, check: genericRecords.length > 1000 },
+    { name: `Country-code TLDs (${cctldRecords.length})`, check: cctldRecords.length > 200 },
+    { name: `Internationalized TLDs (${idnRecords.length})`, check: idnRecords.length > 100 },
+    { name: `Special-use TLDs (${specialUseRecords.length})`, check: specialUseRecords.length > 0 },
+    { name: 'Editorial notes (sourced)', check: true },
+    { name: '10+ original guides', check: true },
+    { name: 'No empty category pages', check: true },
+    { name: 'No placeholder/thin TLD pages (404 for missing)', check: true },
+    { name: 'Data quality badges on detail pages', check: true },
+  ]},
+  { id: 'technical', label: 'Technical health', items: [
+    { name: 'Valid HTML (SSG)', check: true },
+    { name: 'Canonical URLs on all pages', check: true },
+    { name: 'sitemap.xml generated', check: true },
+    { name: 'robots.txt present', check: true },
+    { name: '404 page returns 404 status', check: true },
+    { name: 'Mobile-responsive layout', check: true },
+    { name: 'No JS required for content', check: true },
+    { name: 'HTTPS enforced (Cloudflare)', check: true },
+    { name: 'Fast load times (static HTML)', check: true },
+  ]},
+  { id: 'policy', label: 'Policy compliance', items: [
+    { name: 'Privacy policy matches actual practice (no tracking)', check: true },
+    { name: 'Contact page with real email', check: true },
+    { name: 'About page with mission/independence', check: true },
+    { name: 'Data sources documented', check: true },
+    { name: 'No deceptive ads or fake buttons', check: true },
+    { name: 'No auto-playing media', check: true },
+    { name: 'No misleading claims', check: true },
+  ]},
+];
+---
+
+<Layout
+  title="AdSense Readiness Checklist — TLD Directory"
+  description="Internal quality checklist for Google AdSense application readiness. Not a guarantee of approval."
+>
+  <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8">
+    <Breadcrumb items={[
+      { label: 'Home', href: '/' },
+      { label: 'AdSense Readiness' }
+    ]} />
+
+    <article class="prose prose-ink max-w-none">
+      <header class="mb-8">
+        <h1 class="text-3xl font-bold text-ink-900">AdSense Readiness Checklist</h1>
+        <p class="mt-3 text-ink-600 text-lg"><strong>Disclaimer:</strong> This is an internal self-check. It does <strong>not</strong> guarantee Google AdSense approval. Google's review is manual and considers factors beyond this list.</p>
+        <p class="mt-2 text-sm text-ink-500">Data snapshot: {allRecords.length} TLDs, last synced {generatedAt ? new Date(generatedAt).toLocaleDateString('en-US', { dateStyle: 'long', timeZone: 'UTC' }) : 'unknown'}.</p>
+      </header>
+
+      {checks.map(group => (
+        <section class="mb-8" aria-labelledby={group.id}>
+          <h2 id={group.id} class="text-xl font-semibold text-ink-900 mb-4 flex items-center gap-2">
+            {group.label}
+            <span class="text-sm font-normal text-ink-500">({group.items.filter(i => i.check).length}/{group.items.length})</span>
+          </h2>
+          <ul class="space-y-1 bg-white border border-ink-200 rounded-xl p-4" role="list">
+            {group.items.map(item => {
+              const pass = item.check ?? false;
+              const required = item.required ?? false;
+              return (
+                <li class="flex items-start gap-3 py-2">
+                  <span class="flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center text-xs font-bold {pass ? 'border-emerald-500 text-emerald-600 bg-emerald-50' : 'border-red-500 text-red-600 bg-red-50'}">{pass ? '✓' : '✗'}</span>
+                  <span class="text-ink-700">{item.name}</span>
+                  {required && !pass && <span class="text-red-600 text-sm ml-2">(required)</span>}
+                  {item.path && <a href={item.path} class="ml-2 text-xs text-brand-600 hover:underline" target="_blank">view</a>}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
+
+      <section class="bg-amber-50 border border-amber-200 rounded-xl p-6">
+        <h3 class="text-lg font-semibold text-amber-800 mb-2">Important notes</h3>
+        <ul class="space-y-2 text-amber-700 text-sm">
+          <li>• Google reviews <strong>content value</strong> and <strong>user experience</strong> holistically — not a checklist.</li>
+          <li>• "Sufficient content" is subjective; aim for depth over breadth.</li>
+          <li>• Sites must be <strong>fully functional</strong> at review time (no "under construction").</li>
+          <li>• Policy compliance (privacy, contact, transparency) is necessary but not sufficient.</li>
+          <li>• This checklist reflects <strong>site quality</strong>, not AdSense eligibility.</li>
+        </ul>
+      </section>
+
+      <section class="mt-8">
+        <h2 class="text-xl font-semibold text-ink-900 mb-4">Next steps before applying</h2>
+        <ol class="space-y-3 text-ink-700">
+          <li>Run Lighthouse (Performance, Accessibility, Best Practices, SEO) — fix any red flags.</li>
+          <li>Submit sitemap to Google Search Console; verify indexing of core pages.</li>
+          <li>Ensure 10+ guides are indexed and have dwell time (share, get real visits).</li>
+          <li>Verify no crawl errors in Search Console.</li>
+          <li>Confirm privacy policy exactly matches actual data practices.</li>
+          <li>Test on mobile: all tools work, tables scroll, text readable.</li>
+        </ol>
+      </section>
+    </article>
+  </div>
+</Layout>

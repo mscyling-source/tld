@@ -1,0 +1,126 @@
+---
+// category/[type].astro — Category pages for TLD types.
+//
+// NOTE ON TAXONOMY (2026-10-16):
+//   IANA redesigned the Root Zone Database index page and now publishes only
+//   three types: "Generic", "Country Code" and "Special Use". The former
+//   "Sponsored", "Generic Restricted" and "Infrastructure" labels are no
+//   longer published — .gov, .edu, .museum, .biz, .name and .pro now appear
+//   as Generic, and .arpa as Special Use.
+//
+//   The generated categories therefore follow what IANA publishes *now*:
+//   generic, country-code, internationalized, special-use. The former
+//   "sponsored" and "restricted" URLs are kept as redirects so existing links
+//   do not break, and their content is folded into the generic page with an
+//   explicit note.
+import Layout from '../../components/Layout.astro';
+import TldTable from '../../components/TldTable.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { loadRecordsByType, loadAllRecords } from '../../lib/store.js';
+
+const VALID_TYPES = ['generic', 'country-code', 'internationalized', 'special-use'] as const;
+
+export async function getStaticPaths() {
+  // Declared inside the function: Astro evaluates getStaticPaths in a scope
+  // where module-level `const` arrays are not reliably inlined.
+  const types = ['generic', 'country-code', 'internationalized', 'special-use'];
+  return types.map(type => ({ params: { type } }));
+}
+
+const { type } = Astro.params;
+const typeSlug = type as string;
+
+if (!VALID_TYPES.includes(typeSlug as (typeof VALID_TYPES)[number])) {
+  return Astro.redirect('/category/');
+}
+
+const normalizedType = typeSlug;
+
+let records: Awaited<ReturnType<typeof loadRecordsByType>> | null = null;
+let title = '';
+let description = '';
+
+if (typeSlug === 'internationalized') {
+  const all = await loadAllRecords();
+  records = all.filter(r => r.is_idn);
+  title = 'Internationalized TLDs (IDNs)';
+  description =
+    'Top-level domains whose labels are stored as punycode (xn--) and displayed in non-Latin scripts — Arabic, CJK, Cyrillic, Devanagari and others.';
+} else if (typeSlug === 'special-use') {
+  records = await loadRecordsByType('special-use');
+  title = 'Special-use TLDs';
+  description =
+    'IANA classifies .arpa as "Special Use" — a technical infrastructure TLD that is delegated but not available for public registration.';
+} else if (typeSlug === 'generic') {
+  records = await loadRecordsByType('generic');
+  title = 'Generic TLDs';
+  description =
+    'Open-style top-level domains including the classic .com, .net and .org, plus newer gTLDs. IANA\'s current record also classifies the former sponsored TLDs (.gov, .edu, .museum) and restricted-generic TLDs (.biz, .name, .pro) as generic.';
+} else {
+  records = await loadRecordsByType('country-code');
+  title = 'Country-code TLDs';
+  description =
+    'Two-letter country and territory codes such as .uk, .de, .jp and .ai. Each is operated by a national registry with its own policies.';
+}
+
+if (!records || records.length === 0) {
+  return Astro.redirect('/tlds/');
+}
+---
+
+<Layout
+  title={`${title} — TLD Directory`}
+  description={description}
+>
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+    <Breadcrumb items={[
+      { label: 'Home', href: '/' },
+      { label: 'Categories', href: '/category/' },
+      { label: title }
+    ]} />
+
+    <header class="mb-6">
+      <h1 class="text-3xl font-bold text-ink-900">{title}</h1>
+      <p class="mt-2 text-ink-600 max-w-2xl">{description}</p>
+      <p class="mt-2 text-sm text-ink-500">{records.length} TLDs in this category.</p>
+    </header>
+
+    {typeSlug === 'generic' && (
+      <aside class="mb-6 rounded-xl border border-brand-200 bg-brand-50 p-5">
+        <h2 class="text-base font-semibold text-ink-900">Classification note</h2>
+        <p class="mt-1 text-sm text-ink-700">
+          IANA's Root Zone Database index page was redesigned in 2026 and now publishes only three
+          type values: <strong>Generic</strong>, <strong>Country Code</strong> and
+          <strong>Special Use</strong>. Earlier IANA pages labelled some TLDs
+          <em>Sponsored</em> (for example .gov, .edu, .museum, .aero, .post) or
+          <em>Generic Restricted</em> (for example .biz, .name, .pro). Those labels are no longer
+          published, so those TLDs now appear in this category. Registration conditions for them are
+          still set by each sponsoring organisation — see the individual TLD pages.
+        </p>
+      </aside>
+    )}
+
+    {typeSlug === 'special-use' && (
+      <aside class="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-5">
+        <h2 class="text-base font-semibold text-amber-900">Not for registration</h2>
+        <p class="mt-1 text-sm text-amber-800">
+          .arpa exists for technical reverse-DNS infrastructure. IANA also lists eight reserved
+          names (.test, .example, .invalid, .localhost, .local, .internal, .alt, .onion) as
+          "Special Use"; they are <strong>not delegated</strong> and are therefore not listed here
+          and have no detail pages.
+        </p>
+      </aside>
+    )}
+
+    <TldTable records={records} />
+
+    <nav class="mt-8 flex flex-wrap justify-center gap-2" aria-label="Back to categories">
+      <a href="/category/" class="px-4 py-2 text-sm font-medium text-brand-600 bg-brand-50 border border-brand-200 rounded-lg hover:bg-brand-100">← All categories</a>
+      {VALID_TYPES.filter(t => t !== typeSlug).map(t => (
+        <a href={`/category/${t}/`} class="px-4 py-2 text-sm font-medium text-ink-600 bg-white border border-ink-200 rounded-lg hover:bg-ink-50">
+          {t.replace(/-/g, ' ')}
+        </a>
+      ))}
+    </nav>
+  </div>
+</Layout>

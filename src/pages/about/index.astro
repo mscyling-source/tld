@@ -1,0 +1,86 @@
+---
+// about/index.astro
+import Layout from '../../components/Layout.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { siteConfig } from '../../config/site.js';
+---
+
+<Layout
+  title="About — TLD Directory"
+  description="Learn about TLD Directory: our mission, independence, and commitment to accurate, verifiable domain data."
+>
+  <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
+    <Breadcrumb items={[
+      { label: 'Home', href: '/' },
+      { label: 'About' }
+    ]} />
+
+    <article class="prose prose-ink max-w-none">
+      <header class="mb-8">
+        <h1 class="text-3xl font-bold text-ink-900">About {siteConfig.name}</h1>
+        <p class="mt-3 text-ink-600 text-lg">{siteConfig.tagline}</p>
+      </header>
+
+      <section>
+        <h2>Mission</h2>
+        <p><strong>{siteConfig.name}</strong> exists to make authoritative TLD information accessible, searchable, and useful — without tracking, advertising, or agenda.</p>
+        <p>We believe domain decisions should be based on verified facts, not marketing hype or guesswork.</p>
+      </section>
+
+      <section>
+        <h2>Independence</h2>
+        <ul>
+          <li>Not affiliated with ICANN, IANA, any registry, or any registrar.</li>
+          <li>No referral fees, affiliate links, or commission arrangements.</li>
+          <li>No tracking, analytics, cookies, or third-party scripts.</li>
+          <li>Funded personally; no investors or commercial pressure.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>What we provide</h2>
+        <ul>
+          <li>Complete, searchable directory of all delegated TLDs (1,400+).</li>
+          <li>Verified type, manager, and official links from IANA.</li>
+          <li>Original, practical guides for domain decisions.</li>
+          <li>Tools: comparison, filtering, A–Z index, category browsing.</li>
+          <li>Transparent data provenance and update logs.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>What we don't do</h2>
+        <ul>
+          <li>Sell domains or recommend registrars.</li>
+          <li>Track visitors or build profiles.</li>
+          <li>Show ads (currently) or inject third-party content.</li>
+          <li>Guess at registration rules — we cite sources or say "not verified".</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Technical stack</h2>
+        <ul>
+          <li><strong>Astro</strong> — static site generation (SSG) for fast, secure HTML.</li>
+          <li><strong>TypeScript</strong> — type-safe data pipeline.</li>
+          <li><strong>Tailwind CSS</strong> — utility-first styling.</li>
+          <li><strong>GitHub Actions</strong> — automated weekly IANA sync.</li>
+          <li><strong>Cloudflare Pages</strong> — free, fast, global hosting.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Contact</h2>
+        <p>Questions, corrections, or suggestions: <a href="mailto:{siteConfig.contactEmail}">{siteConfig.contactEmail}</a></p>
+        <p>See our <a href="/contact/">contact page</a> for more options.</p>
+      </section>
+
+      <footer class="mt-12 pt-8 border-t border-ink-200">
+        <p class="text-sm text-ink-500">
+          {siteConfig.name} is an independent project. Data sourced from <a href="https://www.iana.org/domains/root/db" class="underline hover:text-brand-600">IANA Root Zone Database</a>.
+          Not affiliated with ICANN or any registry.
+        </p>
+      </footer>
+    </article>
+  </div>
+</Layout>

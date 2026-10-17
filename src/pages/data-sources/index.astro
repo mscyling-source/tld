@@ -1,0 +1,133 @@
+---
+// data-sources/index.astro
+import Layout from '../../components/Layout.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { siteConfig } from '../../config/site.js';
+---
+
+<Layout
+  title="Data Sources — TLD Directory"
+  description="Transparent documentation of the data sources, update process, and verification methods behind TLD Directory."
+>
+  <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
+    <Breadcrumb items={[
+      { label: 'Home', href: '/' },
+      { label: 'Data Sources' }
+    ]} />
+
+    <article class="prose prose-ink max-w-none">
+      <header class="mb-8">
+        <h1 class="text-3xl font-bold text-ink-900">Data Sources & Methodology</h1>
+        <p class="mt-3 text-ink-600 text-lg">Where our data comes from, how it's verified, and how often it's updated.</p>
+      </header>
+
+      <section>
+        <h2>Primary sources</h2>
+        <dl>
+          <dt><strong>IANA Root Zone Database</strong></dt>
+          <dd><a href="https://www.iana.org/domains/root/db" target="_blank" rel="noopener">https://www.iana.org/domains/root/db</a> — The authoritative table of all delegated TLDs, their types, and sponsoring organisations. Updated by IANA as delegations change.</dd>
+
+          <dt><strong>IANA Delegated TLD List</strong></dt>
+          <dd><a href="https://data.iana.org/TLD/tlds-alpha-by-domain.txt" target="_blank" rel="noopener">https://data.iana.org/TLD/tlds-alpha-by-domain.txt</a> — Plain-text list of all currently delegated TLD labels. Includes a version header with date. Updated weekly.</dd>
+
+          <dt><strong>IANA Per-TLD Delegation Records</strong></dt>
+          <dd><code>https://www.iana.org/domains/root/db/&#123;tld&#125;.html</code> — Individual pages for each TLD with registry information (WHOIS, RDAP, registration services URL), delegation history, and reference documents.</dd>
+        </dl>
+      </section>
+
+      <section>
+        <h2>Supplemental sources (verified per-TLD)</h2>
+        <ul>
+          <li><strong>Registry websites</strong> — Official registration policy pages (linked from IANA's "URL for registration services").</li>
+          <li><strong>ICANN Registry Agreements</strong> — For gTLDs, the base agreement and any amendments.</li>
+          <li><strong>IANA Reports</strong> — Delegation/redelegation reports linked from per-TLD pages.</li>
+        </ul>
+        <p>Editorial notes (registration restrictions, practical guidance) are researched from registry policies and cited explicitly. Unverified claims are marked as such.</p>
+      </section>
+
+      <section>
+        <h2>Data processing pipeline</h2>
+        <ol>
+          <li><strong>Weekly sync</strong> — Automated script fetches both IANA sources every Monday (GitHub Actions).</li>
+          <li><strong>Validation</strong> — Parsers reject malformed data, duplicates, or implausibly small datasets.</li>
+          <li><strong>Merge</strong> — Delegated list (source of truth for "active" TLDs) joined with Root Zone DB rows (type, manager).</li>
+          <li><strong>Detail enrichment</strong> — For TLDs without a manager in the DB table, the per-TLD delegation page is fetched for WHOIS/RDAP/URL/dates.</li>
+          <li><strong>Normalisation</strong> — Types mapped to canonical values; IDN labels decoded to Unicode.</li>
+          <li><strong>Change detection</strong> — Added/removed TLDs logged; meta.json updated with timestamps and counts.</li>
+          <li><strong>Build</strong> — Astro SSG generates static HTML for all pages from the JSON dataset.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>Data quality levels</h2>
+        <table>
+          <thead><tr><th>Level</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Verified</strong></td><td>Type, manager, and delegation status confirmed against IANA sources.</td></tr>
+            <tr><td><strong>Verified + Editorial</strong></td><td>Verified + human-reviewed editorial profile (description, restrictions, citations).</td></tr>
+            <tr><td><strong>Incomplete</strong></td><td>Missing manager info (IANA shows "Not assigned") and no verified detail page data.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Known upstream change: IANA's 2026 page redesign</h2>
+        <p>
+          IANA redesigned both the Root Zone Database index page and the individual delegation
+          records during 2026. Two things changed that affect this site:
+        </p>
+        <ol>
+          <li>
+            <strong>Type taxonomy.</strong> The index page previously published six type values
+            (generic, generic-restricted, country-code, sponsored, infrastructure, test). It now
+            publishes three: <em>Generic</em>, <em>Country Code</em> and <em>Special Use</em>. As a
+            result <code>.gov</code>, <code>.edu</code>, <code>.museum</code>, <code>.aero</code>,
+            <code>.post</code>, <code>.biz</code>, <code>.name</code> and <code>.pro</code> now appear
+            as Generic, and <code>.arpa</code> as Special Use. We follow what IANA publishes and
+            record the change here instead of inferring the old labels.
+          </li>
+          <li>
+            <strong>Delegation status column.</strong> The index page now publishes a status per
+            TLD (<em>Active</em>, <em>Retired</em>, <em>Reserved</em>, <em>Eligible</em>). The sync
+            script cross-checks the count of <em>Active</em> rows against the authoritative delegated
+            list and logs a warning if they diverge, but the delegated list still decides which
+            records exist.
+          </li>
+        </ol>
+        <p>
+          The parsers in <code>src/lib/iana.ts</code> support both the legacy and the current layouts,
+          so a re-sync is stable regardless of which version IANA serves.
+        </p>
+      </section>
+
+      <section>
+        <h2>Update frequency</h2>
+        <ul>
+          <li><strong>Automated weekly</strong> — Every Monday ~06:30 UTC (after IANA's typical update window).</li>
+          <li><strong>Manual trigger</strong> — Available via GitHub Actions workflow dispatch.</li>
+          <li><strong>Emergency</strong> — If a major delegation change occurs, we can re-run immediately.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>What we do NOT do</h2>
+        <ul>
+          <li>We do <strong>not</strong> scrape registrar websites for pricing or availability.</li>
+          <li>We do <strong>not</strong> use third-party domain data APIs.</li>
+          <li>We do <strong>not</strong> guess or infer registration rules — only cite verified sources.</li>
+          <li>We do <strong>not</strong> track domain ownership, WHOIS history, or aftermarket data.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Licensing & attribution</h2>
+        <p>IANA data is public domain / freely redistributable per <a href="https://www.iana.org/iana-legal" target="_blank" rel="noopener">IANA's legal notices</a>. Our compiled dataset, editorial content, and code are proprietary. You may link to our pages freely. For bulk data use, <a href="/contact/">contact us</a>.</p>
+      </section>
+
+      <section>
+        <h2>Verification & corrections</h2>
+        <p>If you spot an error, please <a href="/contact/">contact us</a> with the TLD, the issue, and a source. We investigate and correct within one sync cycle.</p>
+      </section>
+    </article>
+  </div>
+</Layout>

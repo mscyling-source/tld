@@ -1,0 +1,79 @@
+---
+// guides/index.astro — Guides listing page.
+import Layout from '../../components/Layout.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { siteConfig } from '../../config/site.js';
+---
+
+<Layout title="Domain Guides — TLD Directory" description="Practical guides on domain names, TLDs, DNS, registration, and choosing the right extension for your project.">
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+    <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Guides' }]} />
+
+    <header class="mb-12">
+      <h1 class="text-3xl font-bold text-ink-900">Domain Guides</h1>
+      <p class="mt-2 text-ink-600 max-w-2xl">Original, practical articles to help you understand domains and make better decisions.</p>
+    </header>
+
+    <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <article class="bg-white border border-ink-200 rounded-xl p-6 hover:border-brand-300 hover:shadow-md transition-all duration-200">
+        <h2 class="text-xl font-semibold text-ink-900"><a href="/guides/what-is-a-top-level-domain/" class="hover:text-brand-600">What Is a Top-Level Domain?</a></h2>
+        <p class="mt-2 text-ink-600">The hierarchy of domain names and where TLDs fit in the DNS.</p>
+      </article>
+
+      <article class="bg-white border border-ink-200 rounded-xl p-6 hover:border-brand-300 hover:shadow-md transition-all duration-200">
+        <h2 class="text-xl font-semibold text-ink-900"><a href="/guides/registry-vs-registrar/" class="hover:text-brand-600">Registry vs Registrar</a></h2>
+        <p class="mt-2 text-ink-600">Understanding the difference between the operator and the seller.</p>
+      </article>
+
+      <article class="bg-white border border-ink-200 rounded-xl p-6 hover:border-brand-300 hover:shadow-md transition-all duration-200">
+        <h2 class="text-xl font-semibold text-ink-900"><a href="/guides/generic-vs-country-code-tlds/" class="hover:text-brand-600">Generic vs Country-Code TLDs</a></h2>
+        <p class="mt-2 text-ink-600">Key differences in governance, policy, and use cases.</p>
+      </article>
+
+      <article class="bg-white border border-ink-200 rounded-xl p-6 hover:border-brand-300 hover:shadow-md transition-all duration-200">
+        <h2 class="text-xl font-semibold text-ink-900"><a href="/guides/how-to-choose-a-domain-extension/" class="hover:text-brand-600">How to Choose a Domain Extension</a></h2>
+        <p class="mt-2 text-ink-600">A practical framework for picking the right TLD for your project.</p>
+      </article>
+
+      <article class="bg-white border border-ink-200 rounded-xl p-6 hover:border-brand-300 hover:shadow-md transition-all duration-200">
+        <h2 class="text-xl font-semibold text-ink-900"><a href="/guides/how-domain-registration-works/" class="hover:text-brand-600">How Domain Registration Works</a></h2>
+        <p class="mt-2 text-ink-600">The lifecycle from availability check to renewal, and who does what.</p>
+      </article>
+
+      <article class="bg-white border border-ink-200 rounded-xl p-6 hover:border-brand-300 hover:shadow-md transition-all duration-200">
+        <h2 class="text-xl font-semibold text-ink-900"><a href="/guides/what-is-an-internationalized-domain-name/" class="hover:text-brand-600">What Is an Internationalized Domain Name?</a></h2>
+        <p class="mt-2 text-ink-600">IDNs, punycode, and why they matter for global audiences.</p>
+      </article>
+
+      <article class="bg-white border border-ink-200 rounded-xl p-6 hover:border-brand-300 hover:shadow-md transition-all duration-200">
+        <h2 class="text-xl font-semibold text-ink-900"><a href="/guides/before-registering-country-code-domain/" class="hover:text-brand-600">Before Registering a Country-Code Domain</a></h2>
+        <p class="mt-2 text-ink-600">Local presence requirements, transfer rules, and gotchas.</p>
+      </article>
+
+      <article class="bg-white border border-ink-200 rounded-xl p-6 hover:border-brand-300 hover:shadow-md transition-all duration-200">
+        <h2 class="text-xl font-semibold text-ink-900"><a href="/guides/registration-vs-renewal/" class="hover:text-brand-600">Registration vs Renewal</a></h2>
+        <p class="mt-2 text-ink-600">Why the first-year price isn't the whole story.</p>
+      </article>
+
+      <article class="bg-white border border-ink-200 rounded-xl p-6 hover:border-brand-300 hover:shadow-md transition-all duration-200">
+        <h2 class="text-xl font-semibold text-ink-900"><a href="/guides/how-dns-and-domain-names-work/" class="hover:text-brand-600">How DNS and Domain Names Work Together</a></h2>
+        <p class="mt-2 text-ink-600">From the root zone to your browser — a clear explanation.</p>
+      </article>
+
+      <article class="bg-white border border-ink-200 rounded-xl p-6 hover:border-brand-300 hover:shadow-md transition-all duration-200">
+        <h2 class="text-xl font-semibold text-ink-900"><a href="/guides/evaluate-domain-extension-for-business/" class="hover:text-brand-600">Evaluating a Domain Extension for Business</a></h2>
+        <p class="mt-2 text-ink-600">Trust signals, email deliverability, SEO, and brand protection.</p>
+      </article>
+    </div>
+
+    <section class="mt-16" aria-labelledby="more-heading">
+      <h2 id="more-heading" class="text-xl font-semibold text-ink-900 mb-4">Coming soon</h2>
+      <ul class="space-y-2 text-ink-600" role="list">
+        <li>• Domain privacy and WHOIS</li>
+        <li>• DNSSEC and what it means for you</li>
+        <li>• Premium domains and aftermarket basics</li>
+        <li>• Email deliverability and domain reputation</li>
+      </ul>
+    </section>
+  </div>
+</Layout>

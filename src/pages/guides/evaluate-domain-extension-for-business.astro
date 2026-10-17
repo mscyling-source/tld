@@ -1,0 +1,126 @@
+---
+// guides/evaluate-domain-extension-for-business.astro
+import Layout from '../../components/Layout.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+---
+
+<Layout
+  title="Evaluating a Domain Extension for Business — TLD Directory"
+  description="Trust signals, email deliverability, SEO, and brand protection — a framework for business domain decisions."
+>
+  <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
+    <Breadcrumb items={[
+      { label: 'Home', href: '/' },
+      { label: 'Guides', href: '/guides/' },
+      { label: 'Evaluating for Business' }
+    ]} />
+
+    <article class="prose prose-ink max-w-none">
+      <header class="mb-8">
+        <h1 class="text-3xl font-bold text-ink-900">Evaluating a Domain Extension for Business</h1>
+        <p class="mt-3 text-ink-600 text-lg">A practical framework for choosing a TLD that supports your business goals.</p>
+      </header>
+
+      <section>
+        <h2>Trust & credibility</h2>
+        <table>
+          <thead><tr><th>TLD</th><th>Trust level</th><th>Best for</th></tr></thead>
+          <tbody>
+            <tr><td><code>.com</code></td><td>Highest</td><td>Global businesses, consumer brands, e-commerce</td></tr>
+            <tr><td><code>.org</code></td><td>High (non-profit signal)</td><td>NGOs, foundations, open-source projects</td></tr>
+            <tr><td><code>.net</code></td><td>High (tech heritage)</td><td>Infrastructure, networking, SaaS</td></tr>
+            <tr><td><code>.io</code> / <code>.ai</code> / <code>.dev</code></td><td>High (tech audience)</td><td>Startups, developer tools, AI companies</td></tr>
+            <tr><td><code>.co</code></td><td>Medium-high</td><td>Startups, "company" branding</td></tr>
+            <tr><td>New gTLDs (<code>.app</code>, <code>.shop</code>, <code>.tech</code>)</td><td>Medium</td><td>Niche businesses, descriptive branding</td></tr>
+            <tr><td>Restricted ccTLDs</td><td>High (local)</td><td>Local market dominance</td></tr>
+            <tr><td>Open ccTLDs (<code>.tv</code>, <code>.me</code>)</td><td>Medium</td><td>Specific verticals (video, personal)</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Email deliverability</h2>
+        <ul>
+          <li><strong>Reputation is per-domain, not per-TLD</strong> — but some TLDs have higher spam ratios historically.</li>
+          <li><code>.com</code>, <code>.org</code>, <code>.net</code> — neutral, well-understood.</li>
+          <li>New gTLDs — initially scrutinised more; warm up slowly.</li>
+          <li>ccTLDs — local ISPs may prefer local TLDs.</li>
+          <li><strong>Always</strong> set up SPF, DKIM, DMARC regardless of TLD.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>SEO considerations</h2>
+        <ul>
+          <li>Google treats all TLDs equally for ranking — no inherent boost for <code>.com</code>.</li>
+          <li>ccTLDs = strong geo-targeting signal (good for local, bad for global).</li>
+          <li>Use hreflang + Search Console for multi-regional gTLD sites.</li>
+          <li>Keyword in TLD (<code>.shop</code>, <code>.tech</code>) — no direct ranking benefit, but may improve CTR.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Brand protection</h2>
+        <p>Register your brand in:</p>
+        <ol>
+          <li><code>.com</code> (non-negotiable for global businesses).</li>
+          <li>Relevant ccTLDs for current/future markets.</li>
+          <li><code>.net</code>, <code>.org</code> (defensive).</li>
+          <li>Category-relevant new gTLDs (<code>.app</code> for apps, <code>.dev</code> for dev tools).</li>
+          <li>Common typos if budget allows.</li>
+        </ol>
+        <p>Use a <strong>single registrar</strong> for unified management, auto-renew, and DNS.</p>
+      </section>
+
+      <section>
+        <h2>Legal & compliance</h2>
+        <ul>
+          <li><strong>Trademark clearinghouse</strong> — register your mark to get sunrise/priority access to new gTLDs.</li>
+          <li><strong>UDRP</strong> — uniform dispute policy for gTLDs; ccTLDs vary.</li>
+          <li><strong>Local presence</strong> — some ccTLDs require a local entity; factor in legal costs.</li>
+          <li><strong>Data residency</strong> — some countries require WHOIS data to stay in-country.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Decision matrix</h2>
+        <p>Score each candidate TLD 1–5 on each criterion, weight by importance:</p>
+        <table>
+          <thead><tr><th>Criterion</th><th>Weight</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>Audience fit</td><td>High</td><td>Global vs local</td></tr>
+            <tr><td>Trust signal</td><td>High</td><td>Customer perception</td></tr>
+            <tr><td>Email deliverability</td><td>High</td><td>Critical for business</td></tr>
+            <tr><td>Total 5-year cost</td><td>Medium</td><td>Renewal × 5</td></tr>
+            <tr><td>Eligibility simplicity</td><td>Medium</td><td>Can you register easily?</td></tr>
+            <tr><td>Transfer freedom</td><td>Medium</td><td>Can you leave?</td></tr>
+            <tr><td>Brand protection</td><td>Medium</td><td>Defensive registration cost</td></tr>
+            <tr><td>Technical requirements</td><td>Low</td><td>HTTPS, DNSSEC, etc.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Example: B2B SaaS targeting global developers</h2>
+        <table>
+          <thead><tr><th>TLD</th><th>Score (1–5)</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>.com</code></td><td>5</td><td>Best trust, email, global</td></tr>
+            <tr><td><code>.io</code></td><td>4</td><td>Dev credibility, higher cost</td></tr>
+            <tr><td><code>.dev</code></td><td>4</td><td>Requires HTTPS, dev signal</td></tr>
+            <tr><td><code>.ai</code></td><td>3</td><td>If AI-focused; geopolitical risk</td></tr>
+            <tr><td><code>.tech</code></td><td>3</td><td>Descriptive, lower trust</td></tr>
+          </tbody>
+        </table>
+        <p>Verdict: <strong>Get .com first</strong>. Add <code>.io</code> and <code>.dev</code> if budget allows.</p>
+      </section>
+
+      <footer class="mt-12 pt-8 border-t border-ink-200">
+        <nav class="flex flex-wrap gap-4" aria-label="Related guides">
+          <a href="/guides/how-to-choose-a-domain-extension/" class="text-brand-600 hover:text-brand-700 font-medium">← How to Choose a TLD</a>
+          <a href="/guides/registration-vs-renewal/" class="text-brand-600 hover:text-brand-700 font-medium">Registration vs Renewal →</a>
+        </nav>
+      </footer>
+    </article>
+  </div>
+</Layout>

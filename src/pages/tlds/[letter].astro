@@ -1,0 +1,60 @@
+---
+// tlds/[letter].astro — A–Z index pages.
+import Layout from '../../components/Layout.astro';
+import TldTable from '../../components/TldTable.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { loadRecordsByLetter } from "../../lib/store.js";
+import { siteConfig } from "../../config/site.js";
+
+export async function getStaticPaths() {
+  const validLetters = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','0-9'];
+  return validLetters.map(letter => ({ params: { letter } }));
+}
+
+const { letter } = Astro.params;
+const normalizedLetter = letter?.toLowerCase() ?? '';
+
+const validLetters = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','0-9'];
+
+if (!normalizedLetter || !validLetters.includes(normalizedLetter)) {
+  return Astro.redirect('/tlds/');
+}
+
+const records = await loadRecordsByLetter(normalizedLetter);
+if (records.length === 0) {
+  return Astro.redirect('/tlds/');
+}
+
+const displayLetter = normalizedLetter === '0-9' ? '0–9' : normalizedLetter.toUpperCase();
+---
+
+<Layout
+  title={`TLDs starting with "${displayLetter}" — TLD Directory`}
+  description={`Browse all ${records.length} top-level domains starting with "${displayLetter}".`}
+>
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+    <Breadcrumb items={[
+      { label: 'Home', href: '/' },
+      { label: 'All TLDs', href: '/tlds/' },
+      { label: `Letter ${displayLetter}` }
+    ]} />
+
+    <header class="mb-6">
+      <h1 class="text-3xl font-bold text-ink-900">TLDs starting with "{displayLetter}"</h1>
+      <p class="mt-2 text-ink-600">{records.length} TLDs in this index.</p>
+    </header>
+
+    <TldTable records={records} />
+
+    <nav class="mt-8 flex justify-center gap-1 text-sm" aria-label="Letter index navigation">
+      {validLetters.map(l => {
+        const display = l === '0-9' ? '0–9' : l.toUpperCase();
+        return l === normalizedLetter ? (
+          <span class="px-3 py-1.5 bg-brand-600 text-white rounded-lg font-medium" aria-current="page">{display}</span>
+        ) : (
+          <a href={`/tlds/${l}/`} class="px-3 py-1.5 text-ink-600 hover:text-brand-600 hover:bg-ink-100 rounded-lg">{display}</a>
+        );
+      })}
+    </nav>
+  </div>
+</Layout>

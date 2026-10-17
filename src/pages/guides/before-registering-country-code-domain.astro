@@ -1,0 +1,105 @@
+---
+// guides/before-registering-country-code-domain.astro
+import Layout from '../../components/Layout.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+---
+
+<Layout
+  title="Before Registering a Country-Code Domain — TLD Directory"
+  description="Local presence requirements, transfer rules, and gotchas for ccTLDs."
+>
+  <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
+    <Breadcrumb items={[
+      { label: 'Home', href: '/' },
+      { label: 'Guides', href: '/guides/' },
+      { label: 'Before Registering a ccTLD' }
+    ]} />
+
+    <article class="prose prose-ink max-w-none">
+      <header class="mb-8">
+        <h1 class="text-3xl font-bold text-ink-900">Before Registering a Country-Code Domain</h1>
+        <p class="mt-3 text-ink-600 text-lg">ccTLDs can be great for local trust — but they come with rules you need to know.</p>
+      </header>
+
+      <section>
+        <h2>The golden rule: every ccTLD is different</h2>
+        <p>Unlike gTLDs (which follow ICANN's standardised contracts), each ccTLD is governed by its national registry under local law. Policies vary wildly.</p>
+      </section>
+
+      <section>
+        <h2>Eligibility / nexus requirements</h2>
+        <p>Many ccTLDs require a connection to the country:</p>
+        <table>
+          <thead><tr><th>Requirement</th><th>Examples</th><th>What you need</th></tr></thead>
+          <tbody>
+            <tr><td>Local administrative contact</td><td><code>.fr</code>, <code>.eu</code>, <code>.ca</code></td><td>Name + address in the country (can use a trustee service).</td></tr>
+            <tr><td>Local company registration</td><td><code>.de</code>, <code>.jp</code>, <code>.br</code></td><td>Registered entity in that country.</td></tr>
+            <tr><td>Trademark in the country</td><td><code>.cn</code>, <code>.kr</code></td><td>Valid national trademark registration.</td></tr>
+            <tr><td>Citizenship / residency</td><td><code>.us</code>, <code>.sg</code></td><td>Proof of citizenship or permanent residency.</td></tr>
+            <tr><td>No restriction (open)</td><td><code>.ai</code>, <code>.io</code>, <code>.co</code>, <code>.me</code>, <code>.tv</code></td><td>Anyone can register.</td></tr>
+          </tbody>
+        </table>
+        <p>Always check the <strong>official registry website</strong> (linked from our TLD detail pages) for current requirements.</p>
+      </section>
+
+      <section>
+        <h2>Transfer & ownership rules</h2>
+        <ul>
+          <li><strong>Transfers may not work like gTLDs</strong> — some ccTLDs don't support EPP transfers; you may need to re-register.</li>
+          <li><strong>Registrant changes can be restricted</strong> — changing the legal owner may require the same eligibility proof as a new registration.</li>
+          <li><strong>Dispute resolution</strong> — not all ccTLDs use UDRP. Some have local courts or arbitration (e.g. <code>.uk</code> uses Nominet DRS).</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Pricing & renewal surprises</h2>
+        <ul>
+          <li><strong>No ICANN price caps</strong> — registries can raise wholesale prices with less notice.</li>
+          <li><strong>Multi-year limits</strong> — some ccTLDs only allow 1-year registrations (e.g. <code>.uk</code> historically, now 1–10 years).</li>
+          <li><strong>Currency</strong> — you may pay in local currency (EUR, GBP, JPY, etc.).</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Geopolitical risk</h2>
+        <p>ccTLDs are tied to sovereign territory. If a country ceases to exist, changes borders, or loses internet connectivity, its ccTLD may be retired or transferred.</p>
+        <p>Recent examples:</p>
+        <ul>
+          <li><code>.io</code> — sovereignty dispute over the Chagos Archipelago (UK/Mauritius) created uncertainty 2021–2024.</li>
+          <li><code>.su</code> (Soviet Union) — still exists decades after the USSR dissolved.</li>
+          <li><code>.yu</code> (Yugoslavia) — retired 2010, replaced by <code>.rs</code>, <code>.me</code>, etc.</li>
+        </ul>
+        <p>For critical infrastructure, prefer gTLDs or stable ccTLDs with clear governance.</p>
+      </section>
+
+      <section>
+        <h2>Technical gotchas</h2>
+        <ul>
+          <li><strong>DNSSEC</strong> — some ccTLDs require or strongly encourage DNSSEC; others don't support it.</li>
+          <li><strong>Name server requirements</strong> — some registries require authoritative NS in-country (rare now, but check).</li>
+          <li><strong>IDN support</strong> — many ccTLDs support IDN second-level labels; policies vary.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Checklist before you register</h2>
+        <ol>
+          <li>☐ Read the registry's registration policy (link on our TLD detail page).</li>
+          <li>☐ Confirm you meet eligibility (or have a trustee service).</li>
+          <li>☐ Check transfer/ownership change rules.</li>
+          <li>☐ Compare 5-year total cost (renewal × 5 + any fees).</li>
+          <li>☐ Verify DNSSEC and name server requirements.</li>
+          <li>☐ Consider geopolitical stability for long-term projects.</li>
+          <li>☐ Register defensive variants in other TLDs.</li>
+        </ol>
+      </section>
+
+      <footer class="mt-12 pt-8 border-t border-ink-200">
+        <nav class="flex flex-wrap gap-4" aria-label="Related guides">
+          <a href="/guides/generic-vs-country-code-tlds/" class="text-brand-600 hover:text-brand-700 font-medium">← gTLD vs ccTLD</a>
+          <a href="/guides/how-to-choose-a-domain-extension/" class="text-brand-600 hover:text-brand-700 font-medium">How to Choose a TLD →</a>
+        </nav>
+      </footer>
+    </article>
+  </div>
+</Layout>

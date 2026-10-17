@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  --color-brand-50: #eef6ff;
+  --color-brand-100: #d9ebff;
+  --color-brand-200: #bcdcff;
+  --color-brand-300: #8ec6ff;
+  --color-brand-400: #59a5ff;
+  --color-brand-500: #3282ff;
+  --color-brand-600: #1b5ff5;
+  --color-brand-700: #1449e1;
+  --color-brand-800: #173cb6;
+  --color-brand-900: #19388f;
+  --color-brand-950: #142357;
+
+  --color-ink-50: #f6f7f9;
+  --color-ink-100: #eceef2;
+  --color-ink-200: #d5d9e2;
+  --color-ink-300: #b0b8c8;
+  --color-ink-400: #8592a8;
+  --color-ink-500: #66748c;
+  --color-ink-600: #525d74;
+  --color-ink-700: #434c5f;
+  --color-ink-800: #3a4151;
+  --color-ink-900: #343946;
+  --color-ink-950: #0f121a;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-white text-ink-900 antialiased;
+  font-feature-settings: "kern", "liga";
+}
+
+/* Clear, visible focus ring for keyboard users. */
+:focus-visible {
+  outline: 3px solid var(--color-brand-500);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+::selection {
+  background: var(--color-brand-200);
+}
+
+/* Long TLD strings / punycode must never break layout. */
+.truncate-suffix {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Accessible "skip to content" link */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 0.6rem 1rem;
+  background: var(--color-brand-700);
+  color: #fff;
+  border-radius: 0 0 0.4rem 0;
+}
+.skip-link:focus {
+  left: 0;
+}
+
+/* Simple table styling shared by directory, comparison and fact tables. */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.data-table th,
+.data-table td {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--color-ink-200);
+  vertical-align: top;
+}
+.data-table thead th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-600);
+  background: var(--color-ink-50);
+  white-space: nowrap;
+}
+.data-table tbody tr:hover {
+  background: var(--color-brand-50);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

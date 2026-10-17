@@ -1,0 +1,60 @@
+---
+// tld/[tld].astro — TLD detail page.
+import Layout from '../../components/Layout.astro';
+import TldDetail from '../../components/TldDetail.astro';
+import EditorialNote from '../../components/EditorialNote.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { loadRecord, loadAllRecords, getEditorialNote } from '../../lib/store.js';
+import { normalizeSuffixInput, categoryUrlForType } from '../../lib/iana.js';
+
+export async function getStaticPaths() {
+  const records = await loadAllRecords();
+  return records.map(r => ({ params: { tld: r.ascii_name } }));
+}
+
+const { tld } = Astro.params;
+const rawTld = tld as string;
+const normalized = normalizeSuffixInput(rawTld);
+if (!normalized) return Astro.redirect('/tlds/');
+
+const record = await loadRecord(`.${normalized}`);
+if (!record) return Astro.redirect('/404');
+
+// Editorial notes are looked up separately from the synced IANA record so the
+// two never overwrite each other.
+const note = await getEditorialNote(normalized);
+
+// Prefer the editorial summary for the meta description when one exists: it is
+// the most useful sentence on the page. Fall back to the auto-generated
+// IANA-derived sentence otherwise.
+const metaDescription = note?.summary ?? record.description;
+const canonicalUrl = new URL(`/tld/${normalized}/`, Astro.site).toString();
+---
+
+<Layout
+  title={`${record.suffix} — TLD Directory`}
+  description={metaDescription}
+  canonical={canonicalUrl}
+  ogImage="/og-tld.png"
+>
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+    <Breadcrumb items={[
+      { label: 'Home', href: '/' },
+      { label: 'All TLDs', href: '/tlds/' },
+      { label: record.normalized_type?.replace(/-/g, ' ') ?? 'TLD', href: categoryUrlForType(record.normalized_type) },
+      { label: record.suffix }
+    ]} />
+
+    <TldDetail record={record} />
+
+    {note && <EditorialNote note={note} suffix={record.suffix} />}
+
+    <section class="mt-8 rounded-xl bg-ink-50 border border-ink-200 p-5">
+      <h2 class="text-lg font-semibold text-ink-900 mb-2">Not sure {record.suffix} is right for you?</h2>
+      <p class="text-ink-600 text-sm">
+        Compare it with other extensions in the <a href="/tools/compare/" class="text-brand-600 hover:underline">TLD comparison tool</a>,
+        or read the <a href="/guides/how-to-choose-a-domain-extension/" class="text-brand-600 hover:underline">guide on choosing a domain extension</a>.
+      </p>
+    </section>
+  </div>
+</Layout>

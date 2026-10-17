@@ -1,0 +1,100 @@
+---
+// terms/index.astro
+import Layout from '../../components/Layout.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { siteConfig } from '../../config/site.js';
+---
+
+<Layout
+  title="Terms of Use — TLD Directory"
+  description="Terms of use for TLD Directory: permitted use, disclaimers, and limitations."
+>
+  <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
+    <Breadcrumb items={[
+      { label: 'Home', href: '/' },
+      { label: 'Terms of Use' }
+    ]} />
+
+    <article class="prose prose-ink max-w-none">
+      <header class="mb-8">
+        <h1 class="text-3xl font-bold text-ink-900">Terms of Use</h1>
+        <p class="mt-3 text-ink-600">Last updated: October 2026</p>
+      </header>
+
+      <section>
+        <h2>Acceptance</h2>
+        <p>By using this website, you agree to these terms. If you disagree, do not use the site.</p>
+      </section>
+
+      <section>
+        <h2>Permitted use</h2>
+        <ul>
+          <li>Browse, search, and read content for personal or commercial research.</li>
+          <li>Link to any page on this site.</li>
+          <li>Quote short excerpts with attribution (link back to the source page).</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Prohibited use</h2>
+        <ul>
+          <li>Scraping, crawling, or automated extraction at scale (reasonable manual use is fine).</li>
+          <li>Republishing full pages or the complete dataset without permission.</li>
+          <li>Using the site for illegal activities or to facilitate harm.</li>
+          <li>Interfering with site operation (DoS, vulnerability scanning, etc.).</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Data accuracy & disclaimer</h2>
+        <p><strong>We strive for accuracy but do not guarantee it.</strong></p>
+        <ul>
+          <li>Data is sourced from IANA and registry publications, which are authoritative but not infallible.</li>
+          <li>Registration rules, prices, and policies change — always verify with the official registry before making decisions.</li>
+          <li>Editorial content represents our understanding at publication time; it is not legal advice.</li>
+          <li>We are not liable for losses from reliance on this site's information.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>No affiliation</h2>
+        <p>TLD Directory is not affiliated with, endorsed by, or connected to ICANN, IANA, any registry, or any registrar. Trademarks belong to their respective owners.</p>
+      </section>
+
+      <section>
+        <h2>Intellectual property</h2>
+        <ul>
+          <li>Our original content (guides, tools, code, design) © {siteConfig.foundedYear} {siteConfig.name}. All rights reserved.</li>
+          <li>IANA data is public domain per IANA's terms.</li>
+          <li>You may not copy our complete dataset or replicate the site.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>External links</h2>
+        <p>Links to registry websites, IANA, ICANN, or other third parties are provided for convenience. We do not control or endorse their content.</p>
+      </section>
+
+      <section>
+        <h2>Changes</h2>
+        <p>We may update these terms. Continued use after changes constitutes acceptance. Material changes will be noted on the site.</p>
+      </section>
+
+      <section>
+        <h2>Governing law</h2>
+        <p>These terms are governed by the laws of the jurisdiction where the site operator resides, without regard to conflict-of-law principles.</p>
+      </section>
+
+      <section>
+        <h2>Contact</h2>
+        <p>Questions: <a href="mailto:{siteConfig.contactEmail}">{siteConfig.contactEmail}</a></p>
+      </section>
+
+      <footer class="mt-12 pt-8 border-t border-ink-200">
+        <p class="text-sm text-ink-500">
+          {siteConfig.name} · <a href="/privacy/" class="underline hover:text-brand-600">Privacy policy</a> · <a href="/data-sources/" class="underline hover:text-brand-600">Data sources</a>
+        </p>
+      </footer>
+    </article>
+  </div>
+</Layout>
