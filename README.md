@@ -29,7 +29,7 @@ An independent, open-source reference for top-level domains (TLDs) built with ve
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22.12+ (Astro 7 requires it; `.nvmrc` pins `22`)
 - npm 10+
 
 ### Installation

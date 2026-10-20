@@ -54,12 +54,14 @@ its Monday schedule and can be triggered manually from the Actions tab.
 | Build command | `npm run build` |
 | Build output directory | `dist` |
 | Root directory | *(leave empty)* |
-| Node.js version | `20` |
+| Node.js version | `22` |
 
-**Node.js version:** `package.json` declares `"engines": { "node": ">=20" }`. The GitHub Actions
-workflow uses Node `20`, and the lockfile (`package-lock.json`, lockfileVersion 3) is pinned to
-that. In the Cloudflare Pages build dashboard, select **Node 20** (or set a build-time env var
-`NODE_VERSION=20` if you prefer). Do not use Node 18 — Astro 7 requires Node 20 or newer.
+**Node.js version:** `package.json` declares `"engines": { "node": ">=22.12.0" }`, matching the
+installed Astro 7 requirement (Astro aborts any build on Node 20 with
+"Node.js v20.19.2 is not supported by Astro!"). The GitHub Actions workflow uses Node `22`, and
+`.nvmrc` pins `22` for local `nvm` users. In the Cloudflare Pages build dashboard, select
+**Node 22** (or set a build-time env var `NODE_VERSION=22` if you prefer). Do not use Node 20
+or older — the build will fail before any pages are generated.
 
 Cloudflare runs `npm ci` (which reads `package-lock.json`) then `npm run build`. Because the
 lockfile is committed and in sync with `package.json`, installs are reproducible.
