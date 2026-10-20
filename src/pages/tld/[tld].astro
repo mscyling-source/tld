@@ -3,8 +3,10 @@
 import Layout from '../../components/Layout.astro';
 import TldDetail from '../../components/TldDetail.astro';
 import EditorialNote from '../../components/EditorialNote.astro';
+import PriceOffers from '../../components/PriceOffers.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import { loadRecord, loadAllRecords, getEditorialNote } from '../../lib/store.js';
+import { getOffersForTld } from '../../lib/pricing.js';
 import { normalizeSuffixInput, categoryUrlForType } from '../../lib/iana.js';
 
 export async function getStaticPaths() {
@@ -24,6 +26,9 @@ if (!record) return Astro.redirect('/404');
 // two never overwrite each other.
 const note = await getEditorialNote(normalized);
 
+// Registrar offers for this TLD (null dataset ⇒ empty list ⇒ "no data yet").
+const offers = await getOffersForTld(normalized);
+
 // Prefer the editorial summary for the meta description when one exists: it is
 // the most useful sentence on the page. Fall back to the auto-generated
 // IANA-derived sentence otherwise.
@@ -32,7 +37,7 @@ const canonicalUrl = new URL(`/tld/${normalized}/`, Astro.site).toString();
 ---
 
 <Layout
-  title={`${record.suffix} — TLD Directory`}
+  title={`${record.suffix} Domain Prices & Details`}
   description={metaDescription}
   canonical={canonicalUrl}
   ogImage="/og-tld.png"
@@ -46,6 +51,8 @@ const canonicalUrl = new URL(`/tld/${normalized}/`, Astro.site).toString();
     ]} />
 
     <TldDetail record={record} />
+
+    <PriceOffers suffix={record.suffix} offers={offers} />
 
     {note && <EditorialNote note={note} suffix={record.suffix} />}
 

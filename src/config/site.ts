@@ -10,9 +10,9 @@ export const siteConfig = {
   name: 'TLD Directory',
   /** Short name used in the header logo mark. */
   shortName: 'TLD',
-  tagline: 'Independent top-level domain reference',
+  tagline: 'Independent domain price comparison & TLD reference',
   description:
-    'Explore top-level domains: search and filter every delegated TLD, see the official registry (sponsoring organisation) behind it, compare TLD types, and read practical domain guides.',
+    'Compare domain registration, renewal and transfer prices across registrars to find the cheapest place to buy an extension — backed by verified IANA TLD data, official sources and practical guides.',
   /** Published contact address (also shown on /contact/). */
   contactEmail: 'hello@tlddirectory.com',
   /** Optional social profiles. Leave empty strings to hide a link. */
@@ -27,6 +27,7 @@ export const siteConfig = {
 } as const;
 
 export const navLinks = [
+  { href: '/#compare', label: 'Prices' },
   { href: '/tlds/', label: 'All TLDs' },
   { href: '/category/', label: 'Categories' },
   { href: '/tools/compare/', label: 'Compare' },
@@ -38,6 +39,7 @@ export const footerLinks = [
   {
     title: 'Explore',
     items: [
+      { href: '/#compare', label: 'Price comparison' },
       { href: '/tlds/', label: 'All TLDs' },
       { href: '/category/generic/', label: 'Generic TLDs' },
       { href: '/category/country-code/', label: 'Country-code TLDs' },

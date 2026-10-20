@@ -1,9 +1,11 @@
 # TLD Directory
 
-An independent, open-source reference for top-level domains (TLDs) built with verified IANA data.
+An independent, open-source price-comparison and reference site for top-level domains (TLDs), built with verified IANA data and openly-licensed registrar pricing.
 
 ## Features
 
+- **Registrar Price Comparison** — Homepage table comparing first-year registration, renewal, transfer and 3-year cost across registrars, with search, sorting, category filters and a verified-data-only mode
+- **Per-TLD Price Tables** — Every detail page lists each registrar's offer with promo terms, last-checked date and a direct purchase link
 - **Complete TLD Directory** — Browse all 1,400+ delegated TLDs from the IANA Root Zone Database
 - **Search & Filter** — Find TLDs by name, registry, type, or first letter (instant client-side filtering)
 - **Category Pages** — Generic TLDs, Country-code TLDs, Sponsored TLDs, Internationalized TLDs, Special-use TLDs
@@ -11,7 +13,7 @@ An independent, open-source reference for top-level domains (TLDs) built with ve
 - **TLD Detail Pages** — Type, manager, official links (IANA, registry, WHOIS, RDAP), data quality indicators
 - **Comparison Tool** — Side-by-side comparison of multiple TLDs
 - **10+ Original Guides** — Practical articles on domains, DNS, registration, and choosing extensions
-- **Transparent Data Sources** — All data traced to IANA with weekly automated sync
+- **Transparent Data Sources** — IANA metadata with weekly sync; pricing from an official public API + CC BY 4.0 datasets with a daily, guarded sync (see `docs/PRICING-DATA.md`)
 - **SEO-Ready** — Static HTML, sitemap.xml, robots.txt, canonical URLs, structured data, Open Graph
 - **Privacy-First** — No tracking, no cookies, no third-party scripts
 - **Fast** — Static site generation (SSG) via Astro, deployed to Cloudflare Pages
@@ -22,7 +24,7 @@ An independent, open-source reference for top-level domains (TLDs) built with ve
 - **TypeScript** — Type-safe data pipeline
 - **Tailwind CSS 4** — Utility-first styling
 - **Vitest** — Unit tests
-- **GitHub Actions** — Automated weekly IANA sync
+- **GitHub Actions** — Automated weekly IANA sync + daily pricing sync
 - **Cloudflare Pages** — Free, global hosting
 
 ## Getting Started
@@ -68,6 +70,16 @@ npm run sync:tlds
 
 Fetches latest IANA data, validates, and updates `data/tlds.json` + `data/meta.json`.
 
+### Sync Registrar Pricing (Manual)
+
+```bash
+npm run sync:prices
+```
+
+Fetches all pricing sources (Porkbun public API + CC BY 4.0 datasets), validates, guards against
+empty/shrinking sources, and updates `data/prices.json` + `data/prices-meta.json`. Full source
+evaluation and failure semantics: `docs/PRICING-DATA.md`.
+
 ## Project Structure
 
 ```
@@ -76,12 +88,16 @@ Fetches latest IANA data, validates, and updates `data/tlds.json` + `data/meta.j
 ├── src/
 │   ├── components/       # Astro components (Layout, Hero, TldTable, FilterBar, etc.)
 │   ├── config/
-│   │   └── site.ts       # Central brand/site configuration
+│   │   ├── site.ts       # Central brand/site configuration
+│   │   └── registrars.ts # Registrar registry + affiliate extension point
 │   ├── lib/
 │   │   ├── iana.ts       # IANA parsing + normalization (pure functions, tested)
+│   │   ├── pricing.ts    # Build-time pricing store + aggregation
+│   │   ├── pricingCalc.ts# Three-year math, freshness, sorting (tested)
 │   │   ├── search.ts     # Search/filter/sort/pagination (pure functions, tested)
 │   │   ├── store.ts      # Server-side data access (build-time)
-│   │   └── types.ts      # TypeScript interfaces
+│   │   ├── types.ts      # TypeScript interfaces
+│   │   └── pricingTypes.ts # Pricing data model (separate from IANA)
 │   ├── pages/
 │   │   ├── index.astro           # Homepage
 │   │   ├── tlds/                 # TLD directory + A-Z index
@@ -95,16 +111,22 @@ Fetches latest IANA data, validates, and updates `data/tlds.json` + `data/meta.j
 │   └── styles/global.css
 ├── scripts/
 │   ├── sync-tlds.ts      # Weekly IANA sync (GitHub Actions)
+│   ├── sync-prices.ts    # Daily pricing sync (GitHub Actions)
+│   ├── pricing/          # Source adapters + validation + merge
 │   └── init-data.ts      # Initialize data from local files
 ├── data/
 │   ├── tlds.json         # Canonical TLD dataset (1,400+ records)
-│   └── meta.json         # Sync metadata + history
+│   ├── meta.json         # Sync metadata + history
+│   ├── prices.json       # Registrar offers (one per registrar+TLD)
+│   └── prices-meta.json  # Price sync metadata + history
 ├── tests/
 │   ├── fixtures.ts       # Test fixtures (IANA sample data)
 │   ├── iana.test.ts      # IANA parsing tests
-│   └── search.test.ts    # Search/filter tests
+│   ├── search.test.ts    # Search/filter tests
+│   └── pricing.test.ts   # Pricing pipeline + dataset tests
 ├── .github/workflows/
-│   └── sync-tlds.yml     # Weekly automated sync
+│   ├── sync-tlds.yml     # Weekly automated sync
+│   └── sync-prices.yml   # Daily automated pricing sync
 ├── astro.config.mjs
 ├── tsconfig.json
 └── vitest.config.ts
@@ -118,6 +140,10 @@ Fetches latest IANA data, validates, and updates `data/tlds.json` + `data/meta.j
 .github/workflows/sync-tlds.yml
    └─ weekly: fetch IANA → validate → npm run build (verify) → npm test
               → commit data/*.json → push to main
+
+.github/workflows/sync-prices.yml
+   └─ daily: fetch pricing sources → validate/guard → npm test
+              → commit data/prices*.json (only if changed) → push to main
                                          │
 Cloudflare Pages (Git integration)
    └─ sees the push → npm ci → npm run build → publish dist/

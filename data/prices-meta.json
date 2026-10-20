@@ -1,0 +1,25 @@
+{
+  "last_success_at": "2026-10-20T11:30:38.660Z",
+  "last_attempt_at": "2026-10-20T11:30:38.660Z",
+  "status": "ok",
+  "last_error": null,
+  "counts": {
+    "offers": 3306,
+    "tlids": 811,
+    "registrars": 10,
+    "verified_offers": 2846,
+    "stale_offers": 460,
+    "by_source": {
+      "pikkly": 2703,
+      "porkbun": 540,
+      "opendomaindata": 63
+    }
+  },
+  "history": [
+    {
+      "at": "2026-10-20T11:30:38.660Z",
+      "status": "ok",
+      "offers": 3306
+    }
+  ]
+}

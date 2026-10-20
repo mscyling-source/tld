@@ -1,0 +1,307 @@
+---
+// PriceComparisonTable.astro — the site's main feature.
+//
+// Server-renders the cheapest 40 rows for first paint and SEO, then hands
+// over to a client script that searches/sorts/filters the full embedded
+// dataset (no runtime API — the rows JSON is generated at build time).
+// All prices come from data/prices.json; missing values render as
+// "Price unavailable", never as 0 or a guess.
+import type { ComparisonRow } from '../lib/pricingTypes.js';
+import type { PricePoint } from '../lib/pricingTypes.js';
+import { sortComparisonRows } from '../lib/pricingCalc.js';
+
+interface Props {
+  rows: ComparisonRow[];
+  unpricedTlds: string[];
+  generatedAt: string | null;
+  tlids: number;
+  registrars: number;
+}
+
+const { rows, unpricedTlds, generatedAt, tlids, registrars } = Astro.props;
+
+const initial = sortComparisonRows(rows, 'register-asc').slice(0, 40);
+const types = [...new Set(rows.map(r => r.type).filter((t): t is string => Boolean(t)))].sort();
+const typeLabel = (t: string) => t.replace(/-/g, ' ').replace(/^./, c => c.toUpperCase());
+
+const updatedDate = generatedAt
+  ? new Date(generatedAt).toLocaleDateString('en-US', { dateStyle: 'long', timeZone: 'UTC' })
+  : null;
+
+function pointDate(p: PricePoint | null): string {
+  return p ? new Date(p.last_checked).toLocaleDateString('en-US', { dateStyle: 'medium', timeZone: 'UTC' }) : '';
+}
+function visitRel(): string {
+  return 'noopener';
+}
+---
+
+<section id="compare" class="py-12 sm:py-16 bg-white scroll-mt-20" aria-labelledby="compare-heading">
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <header class="mb-6">
+      <h2 id="compare-heading" class="text-2xl sm:text-3xl font-bold text-ink-900">
+        Compare Domain Prices Across Registrars
+      </h2>
+      <p class="mt-2 text-ink-600 max-w-3xl">
+        Search any extension — <strong>.com</strong>, <strong>.io</strong>, <strong>.dev</strong>, <strong>.ai</strong> — and
+        compare first-year registration, renewal and transfer prices from {registrars} registrars across
+        {' '}{tlids} extensions. Ranked by published prices, never by commission.
+      </p>
+      {updatedDate && (
+        <p class="mt-1 text-sm text-ink-500">
+          Price data last updated <time datetime={generatedAt}>{updatedDate}</time> from published registrar
+          price lists. Prices change — always confirm at the registrar before buying.
+        </p>
+      )}
+    </header>
+
+    <!-- Controls -->
+    <div class="mb-4 flex flex-col lg:flex-row gap-3 lg:items-end">
+      <div class="flex-1 min-w-0">
+        <label for="pc-search" class="block text-sm font-medium text-ink-700 mb-1">Search extension or registrar</label>
+        <input
+          id="pc-search"
+          type="search"
+          placeholder="e.g. .com, io, Porkbun, Namecheap…"
+          class="w-full px-4 py-2.5 text-sm border border-ink-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+          autocomplete="off"
+        />
+      </div>
+      <div>
+        <label for="pc-type" class="block text-sm font-medium text-ink-700 mb-1">Category</label>
+        <select id="pc-type" class="px-3 py-2.5 text-sm border border-ink-300 rounded-lg bg-white focus:ring-2 focus:ring-brand-500">
+          <option value="">All categories</option>
+          {types.map(t => <option value={t}>{typeLabel(t)}</option>)}
+        </select>
+      </div>
+      <div>
+        <label for="pc-sort" class="block text-sm font-medium text-ink-700 mb-1">Sort by</label>
+        <select id="pc-sort" class="px-3 py-2.5 text-sm border border-ink-300 rounded-lg bg-white focus:ring-2 focus:ring-brand-500">
+          <option value="register-asc">Cheapest registration</option>
+          <option value="renewal-asc">Cheapest renewal</option>
+          <option value="transfer-asc">Cheapest transfer</option>
+          <option value="three-year-asc">Lowest 3-year cost</option>
+          <option value="suffix-asc">Extension A–Z</option>
+        </select>
+      </div>
+      <label class="flex items-center gap-2 text-sm text-ink-700 pb-2.5 cursor-pointer">
+        <input id="pc-verified" type="checkbox" class="rounded border-ink-300 text-brand-600 focus:ring-brand-500" />
+        Only verified prices
+      </label>
+    </div>
+
+    <p id="pc-count" class="mb-3 text-sm text-ink-500" role="status" aria-live="polite">
+      Showing {initial.length} of {rows.length} priced extensions
+    </p>
+
+    <div class="overflow-x-auto border border-ink-200 rounded-xl">
+      <table class="min-w-[760px] w-full text-sm">
+        <thead class="bg-ink-50 text-left">
+          <tr>
+            <th scope="col" class="px-4 py-3 font-semibold text-ink-700">Extension</th>
+            <th scope="col" class="px-4 py-3 font-semibold text-ink-700">Register<span class="block text-xs font-normal text-ink-500">cheapest first year</span></th>
+            <th scope="col" class="px-4 py-3 font-semibold text-ink-700">Renew<span class="block text-xs font-normal text-ink-500">cheapest per year</span></th>
+            <th scope="col" class="px-4 py-3 font-semibold text-ink-700">Transfer<span class="block text-xs font-normal text-ink-500">cheapest</span></th>
+            <th scope="col" class="px-4 py-3 font-semibold text-ink-700">3-year cost<span class="block text-xs font-normal text-ink-500">register + 2 renewals</span></th>
+            <th scope="col" class="px-4 py-3 font-semibold text-ink-700"><span class="sr-only">Visit registrar</span></th>
+          </tr>
+        </thead>
+        <tbody id="pc-tbody" class="divide-y divide-ink-100">
+          {initial.map(row => (
+            <tr data-tld={row.tld} data-type={row.type ?? ''} data-verified={row.verified_offers > 0 ? '1' : '0'}>
+              <td class="px-4 py-3">
+                <a href={`/tld/${row.tld}/`} class="font-mono font-semibold text-ink-900 hover:text-brand-600">{row.suffix}</a>
+                <span class="block text-xs text-ink-500">{row.offers} offer{row.offers === 1 ? '' : 's'}</span>
+              </td>
+              <td class="px-4 py-3">
+                {row.register ? (
+                  <>
+                    <span class="font-semibold text-ink-900" title={`Last checked ${pointDate(row.register)}`}>${row.register.usd.toFixed(2)}</span>
+                    <span class="block text-xs text-ink-600">{row.register.registrar_name}{row.register.quality === 'stale' ? ' · stale' : ''}</span>
+                  </>
+                ) : (
+                  <span class="text-ink-400">Price unavailable</span>
+                )}
+              </td>
+              <td class="px-4 py-3">
+                {row.renewal ? (
+                  <>
+                    <span class="font-semibold text-ink-900" title={`Last checked ${pointDate(row.renewal)}`}>${row.renewal.usd.toFixed(2)}</span>
+                    <span class="block text-xs text-ink-600">{row.renewal.registrar_name}{row.renewal.quality === 'stale' ? ' · stale' : ''}</span>
+                  </>
+                ) : (
+                  <span class="text-ink-400">Price unavailable</span>
+                )}
+              </td>
+              <td class="px-4 py-3">
+                {row.transfer ? (
+                  <>
+                    <span class="font-semibold text-ink-900" title={`Last checked ${pointDate(row.transfer)}`}>${row.transfer.usd.toFixed(2)}</span>
+                    <span class="block text-xs text-ink-600">{row.transfer.registrar_name}{row.transfer.quality === 'stale' ? ' · stale' : ''}</span>
+                  </>
+                ) : (
+                  <span class="text-ink-400">Price unavailable</span>
+                )}
+              </td>
+              <td class="px-4 py-3">
+                {row.three_year ? (
+                  <>
+                    <span class="font-semibold text-ink-900" title={`Last checked ${pointDate(row.three_year)}`}>${row.three_year.usd.toFixed(2)}</span>
+                    <span class="block text-xs text-ink-600">{row.three_year.registrar_name}</span>
+                  </>
+                ) : (
+                  <span class="text-ink-400">Price unavailable</span>
+                )}
+              </td>
+              <td class="px-4 py-3 text-right">
+                {row.visit_url && (
+                  <a
+                    href={row.visit_url}
+                    rel={visitRel()}
+                    target="_blank"
+                    class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-brand-700 bg-brand-50 border border-brand-200 rounded-lg hover:bg-brand-100"
+                  >
+                    Visit {row.visit_registrar}
+                  </a>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <p id="pc-empty" class="hidden py-8 text-center text-ink-500"></p>
+
+    <p class="mt-4 text-xs text-ink-500 max-w-4xl">
+      3-year cost = first-year registration price + 2 × standard renewal price at the same registrar,
+      shown only when both prices are published. Prices are in USD as published by each source;
+      “stale” marks data older than 30 days. Extension detail pages list every offer with its source
+      and check date. Source and licence details on the <a href="/data-sources/" class="underline hover:text-brand-600">data sources page</a>.
+    </p>
+  </div>
+</section>
+
+<!-- Full dataset for client-side search/sort/filter (generated at build). -->
+<script type="application/json" id="price-rows-data" is:inline set:html={JSON.stringify(rows).replace(/</g, '\\u003c')}></script>
+<script type="application/json" id="price-unpriced-data" is:inline set:html={JSON.stringify(unpricedTlds).replace(/</g, '\\u003c')}></script>
+
+<script>
+  import { sortComparisonRows } from '../lib/pricingCalc.js';
+
+  const rowsEl = document.getElementById('price-rows-data');
+  const unpricedEl = document.getElementById('price-unpriced-data');
+  const rows: any[] = JSON.parse(rowsEl?.textContent || '[]');
+  const unpriced: string[] = JSON.parse(unpricedEl?.textContent || '[]');
+
+  const search = document.getElementById('pc-search') as HTMLInputElement;
+  const typeSel = document.getElementById('pc-type') as HTMLSelectElement;
+  const sortSel = document.getElementById('pc-sort') as HTMLSelectElement;
+  const verifiedChk = document.getElementById('pc-verified') as HTMLInputElement;
+  const countEl = document.getElementById('pc-count') as HTMLElement;
+  const tbody = document.getElementById('pc-tbody') as HTMLTableSectionElement;
+  const emptyEl = document.getElementById('pc-empty') as HTMLElement;
+
+  function priceCell(point: any): HTMLTableCellElement {
+    const td = document.createElement('td');
+    td.className = 'px-4 py-3';
+    if (!point) {
+      const span = document.createElement('span');
+      span.className = 'text-ink-400';
+      span.textContent = 'Price unavailable';
+      td.appendChild(span);
+      return td;
+    }
+    const price = document.createElement('span');
+    price.className = 'font-semibold text-ink-900';
+    price.textContent = `$${Number(point.usd).toFixed(2)}`;
+    price.title = `Last checked ${new Date(point.last_checked).toLocaleDateString('en-US', { dateStyle: 'medium', timeZone: 'UTC' })}`;
+    td.appendChild(price);
+    const sub = document.createElement('span');
+    sub.className = 'block text-xs text-ink-600';
+    sub.textContent = point.registrar_name + (point.quality === 'stale' ? ' · stale' : '');
+    td.appendChild(sub);
+    return td;
+  }
+
+  function render(): void {
+    const q = search.value.trim().toLowerCase().replace(/^\.+/, '');
+    const type = typeSel.value;
+    const verifiedOnly = verifiedChk.checked;
+
+    let view = rows.filter((r: any) => {
+      if (type && r.type !== type) return false;
+      if (verifiedOnly && !(r.verified_offers > 0)) return false;
+      if (q) {
+        const inTld = r.tld.includes(q) || r.suffix.toLowerCase().includes(q);
+        const inRegistrar = (r.registrars || []).some((n: string) => n.toLowerCase().includes(q));
+        if (!inTld && !inRegistrar) return false;
+      }
+      return true;
+    });
+
+    view = sortComparisonRows(view, sortSel.value);
+
+    tbody.textContent = '';
+    for (const row of view) {
+      const tr = document.createElement('tr');
+
+      const tdTld = document.createElement('td');
+      tdTld.className = 'px-4 py-3';
+      const a = document.createElement('a');
+      a.href = `/tld/${row.tld}/`;
+      a.className = 'font-mono font-semibold text-ink-900 hover:text-brand-600';
+      a.textContent = row.suffix;
+      tdTld.appendChild(a);
+      const offers = document.createElement('span');
+      offers.className = 'block text-xs text-ink-500';
+      offers.textContent = `${row.offers} offer${row.offers === 1 ? '' : 's'}`;
+      tdTld.appendChild(offers);
+      tr.appendChild(tdTld);
+
+      tr.appendChild(priceCell(row.register));
+      tr.appendChild(priceCell(row.renewal));
+      tr.appendChild(priceCell(row.transfer));
+      tr.appendChild(priceCell(row.three_year));
+
+      const tdVisit = document.createElement('td');
+      tdVisit.className = 'px-4 py-3 text-right';
+      if (row.visit_url && /^https?:\/\//.test(row.visit_url)) {
+        const visit = document.createElement('a');
+        visit.href = row.visit_url;
+        visit.rel = 'noopener';
+        visit.target = '_blank';
+        visit.className =
+          'inline-flex items-center px-3 py-1.5 text-xs font-medium text-brand-700 bg-brand-50 border border-brand-200 rounded-lg hover:bg-brand-100';
+        visit.textContent = `Visit ${row.visit_registrar}`;
+        tdVisit.appendChild(visit);
+      }
+      tr.appendChild(tdVisit);
+      tbody.appendChild(tr);
+    }
+
+    emptyEl.textContent = '';
+    if (view.length === 0) {
+      emptyEl.classList.remove('hidden');
+      if (q && unpriced.includes(q)) {
+        emptyEl.textContent = `No verified price data for .${q} yet — see its IANA details page for official sources.`;
+        const a = document.createElement('a');
+        a.href = `/tld/${q}/`;
+        a.className = 'ml-1 underline text-brand-600 hover:text-brand-700';
+        a.textContent = 'Open details →';
+        emptyEl.appendChild(a);
+      } else {
+        emptyEl.textContent = 'No priced extensions match this filter.';
+      }
+    } else {
+      emptyEl.classList.add('hidden');
+    }
+
+    countEl.textContent = `Showing ${view.length} of ${rows.length} priced extensions`;
+  }
+
+  search.addEventListener('input', render);
+  typeSel.addEventListener('change', render);
+  sortSel.addEventListener('change', render);
+  verifiedChk.addEventListener('change', render);
+</script>

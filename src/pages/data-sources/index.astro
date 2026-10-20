@@ -6,7 +6,7 @@ import { siteConfig } from '../../config/site.js';
 ---
 
 <Layout
-  title="Data Sources — TLD Directory"
+  title="Data Sources"
   description="Transparent documentation of the data sources, update process, and verification methods behind TLD Directory."
 >
   <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
@@ -33,6 +33,58 @@ import { siteConfig } from '../../config/site.js';
           <dt><strong>IANA Per-TLD Delegation Records</strong></dt>
           <dd><code>https://www.iana.org/domains/root/db/&#123;tld&#125;.html</code> — Individual pages for each TLD with registry information (WHOIS, RDAP, registration services URL), delegation history, and reference documents.</dd>
         </dl>
+      </section>
+
+      <section>
+        <h2>Registrar pricing sources</h2>
+        <p>
+          Price comparison data is kept fully separate from IANA metadata
+          (<code>data/tlds.json</code> vs <code>data/prices.json</code>). Every price figure below is
+          published by the source itself — we never estimate, convert, or invent prices. Sources
+          without a value are shown as "Price unavailable".
+        </p>
+        <dl>
+          <dt><strong>Porkbun API</strong> — official, no authentication</dt>
+          <dd>
+            <a href="https://porkbun.com/api/json/v3/documentation" target="_blank" rel="noopener">Porkbun API v3 — pricing endpoint</a> —
+            registration, renewal and transfer list prices in USD for every TLD Porkbun sells
+            (~900). Documented as a public endpoint by Porkbun; fetched daily by our pipeline.
+            Prices checked at fetch time, so these rows are the freshest on the site.
+          </dd>
+
+          <dt><strong>Pikkly open data</strong> — licence: CC BY 4.0</dt>
+          <dd>
+            <a href="https://pikkly.dev/data" target="_blank" rel="noopener">pikkly.dev/data</a> —
+            daily-rebuilt JSON of first-year, renewal and transfer prices for 6 registrars
+            (Porkbun, Cloudflare, Dynadot, Gandi, Hover, IONOS). Attribution:
+            <em>"Price data by Pikkly"</em>. Rows sourced from dated community dumps use the dump
+            date as their check date, not the rebuild time.
+          </dd>
+
+          <dt><strong>Open Domain Data — tld_pricing</strong> — licence: CC BY 4.0</dt>
+          <dd>
+            <a href="https://www.opendomaindata.org/datasets/tld-pricing" target="_blank" rel="noopener">opendomaindata.org</a> —
+            monthly snapshot of register/renew/transfer prices normalised to USD across 7 registrars,
+            including GoDaddy, Namecheap, Spaceship and Squarespace Domains. Citation:
+            <em>Open Domain Data (2026). tld_pricing, opendomaindata.org</em>. Records carry their own
+            check dates, which can be weeks old — anything past 30 days is labelled "stale".
+          </dd>
+        </dl>
+        <p>
+          We do not scrape registrar websites: these are an official public API and
+          openly-licensed datasets, each fetched directly from the publisher. If a source requires
+          credentials in the future, they are supplied via GitHub Actions secrets — never committed.
+        </p>
+
+        <h3>Pricing data pipeline</h3>
+        <ol>
+          <li><strong>Daily fetch</strong> — GitHub Actions runs <code>npm run sync:prices</code>.</li>
+          <li><strong>Validation</strong> — rows are rejected for unknown TLDs (anything not in the IANA catalog), invalid or out-of-range prices, missing USD currency, invalid URLs, and duplicates.</li>
+          <li><strong>Failure guards</strong> — a source that errors, returns zero valid rows, or shrinks by more than 50% keeps its previous rows untouched; if every source fails, <code>data/prices.json</code> is left byte-for-byte unchanged and the run fails.</li>
+          <li><strong>Merge</strong> — one offer per registrar+TLD; when sources overlap, the freshest check date wins.</li>
+          <li><strong>Freshness</strong> — "verified" means the source's own check date is within 30 days; a rebuild can never re-date old prices.</li>
+          <li><strong>Commit only on change</strong> — if the dataset is unchanged, nothing is committed, so no rebuild is triggered.</li>
+        </ol>
       </section>
 
       <section>
@@ -103,8 +155,9 @@ import { siteConfig } from '../../config/site.js';
       <section>
         <h2>Update frequency</h2>
         <ul>
-          <li><strong>Automated weekly</strong> — Every Monday ~06:30 UTC (after IANA's typical update window).</li>
-          <li><strong>Manual trigger</strong> — Available via GitHub Actions workflow dispatch.</li>
+          <li><strong>TLD metadata: automated weekly</strong> — Every Monday ~06:30 UTC (after IANA's typical update window).</li>
+          <li><strong>Pricing: automated daily</strong> — GitHub Actions fetches all pricing sources every day; commits only when the dataset actually changed.</li>
+          <li><strong>Manual trigger</strong> — Available via GitHub Actions workflow dispatch for both pipelines.</li>
           <li><strong>Emergency</strong> — If a major delegation change occurs, we can re-run immediately.</li>
         </ul>
       </section>
@@ -112,8 +165,10 @@ import { siteConfig } from '../../config/site.js';
       <section>
         <h2>What we do NOT do</h2>
         <ul>
-          <li>We do <strong>not</strong> scrape registrar websites for pricing or availability.</li>
-          <li>We do <strong>not</strong> use third-party domain data APIs.</li>
+          <li>We do <strong>not</strong> scrape registrar websites for pricing or availability — pricing comes from an official public API and openly-licensed datasets (see "Registrar pricing sources").</li>
+          <li>We do <strong>not</strong> bypass authentication, anti-bot controls, or terms-of-use restrictions on any registrar's website.</li>
+          <li>We do <strong>not</strong> guess prices: if a source doesn't publish a figure, we show "Price unavailable".</li>
+          <li>We do <strong>not</strong> let affiliate relationships (none exist today) influence which offer is labelled cheapest — rankings use published prices only.</li>
           <li>We do <strong>not</strong> guess or infer registration rules — only cite verified sources.</li>
           <li>We do <strong>not</strong> track domain ownership, WHOIS history, or aftermarket data.</li>
         </ul>
@@ -122,6 +177,12 @@ import { siteConfig } from '../../config/site.js';
       <section>
         <h2>Licensing & attribution</h2>
         <p>IANA data is public domain / freely redistributable per <a href="https://www.iana.org/iana-legal" target="_blank" rel="noopener">IANA's legal notices</a>. Our compiled dataset, editorial content, and code are proprietary. You may link to our pages freely. For bulk data use, <a href="/contact/">contact us</a>.</p>
+        <p>Third-party pricing datasets are reused under their own licences, with attribution shown here and on every detail page:</p>
+        <ul>
+          <li><strong>Pikkly</strong> — CC BY 4.0. <em>"Price data by Pikkly" — <a href="https://pikkly.dev" target="_blank" rel="noopener">pikkly.dev</a></em>.</li>
+          <li><strong>Open Domain Data</strong> — CC BY 4.0. <em>Open Domain Data (2026). tld_pricing, <a href="https://www.opendomaindata.org/datasets/tld-pricing" target="_blank" rel="noopener">opendomaindata.org</a></em>.</li>
+          <li><strong>Porkbun</strong> — official public API, used per its published API documentation.</li>
+        </ul>
       </section>
 
       <section>

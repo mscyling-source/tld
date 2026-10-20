@@ -1,44 +1,33 @@
 ---
-// Hero.astro — homepage hero with search box.
+// Hero.astro — compact homepage hero. The price comparison table is the
+// main event, so the hero stays tight and hands off to it directly.
 import { siteConfig } from '../config/site.js';
 ---
 
-<section class="relative py-16 sm:py-24 lg:py-32 bg-gradient-to-b from-brand-50 to-white" aria-labelledby="hero-title">
+<section class="py-10 sm:py-12 bg-gradient-to-b from-brand-50 to-white" aria-labelledby="hero-title">
   <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
     <div class="max-w-3xl mx-auto text-center">
-      <h1 id="hero-title" class="text-4xl sm:text-5xl lg:text-6xl font-bold text-ink-900 tracking-tight">
-        Explore Top-Level Domains
+      <h1 id="hero-title" class="text-3xl sm:text-4xl lg:text-5xl font-bold text-ink-900 tracking-tight">
+        Find the Cheapest Place to Register Any Domain
       </h1>
-      <p class="mt-5 text-lg sm:text-xl text-ink-600 max-w-2xl mx-auto">
+      <p class="mt-4 text-base sm:text-lg text-ink-600 max-w-2xl mx-auto">
         {siteConfig.description}
       </p>
 
-      <form action="/tlds/" method="get" class="mt-8 max-w-xl mx-auto" role="search" aria-label="Search TLDs">
-        <label for="hero-search" class="sr-only">Search TLDs</label>
-        <div class="relative">
-          <input
-            id="hero-search"
-            name="q"
-            type="search"
-            placeholder="Search .com, .org, VeriSign, country-code…"
-            class="w-full px-4 py-3.5 pr-12 text-base border border-ink-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-            aria-describedby="search-hint"
-            autocomplete="off"
-          />
-          <button
-            type="submit"
-            class="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-ink-400 hover:text-brand-600"
-            aria-label="Search"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </button>
-        </div>
-        <p id="search-hint" class="mt-2 text-sm text-ink-500 text-center">
-          Enter a TLD (com, .com), registry name, or domain (example.com)
-        </p>
-      </form>
+      <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+        <a
+          href="#compare"
+          class="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg shadow-sm hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500"
+        >
+          Compare prices ↓
+        </a>
+        <a
+          href="/tlds/"
+          class="inline-flex items-center px-5 py-2.5 text-sm font-medium text-ink-700 bg-white border border-ink-300 rounded-lg shadow-sm hover:bg-ink-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500"
+        >
+          Browse all TLDs
+        </a>
+      </div>
     </div>
   </div>
 </section>

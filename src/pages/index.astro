@@ -1,9 +1,12 @@
 ---
-// index.astro — Homepage.
+// index.astro — Homepage. Price comparison is the main feature; the
+// TLD catalogue sections below remain as supporting content.
 import Layout from '../components/Layout.astro';
 import Hero from '../components/Hero.astro';
+import PriceComparisonTable from '../components/PriceComparisonTable.astro';
 import { siteConfig, popularTlds, navLinks } from '../config/site.js';
 import { loadRecord, loadAllRecords, getGeneratedAt } from '../lib/store.js';
+import { buildComparisonRows, getPriceStats } from '../lib/pricing.js';
 
 const allRecords = await loadAllRecords();
 const popularRecords = [];
@@ -20,10 +23,27 @@ for (const r of allRecords) {
 
 const generatedAt = await getGeneratedAt();
 const lastSync = generatedAt ? new Date(generatedAt).toLocaleDateString('en-US', { dateStyle: 'long', timeZone: 'UTC' }) : 'Unknown';
+
+// Pricing: cheapest-per-TLD rows for the comparison table, plus the list of
+// catalog TLDs with no price data (search tells the visitor honestly).
+const priceRows = await buildComparisonRows();
+const priceStats = await getPriceStats();
+const pricedTlds = new Set(priceRows.map(r => r.tld));
+const unpricedTlds = allRecords
+  .map(r => r.ascii_name)
+  .filter(name => !pricedTlds.has(name));
 ---
 
-<Layout title="TLD Directory — Explore Top-Level Domains" description={siteConfig.description}>
+<Layout title="Domain Price Comparison — Cheapest Registrar for Every TLD" description={siteConfig.description}>
   <Hero />
+
+  <PriceComparisonTable
+    rows={priceRows}
+    unpricedTlds={unpricedTlds}
+    generatedAt={priceStats?.generatedAt ?? null}
+    tlids={priceStats?.tlids ?? 0}
+    registrars={priceStats?.registrars ?? 0}
+  />
 
   <section class="py-16 bg-white" aria-labelledby="popular-heading">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -113,10 +133,18 @@ const lastSync = generatedAt ? new Date(generatedAt).toLocaleDateString('en-US',
       <header class="text-center mb-12">
         <h2 id="stats-heading" class="text-2xl sm:text-3xl font-bold text-ink-900">Data at a Glance</h2>
       </header>
-      <dl class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 max-w-3xl mx-auto">
+      <dl class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-4xl mx-auto">
         <div class="text-center">
           <dt class="text-4xl sm:text-5xl font-bold text-brand-600">{allRecords.length}</dt>
           <dd class="text-ink-600">Total TLDs</dd>
+        </div>
+        <div class="text-center">
+          <dt class="text-4xl sm:text-5xl font-bold text-brand-600">{priceStats?.tlids ?? 0}</dt>
+          <dd class="text-ink-600">Extensions with price data</dd>
+        </div>
+        <div class="text-center">
+          <dt class="text-4xl sm:text-5xl font-bold text-brand-600">{priceStats?.registrars ?? 0}</dt>
+          <dd class="text-ink-600">Registrars tracked</dd>
         </div>
         <div class="text-center">
           <dt class="text-4xl sm:text-5xl font-bold text-brand-600">{Object.keys(typeCounts).length}</dt>
@@ -132,7 +160,14 @@ const lastSync = generatedAt ? new Date(generatedAt).toLocaleDateString('en-US',
         </div>
       </dl>
       <p class="mt-8 text-center text-sm text-ink-500">
-        Data last synced from IANA on <time datetime={generatedAt ?? ''}>{lastSync}</time>.
+        TLD data last synced from IANA on <time datetime={generatedAt ?? ''}>{lastSync}</time>.
+        {priceStats?.generatedAt && (
+          <> Price data last updated{' '}
+            <time datetime={priceStats.generatedAt}>
+              {new Date(priceStats.generatedAt).toLocaleDateString('en-US', { dateStyle: 'long', timeZone: 'UTC' })}
+            </time>.
+          </>
+        )}
         <a href="/data-sources/" class="ml-2 underline hover:text-brand-600">Learn more →</a>
       </p>
     </div>
@@ -165,8 +200,8 @@ const lastSync = generatedAt ? new Date(generatedAt).toLocaleDateString('en-US',
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <h2 id="about-heading" class="text-2xl sm:text-3xl font-bold text-ink-900 text-center mb-8">About This Site</h2>
       <div class="max-w-3xl mx-auto space-y-6 text-ink-700">
-        <p>{siteConfig.name} is an independent reference for top-level domains. We aggregate public data from the <a href="https://www.iana.org/domains/root/db" class="underline hover:text-brand-600">IANA Root Zone Database</a> and the <a href="https://data.iana.org/TLD/tlds-alpha-by-domain.txt" class="underline hover:text-brand-600">IANA delegated list</a>, add human-reviewed editorial notes, and provide practical tools and guides.</p>
-        <p>We are not affiliated with ICANN, any registry, or any registrar. No tracking, no cookies, no third-party scripts — just clean, fast, verifiable information.</p>
+        <p>{siteConfig.name} is an independent price-comparison and reference site for top-level domains. We compare registrar registration, renewal and transfer prices from published price lists and openly-licensed datasets, aggregate public data from the <a href="https://www.iana.org/domains/root/db" class="underline hover:text-brand-600">IANA Root Zone Database</a> and the <a href="https://data.iana.org/TLD/tlds-alpha-by-domain.txt" class="underline hover:text-brand-600">IANA delegated list</a>, add human-reviewed editorial notes, and provide practical tools and guides.</p>
+        <p>We are not affiliated with ICANN, any registry, or any registrar. Rankings are based on published prices alone — never on commission. No tracking, no cookies, no third-party scripts — just clean, fast, verifiable information.</p>
         <div class="flex flex-wrap gap-4 justify-center">
           <a href="/about/" class="px-4 py-2 text-sm font-medium text-brand-600 bg-brand-50 border border-brand-200 rounded-lg hover:bg-brand-100">About us</a>
           <a href="/contact/" class="px-4 py-2 text-sm font-medium text-brand-600 bg-brand-50 border border-brand-200 rounded-lg hover:bg-brand-100">Contact</a>

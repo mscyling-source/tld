@@ -59,6 +59,8 @@ export default defineConfig({
           // Only canonical, indexable URLs belong in the sitemap.
           if (path === '/404.html' || path === '/404/' || path.endsWith('/404.html')) return false;
           if (path.includes('/preview/')) return false;
+          // Generated data endpoints (prices-index, tlds-index) are not content.
+          if (path.endsWith('.json')) return false;
           return true;
         } catch {
           return false;

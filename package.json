@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "sync:tlds": "tsx scripts/sync-tlds.ts",
+    "sync:prices": "tsx scripts/sync-prices.ts",
     "check": "astro check"
   },
   "dependencies": {

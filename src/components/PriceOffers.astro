@@ -1,0 +1,172 @@
+---
+// PriceOffers.astro — per-TLD registrar price comparison on detail pages.
+// Every figure is a stored source quote with its own last-checked date;
+// missing values render as "—" with an explanation, never as 0.
+import type { PriceOffer } from '../lib/pricingTypes.js';
+import { cheapestPoint, effectiveQuality, formatUsd } from '../lib/pricingCalc.js';
+import { outboundRel, hasAffiliate } from '../config/registrars.js';
+
+interface Props {
+  suffix: string;
+  offers: PriceOffer[];
+}
+
+const { suffix, offers } = Astro.props;
+const now = new Date();
+
+const fresh = offers.map(o => ({ ...o, quality: effectiveQuality(o, now) }));
+const minRegister = cheapestPoint(fresh, 'register_usd', now);
+const minRenewal = cheapestPoint(fresh, 'renewal_usd', now);
+const minThreeYear = cheapestPoint(fresh, 'three_year_usd', now);
+
+const sorted = [...fresh].sort((a, b) => {
+  const ar = a.register_usd ?? Infinity;
+  const br = b.register_usd ?? Infinity;
+  if (ar !== br) return ar - br;
+  return a.registrar_name.localeCompare(b.registrar_name, 'en');
+});
+
+const latest = fresh.reduce(
+  (max, o) => (Date.parse(o.last_checked) > Date.parse(max) ? o.last_checked : max),
+  fresh[0]?.last_checked ?? '',
+);
+const latestLabel = latest
+  ? new Date(latest).toLocaleDateString('en-US', { dateStyle: 'long', timeZone: 'UTC' })
+  : null;
+
+const anyAffiliate = fresh.some(o => hasAffiliate(o.registrar_id));
+const fmt = (v: number | null) => (v === null ? null : formatUsd(v));
+---
+
+{fresh.length === 0 ? (
+  <section class="mt-8 rounded-xl border border-ink-200 bg-white p-5" aria-labelledby="no-prices-heading">
+    <h2 id="no-prices-heading" class="text-lg font-semibold text-ink-900">Registrar prices for {suffix}</h2>
+    <p class="mt-2 text-sm text-ink-600">
+      No verified price data for {suffix} yet. We only show prices sourced from published registrar
+      price lists — never estimates. Check the official sources below, or revisit later: price data
+      updates on a schedule. <a href="/data-sources/" class="text-brand-600 hover:underline">How our price data works →</a>
+    </p>
+  </section>
+) : (
+  <section class="mt-8 rounded-xl border border-ink-200 bg-white p-5" aria-labelledby="price-heading">
+    <header class="flex flex-wrap items-baseline justify-between gap-2 mb-4">
+      <h2 id="price-heading" class="text-lg font-semibold text-ink-900">
+        Where to register {suffix} — price comparison
+      </h2>
+      {latestLabel && (
+        <p class="text-xs text-ink-500">
+          All prices in USD · last checked <time datetime={latest}>{latestLabel}</time>
+        </p>
+      )}
+    </header>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-[720px] w-full text-sm">
+        <thead class="bg-ink-50 text-left">
+          <tr>
+            <th scope="col" class="px-3 py-2.5 font-semibold text-ink-700">Registrar</th>
+            <th scope="col" class="px-3 py-2.5 font-semibold text-ink-700">Register<span class="block text-xs font-normal text-ink-500">first year</span></th>
+            <th scope="col" class="px-3 py-2.5 font-semibold text-ink-700">Renew<span class="block text-xs font-normal text-ink-500">per year</span></th>
+            <th scope="col" class="px-3 py-2.5 font-semibold text-ink-700">Transfer</th>
+            <th scope="col" class="px-3 py-2.5 font-semibold text-ink-700">3-year cost</th>
+            <th scope="col" class="px-3 py-2.5 font-semibold text-ink-700">Promotion</th>
+            <th scope="col" class="px-3 py-2.5 font-semibold text-ink-700">Last checked</th>
+            <th scope="col" class="px-3 py-2.5"><span class="sr-only">Buy</span></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-ink-100">
+          {sorted.map(o => {
+            const checked = new Date(o.last_checked).toLocaleDateString('en-US', { dateStyle: 'medium', timeZone: 'UTC' });
+            const stale = o.quality === 'stale';
+            const cheapestRegister = minRegister?.registrar_id === o.registrar_id;
+            const cheapestRenewal = minRenewal?.registrar_id === o.registrar_id;
+            const bestValue = minThreeYear?.registrar_id === o.registrar_id;
+            return (
+              <tr>
+                <td class="px-3 py-3 font-medium text-ink-900">
+                  {o.registrar_name}
+                  {stale && (
+                    <span class="ml-1 align-middle px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-800 rounded" title="This source's data is older than 30 days">stale</span>
+                  )}
+                </td>
+                <td class="px-3 py-3">
+                  {fmt(o.register_usd) ? (
+                    <span class="font-semibold text-ink-900">{fmt(o.register_usd)}</span>
+                  ) : (
+                    <span class="text-ink-400" title="This source does not publish a registration price">—</span>
+                  )}
+                  {cheapestRegister && <span class="ml-1.5 align-middle px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-800 rounded">cheapest</span>}
+                  {o.promotional && <span class="ml-1.5 align-middle px-1.5 py-0.5 text-[10px] font-medium bg-sky-100 text-sky-800 rounded" title="Source flags this as a promotional first-year price">promo</span>}
+                </td>
+                <td class="px-3 py-3">
+                  {fmt(o.renewal_usd) ? (
+                    <span class="font-semibold text-ink-900">{fmt(o.renewal_usd)}</span>
+                  ) : (
+                    <span class="text-ink-400" title="This source does not publish a renewal price">—</span>
+                  )}
+                  {cheapestRenewal && <span class="ml-1.5 align-middle px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-800 rounded">cheapest</span>}
+                </td>
+                <td class="px-3 py-3">
+                  {fmt(o.transfer_usd) ?? <span class="text-ink-400" title="This source does not publish a transfer price">—</span>}
+                </td>
+                <td class="px-3 py-3">
+                  {fmt(o.three_year_usd) ? (
+                    <>
+                      <span class="font-semibold text-ink-900">{fmt(o.three_year_usd)}</span>
+                      {bestValue && <span class="ml-1.5 align-middle px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-800 rounded">best value</span>}
+                    </>
+                  ) : (
+                    <span class="text-ink-400" title="Needs both registration and renewal prices">—</span>
+                  )}
+                </td>
+                <td class="px-3 py-3 text-xs text-ink-600">
+                  {o.promo_code ? (
+                    <>
+                      <code class="px-1 py-0.5 bg-ink-100 rounded">{o.promo_code}</code>
+                      {o.promo_restrictions && <span class="block mt-0.5">{o.promo_restrictions}</span>}
+                    </>
+                  ) : o.promotional ? (
+                    <span>Promotional first-year price — conditions may apply at the registrar</span>
+                  ) : (
+                    <span class="text-ink-400">—</span>
+                  )}
+                </td>
+                <td class="px-3 py-3 text-xs text-ink-500">
+                  <time datetime={o.last_checked}>{checked}</time>
+                </td>
+                <td class="px-3 py-3 text-right">
+                  {o.purchase_url && (
+                    <a
+                      href={o.purchase_url}
+                      rel={outboundRel(o.registrar_id)}
+                      target="_blank"
+                      class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium text-brand-700 bg-brand-50 border border-brand-200 rounded-lg hover:bg-brand-100"
+                    >
+                      Visit {o.registrar_name}
+                    </a>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+
+    <footer class="mt-4 space-y-2 text-xs text-ink-500">
+      <p>
+        3-year cost = first-year registration + 2 × standard renewal at the same registrar; shown only
+        when the source publishes both prices. A low first-year promotional price can still renew high —
+        compare the renewal column for the long-term picture. Standard list prices are shown; premium
+        domain names and registry eligibility rules can change the final amount.
+      </p>
+      <p>
+        {anyAffiliate
+          ? 'Some registrar links may be affiliate links — affiliate relationships never affect price rankings. '
+          : 'Links to registrars are ordinary links with no tracking parameters; price rankings depend only on published prices. '}
+        Sources: <a href="/data-sources/" class="underline hover:text-brand-600">price data sources & licences</a>.
+        Verify the current price at the registrar before purchasing.
+      </p>
+    </footer>
+  </section>
+)}

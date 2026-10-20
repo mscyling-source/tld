@@ -1,0 +1,113 @@
+name: Sync Registrar Pricing
+
+# Architecture: A (same as sync-tlds.yml)
+#   This workflow ONLY refreshes the pricing dataset and pushes the
+#   resulting `data/prices*.json` commit to `main`. Cloudflare Pages
+#   (or any future build) handles the site build + deploy separately.
+#
+#   All current pricing sources are keyless (official public API +
+#   CC BY 4.0 datasets), so no secrets are required. When a credentialed
+#   source adapter is added, its env var names go in `secrets:` below and
+#   are documented in docs/PRICING-DATA.md — values are never committed.
+#
+#   Failure behaviour is handled inside `npm run sync:prices`:
+#   a failed/shrinking source keeps its previous rows, and if every
+#   source fails the script exits 1 WITHOUT touching data/prices.json.
+
+on:
+  schedule:
+    - cron: '45 4 * * *' # Daily 04:45 UTC (off the IANA Monday slot)
+  workflow_dispatch: {} # Manual trigger
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-prices
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run price sync
+        id: sync
+        run: |
+          npm run sync:prices 2>&1 | tee sync-prices-output.log
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload sync log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-prices-log
+          path: sync-prices-output.log
+          retention-days: 30
+
+      # A sync that "succeeded" but leaves an implausible dataset must fail
+      # loudly — never publish a build generated from a gutted price file.
+      - name: Verify dataset
+        if: steps.sync.outputs.exit_code == '0'
+        run: |
+          node -e "
+            const d = require('./data/prices.json');
+            const m = require('./data/prices-meta.json');
+            if (!d.offers || d.offers.length < 500) {
+              console.error('Price dataset implausibly small: ' + (d.offers || []).length);
+              process.exit(1);
+            }
+            if (!m.last_success_at) {
+              console.error('prices-meta.json has no last_success_at');
+              process.exit(1);
+            }
+            console.log('Price dataset OK: ' + d.offers.length + ' offers, status=' + m.status);
+          "
+
+      - name: Run unit tests
+        if: steps.sync.outputs.exit_code == '0'
+        run: npm test
+
+      # Skip the commit (and therefore the rebuild) when nothing changed.
+      - name: Check for changes
+        if: steps.sync.outputs.exit_code == '0'
+        id: changes
+        run: |
+          if git diff --quiet data/prices.json data/prices-meta.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No pricing data changes."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Pricing data changed — will commit."
+          fi
+
+      - name: Commit and push changes
+        if: steps.sync.outputs.exit_code == '0' && steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/prices.json data/prices-meta.json
+          git commit -m "chore: sync registrar pricing ($(date -u +'%Y-%m-%d'))"
+          git push
+
+      - name: Fail job on sync error
+        if: steps.sync.outputs.exit_code != '0'
+        run: |
+          echo "Price sync failed with exit code ${{ steps.sync.outputs.exit_code }}"
+          echo "Existing data/prices.json on main is left untouched — the site"
+          echo "keeps serving the last successful pricing dataset."
+          exit 1
