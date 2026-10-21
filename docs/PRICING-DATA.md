@@ -156,3 +156,24 @@ are never used to label a "best long-term value" — that badge follows the
 No affiliate IDs are ever baked into data. Affiliate links are configured
 per-registrar in `src/config/registrars.ts` (`affiliate.buildUrl`) only from
 a real agreement; rankings never read that field.
+
+## How the data reaches the live site
+
+`.github/workflows/sync-prices.yml` runs daily (04:45 UTC) and:
+
+1. syncs the sources above (this script, `npm run sync:prices`),
+2. validates the dataset — including that every CC BY source still carries its
+   attribution string and that every offer still has a check date,
+3. runs the test suite,
+4. commits `data/prices.json` + `data/prices-meta.json` to `main`,
+5. builds the site with `PUBLIC_SITE_URL=https://tld-directory.pages.dev`,
+6. publishes `dist/` to the existing Cloudflare Pages project with
+   `wrangler pages deploy --project-name tld-directory --branch main`,
+7. verifies that the live site serves the dataset it just built.
+
+The publish step is skipped when the live deployment already publishes the
+current commit, and it refuses to overwrite a *newer* live deployment. If the
+sync fails, the deploy never runs and the site keeps serving the last
+successful dataset — stale or failed sources are reported in
+`data/prices-meta.json` and in the run's step summary, never silently
+dropped. Setup, secrets and recovery recipes: `docs/DEPLOYMENT.md` §3.

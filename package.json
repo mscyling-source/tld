@@ -15,6 +15,7 @@
     "test:watch": "vitest",
     "sync:tlds": "tsx scripts/sync-tlds.ts",
     "sync:prices": "tsx scripts/sync-prices.ts",
+    "deploy:decision": "tsx scripts/deploy-decision.ts",
     "check": "astro check"
   },
   "dependencies": {
@@ -28,6 +29,7 @@
     "typescript": "^5.9.0",
     "vitest": "^5.0.4",
     "tsx": "^4.20.0",
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "yaml": "^2.9.1"
   }
 }

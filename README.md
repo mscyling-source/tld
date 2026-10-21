@@ -112,6 +112,7 @@ evaluation and failure semantics: `docs/PRICING-DATA.md`.
 ├── scripts/
 │   ├── sync-tlds.ts      # Weekly IANA sync (GitHub Actions)
 │   ├── sync-prices.ts    # Daily pricing sync (GitHub Actions)
+│   ├── deploy-decision.ts# Decides whether a build must be published
 │   ├── pricing/          # Source adapters + validation + merge
 │   └── init-data.ts      # Initialize data from local files
 ├── data/
@@ -123,10 +124,12 @@ evaluation and failure semantics: `docs/PRICING-DATA.md`.
 │   ├── fixtures.ts       # Test fixtures (IANA sample data)
 │   ├── iana.test.ts      # IANA parsing tests
 │   ├── search.test.ts    # Search/filter tests
-│   └── pricing.test.ts   # Pricing pipeline + dataset tests
+│   ├── pricing.test.ts   # Pricing pipeline + dataset tests
+│   ├── deployDecision.test.ts # Publish-skip decision rules
+│   └── workflow.test.ts  # Workflow contract (triggers, secrets, deploy order)
 ├── .github/workflows/
 │   ├── sync-tlds.yml     # Weekly automated sync
-│   └── sync-prices.yml   # Daily automated pricing sync
+│   └── sync-prices.yml   # Daily pricing sync + build + publish
 ├── astro.config.mjs
 ├── tsconfig.json
 └── vitest.config.ts
@@ -134,25 +137,33 @@ evaluation and failure semantics: `docs/PRICING-DATA.md`.
 
 ## Deployment architecture
 
-**Architecture A — GitHub Actions syncs data; Cloudflare Pages builds and deploys.**
+**Direct upload — GitHub Actions builds and publishes to the existing Cloudflare Pages
+project `tld-directory`.** The repository is *not* connected to Cloudflare Git integration,
+so a commit to `main` does not rebuild the site; the workflow publishes explicitly.
 
 ```
 .github/workflows/sync-tlds.yml
    └─ weekly: fetch IANA → validate → npm run build (verify) → npm test
-              → commit data/*.json → push to main
+              → commit data/tlds.json + data/meta.json → push to main
 
 .github/workflows/sync-prices.yml
-   └─ daily: fetch pricing sources → validate/guard → npm test
+   └─ daily (04:45 UTC): fetch pricing sources → validate/guard → npm test
               → commit data/prices*.json (only if changed) → push to main
-                                         │
-Cloudflare Pages (Git integration)
-   └─ sees the push → npm ci → npm run build → publish dist/
+              → npm run build (PUBLIC_SITE_URL=https://tld-directory.pages.dev)
+              → wrangler pages deploy dist --project-name tld-directory --branch main
+              → verify the live site serves the new dataset
 ```
 
-The workflow deliberately **does not** use `cloudflare/pages-action`: that action needs
-`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` secrets and would deploy *in addition to* the
-Git-triggered build, producing a duplicate deploy. Keeping one deploy per commit means the only
-thing to configure in Cloudflare is the Git integration.
+Publishing is skipped when the live deployment already serves the current commit, so a
+daily run with no changes costs no upload. Runs are serialised
+(`concurrency: sync-prices`, `cancel-in-progress: false`) and the deploy step refuses to
+overwrite a newer live deployment.
+
+Two repository secrets are required for the publish step — `CLOUDFLARE_API_TOKEN`
+(Pages:Edit) and `CLOUDFLARE_ACCOUNT_ID`. Without them the workflow fails with an
+actionable message and the site keeps serving the last successful deployment; manual
+publishing still works. Full setup, recovery recipes and verification steps:
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 ### Production URL configuration
 
@@ -167,8 +178,9 @@ The origin is read from an environment variable, with a placeholder fallback:
 `PUBLIC_SITE_URL` drives canonical tags, `sitemap-index.xml`, `robots.txt` and every
 Open Graph URL — so switching to the real domain is a single env var, not a code edit.
 
-Set it in **Cloudflare Pages → your project → Settings → Environment variables** for both
-Production and Preview. For a local `.env`, use the same name (Astro loads it automatically).
+The daily workflow builds with `PUBLIC_SITE_URL=https://tld-directory.pages.dev`, so the
+preview's canonicals, sitemap and robots.txt all point at the preview host. For a local
+build use the same variable, e.g. `PUBLIC_SITE_URL=https://tld-directory.pages.dev npm run build`.
 
 Malformed values (no scheme, no dot in the hostname) abort the build with a clear message.
 
@@ -177,11 +189,21 @@ Malformed values (no scheme, no dot in the hostname) abort the build with a clea
 Before a custom domain exists you can verify everything on the Cloudflare-provided hostname:
 
 ```
-PUBLIC_SITE_URL="https://<project>.pages.dev" npm run build
+PUBLIC_SITE_URL="https://tld-directory.pages.dev" npm run build
 ```
 
-or set the same value as a Preview env var in Cloudflare, so preview deploys emit canonicals
-and a sitemap pointing at the preview host rather than the placeholder origin.
+The same variable is used by the daily publish workflow, so a locally built site and the
+published site emit identical canonicals, sitemaps and robots.txt.
+
+### Publishing manually
+
+```bash
+PUBLIC_SITE_URL=https://tld-directory.pages.dev npm run build
+npx wrangler@4.151.3 pages deploy dist --project-name tld-directory --branch main
+```
+
+This targets the existing project — it never creates one. See
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for the full runbook.
 
 ## Data Pipeline
 

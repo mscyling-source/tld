@@ -1,18 +1,45 @@
 name: Sync Registrar Pricing
 
-# Architecture: A (same as sync-tlds.yml)
-#   This workflow ONLY refreshes the pricing dataset and pushes the
-#   resulting `data/prices*.json` commit to `main`. Cloudflare Pages
-#   (or any future build) handles the site build + deploy separately.
+# Purpose
+#   Refresh the registrar price dataset and publish the site to the existing
+#   Cloudflare Pages project `tld-directory` (direct upload — this repo is
+#   NOT connected to Cloudflare Git integration, so a commit alone never
+#   rebuilds the site).
 #
-#   All current pricing sources are keyless (official public API +
-#   CC BY 4.0 datasets), so no secrets are required. When a credentialed
-#   source adapter is added, its env var names go in `secrets:` below and
-#   are documented in docs/PRICING-DATA.md — values are never committed.
+#   Flow:  fetch sources → validate → npm test → commit data/prices*.json
+#          → build (PUBLIC_SITE_URL=https://tld-directory.pages.dev)
+#          → wrangler pages deploy → verify the live site
 #
-#   Failure behaviour is handled inside `npm run sync:prices`:
-#   a failed/shrinking source keeps its previous rows, and if every
-#   source fails the script exits 1 WITHOUT touching data/prices.json.
+# Architecture notes
+#   - The Pages project, hostname and deployment style are unchanged:
+#     `wrangler pages deploy dist --project-name tld-directory --branch main`
+#     publishes to the production branch of the SAME project.
+#   - No Git integration is enabled, so the commit this workflow pushes does
+#     NOT trigger a second build. The explicit deploy step below is the only
+#     publisher — there is exactly one deploy per run, never two.
+#   - Triggers are `schedule` + `workflow_dispatch` only. There is
+#     deliberately NO `push` trigger: the workflow commits generated data
+#     back to `main`, and a push trigger would make it retrigger itself
+#     (commit → push → run → commit …) in an uncontrolled loop.
+#   - `concurrency.cancel-in-progress: false` serialises runs: only one run
+#     may be in flight, and GitHub keeps just the newest pending run. A
+#     newer run therefore cannot publish before an older one finishes.
+#     The deploy step additionally refuses to publish when the live
+#     deployment already contains the current commit.
+#
+# Credentials (repository secrets, never printed):
+#   CLOUDFLARE_API_TOKEN   Pages:Edit token for this account
+#   CLOUDFLARE_ACCOUNT_ID  32-character Cloudflare account id
+#   See docs/DEPLOYMENT.md → "Automated price sync and publishing".
+#
+# Data safety
+#   - `npm run sync:prices` never overwrites good data with empty results:
+#     a failed, empty or shrinking source keeps its previous rows, and a
+#     total failure exits 1 without touching data/prices.json.
+#   - Source attribution, licences, per-offer check dates and the stale
+#     marker all live in the dataset and are published as-is.
+#   - If the sync fails, the deploy job never runs: the live site keeps
+#     serving the last successful build.
 
 on:
   schedule:
@@ -24,12 +51,16 @@ permissions:
 
 concurrency:
   group: sync-prices
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   sync:
+    name: Refresh price data
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      changed: ${{ steps.changes.outputs.changed }}
+      pushed_commit: ${{ steps.push.outputs.commit }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -61,6 +92,8 @@ jobs:
 
       # A sync that "succeeded" but leaves an implausible dataset must fail
       # loudly — never publish a build generated from a gutted price file.
+      # The licence/attribution check keeps the CC BY 4.0 credit requirements
+      # from being dropped by a future source change.
       - name: Verify dataset
         if: steps.sync.outputs.exit_code == '0'
         run: |
@@ -75,14 +108,58 @@ jobs:
               console.error('prices-meta.json has no last_success_at');
               process.exit(1);
             }
+            if (d.currency !== 'USD') {
+              console.error('Unexpected dataset currency: ' + d.currency);
+              process.exit(1);
+            }
+            for (const s of d.sources || []) {
+              if (/CC[ -]?BY/i.test(s.license || '') && !s.attribution) {
+                console.error('Source ' + s.id + ' requires attribution but has none');
+                process.exit(1);
+              }
+            }
+            for (const o of d.offers) {
+              if (!o.last_checked) {
+                console.error('Offer without a check date: ' + o.registrar_id + '/' + o.tld);
+                process.exit(1);
+              }
+            }
             console.log('Price dataset OK: ' + d.offers.length + ' offers, status=' + m.status);
+          "
+
+      - name: Summarise sources
+        if: steps.sync.outputs.exit_code == '0'
+        run: |
+          node -e "
+            const fs = require('fs');
+            const d = require('./data/prices.json');
+            const m = require('./data/prices-meta.json');
+            const lines = [];
+            lines.push('### Registrar price sync');
+            lines.push('');
+            lines.push('- Offers: **' + d.offers.length + '** across **' +
+              new Set(d.offers.map(o => o.tld)).size + '** TLDs and **' +
+              new Set(d.offers.map(o => o.registrar_id)).size + '** registrars');
+            lines.push('- Verified: ' + m.counts.verified_offers + ' · stale: ' + m.counts.stale_offers);
+            lines.push('- Dataset generated: ' + d.generated_at);
+            lines.push('');
+            lines.push('| Source | Status | Rows | Licence | Attribution |');
+            lines.push('|---|---|---|---|---|');
+            for (const s of d.sources) {
+              lines.push('| ' + s.id + ' | ' + s.status + ' | ' + s.rows + ' | ' + s.license +
+                ' | ' + (s.attribution || '—') + ' |');
+            }
+            if (m.last_error) {
+              lines.push('');
+              lines.push('> **Warnings:** ' + m.last_error);
+            }
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
           "
 
       - name: Run unit tests
         if: steps.sync.outputs.exit_code == '0'
         run: npm test
 
-      # Skip the commit (and therefore the rebuild) when nothing changed.
       - name: Check for changes
         if: steps.sync.outputs.exit_code == '0'
         id: changes
@@ -97,12 +174,17 @@ jobs:
 
       - name: Commit and push changes
         if: steps.sync.outputs.exit_code == '0' && steps.changes.outputs.changed == 'true'
+        id: push
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add data/prices.json data/prices-meta.json
           git commit -m "chore: sync registrar pricing ($(date -u +'%Y-%m-%d'))"
-          git push
+          # Rebase onto a possibly newer main so a human commit made during
+          # the run does not turn the push into a non-fast-forward failure.
+          git pull --rebase --autostash origin main
+          git push origin HEAD:main
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Fail job on sync error
         if: steps.sync.outputs.exit_code != '0'
@@ -111,3 +193,158 @@ jobs:
           echo "Existing data/prices.json on main is left untouched — the site"
           echo "keeps serving the last successful pricing dataset."
           exit 1
+
+  deploy:
+    name: Build and publish to Cloudflare Pages
+    needs: sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The price commit was pushed by the sync job; wait until it is
+      # visible on origin/main so we never publish a build from stale data.
+      - name: Wait for the price commit to reach main
+        if: needs.sync.outputs.pushed_commit != ''
+        run: |
+          for i in $(seq 1 12); do
+            git fetch origin main
+            if git merge-base --is-ancestor "${{ needs.sync.outputs.pushed_commit }}" origin/main; then
+              echo "Price commit ${{ needs.sync.outputs.pushed_commit }} is on main."
+              exit 0
+            fi
+            echo "Waiting for origin/main to include the price commit ($i/12)…"
+            sleep 5
+          done
+          echo "::error::origin/main never included the price commit — refusing to publish older data."
+          exit 1
+
+      - name: Use the latest main
+        run: |
+          git fetch origin main
+          git reset --hard origin/main
+          echo "Publishing commit $(git rev-parse HEAD)"
+
+      # Fail safely and loudly when the deployment credentials are missing:
+      # nothing is printed except the names of the secrets to configure.
+      - name: Check deployment credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          missing=""
+          [ -z "${CLOUDFLARE_API_TOKEN}" ] && missing="${missing} CLOUDFLARE_API_TOKEN"
+          [ -z "${CLOUDFLARE_ACCOUNT_ID}" ] && missing="${missing} CLOUDFLARE_ACCOUNT_ID"
+          if [ -n "${missing}" ]; then
+            echo "::error::Missing repository secret(s):${missing}"
+            echo "Add them under Settings → Secrets and variables → Actions → Repository secrets."
+            echo "CLOUDFLARE_API_TOKEN needs the 'Cloudflare Pages: Edit' permission for this account;"
+            echo "CLOUDFLARE_ACCOUNT_ID is the 32-character account id from the Cloudflare dashboard."
+            echo "See docs/DEPLOYMENT.md → 'Automated price sync and publishing'."
+            echo "Until then the site keeps serving the last successful deployment and can be"
+            echo "published manually with: npx wrangler pages deploy dist --project-name tld-directory --branch main"
+            exit 1
+          fi
+          echo "Deployment credentials present."
+
+      # Skip the upload when the live deployment already publishes this
+      # commit, and refuse to overwrite a newer live deployment.
+      - name: Decide whether a deployment is needed
+        id: decide
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_PAGES_PROJECT: tld-directory
+        run: npm run deploy:decision
+
+      - name: Build the site
+        if: steps.decide.outputs.deploy == 'true'
+        env:
+          PUBLIC_SITE_URL: https://tld-directory.pages.dev
+        run: |
+          npm run build
+          node -e "
+            const fs = require('fs');
+            const home = fs.readFileSync('dist/index.html', 'utf-8');
+            if (!home.includes('Compare Domain Prices Across Registrars')) {
+              console.error('Built homepage is missing the price comparison table');
+              process.exit(1);
+            }
+            if (!fs.existsSync('dist/prices-index.json')) {
+              console.error('Built site is missing dist/prices-index.json');
+              process.exit(1);
+            }
+            const built = JSON.parse(fs.readFileSync('dist/prices-index.json', 'utf-8'));
+            const source = JSON.parse(fs.readFileSync('data/prices.json', 'utf-8'));
+            if (built.generated_at !== source.generated_at) {
+              console.error('Built price index is not from the synced dataset');
+              process.exit(1);
+            }
+            console.log('Build OK: ' + built.rows.length + ' priced TLDs, dataset ' + built.generated_at);
+          "
+
+      - name: Deploy to Cloudflare Pages
+        if: steps.decide.outputs.deploy == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx --yes wrangler@4.151.3 pages deploy dist \
+            --project-name tld-directory \
+            --branch main \
+            --commit-hash "$(git rev-parse HEAD)" \
+            --commit-message "chore: sync registrar pricing ($(date -u +'%Y-%m-%d'))"
+
+      # Confirm the new build is actually being served before calling it done.
+      - name: Verify the live deployment
+        if: steps.decide.outputs.deploy == 'true'
+        env:
+          EXPECTED_GENERATED_AT: ${{ github.workspace }}/data/prices.json
+        run: |
+          expected=$(node -e "console.log(require('./data/prices.json').generated_at)")
+          for i in $(seq 1 10); do
+            home=$(curl -sSf --max-time 30 https://tld-directory.pages.dev/ || true)
+            if echo "$home" | grep -q 'Compare Domain Prices Across Registrars'; then
+              live=$(curl -sSf --max-time 30 https://tld-directory.pages.dev/prices-index.json \
+                | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log(JSON.parse(d).generated_at)}catch{console.log('unreadable')}})")
+              if [ "$live" = "$expected" ]; then
+                echo "Live site serves the new dataset ($live)."
+                {
+                  echo "### Published to Cloudflare Pages"
+                  echo ""
+                  echo "- Dataset: \`$live\`"
+                  echo "- Site: https://tld-directory.pages.dev/"
+                } >> "$GITHUB_STEP_SUMMARY"
+                exit 0
+              fi
+              echo "Live dataset ($live) is not the expected one ($expected) — retrying ($i/10)."
+            else
+              echo "Homepage not yet serving the new build — retrying ($i/10)."
+            fi
+            sleep 10
+          done
+          echo "::error::The deployment did not go live with the expected price data."
+          exit 1
+
+      - name: Explain skipped deployment
+        if: steps.decide.outputs.deploy == 'false'
+        run: |
+          echo "::notice::No deployment needed — ${{ steps.decide.outputs.reason }}"
+          {
+            echo "### Deployment skipped"
+            echo ""
+            echo "- ${{ steps.decide.outputs.reason }}"
+          } >> "$GITHUB_STEP_SUMMARY"
