@@ -147,7 +147,7 @@ function visitRel(): string {
                 {row.three_year ? (
                   <>
                     <span class="font-semibold text-ink-900" title={`Last checked ${pointDate(row.three_year)}`}>${row.three_year.usd.toFixed(2)}</span>
-                    <span class="block text-xs text-ink-600">{row.three_year.registrar_name}</span>
+                    <span class="block text-xs text-ink-600">{row.three_year.registrar_name}{row.three_year.quality === 'stale' ? ' · stale' : ''}</span>
                   </>
                 ) : (
                   <span class="text-ink-400">Price unavailable</span>

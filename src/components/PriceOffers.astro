@@ -70,7 +70,7 @@ const fmt = (v: number | null) => (v === null ? null : formatUsd(v));
             <th scope="col" class="px-3 py-2.5 font-semibold text-ink-700">Transfer</th>
             <th scope="col" class="px-3 py-2.5 font-semibold text-ink-700">3-year cost</th>
             <th scope="col" class="px-3 py-2.5 font-semibold text-ink-700">Promotion</th>
-            <th scope="col" class="px-3 py-2.5 font-semibold text-ink-700">Last checked</th>
+            <th scope="col" class="px-3 py-2.5 font-semibold text-ink-700">Last checked<span class="block text-xs font-normal text-ink-500">links to source</span></th>
             <th scope="col" class="px-3 py-2.5"><span class="sr-only">Buy</span></th>
           </tr>
         </thead>
@@ -132,7 +132,13 @@ const fmt = (v: number | null) => (v === null ? null : formatUsd(v));
                   )}
                 </td>
                 <td class="px-3 py-3 text-xs text-ink-500">
-                  <time datetime={o.last_checked}>{checked}</time>
+                  <a
+                    href={o.source_url}
+                    target="_blank"
+                    rel="noopener"
+                    title={`Price source: ${o.source_id} — open the page where this price was published`}
+                    class="underline decoration-dotted hover:text-brand-600"
+                  ><time datetime={o.last_checked}>{checked}</time></a>
                 </td>
                 <td class="px-3 py-3 text-right">
                   {o.purchase_url && (
