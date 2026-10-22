@@ -8,14 +8,31 @@
  * for the run while every other source still updates — one provider can
  * never wipe another provider's rows.
  *
- * Current status (see docs/PRICING-DATA.md for the full evaluation):
- *   - porkbun        official public API, no auth
- *   - pikkly         CC BY 4.0 open dataset, no auth
- *   - opendomaindata CC BY 4.0 open dataset, no auth
+ * Source tiers (see docs/PRICING-DATA.md):
+ *   - First-party, read live each run → `verified`. These are the only
+ *     sources allowed to claim a price was verified today:
+ *       porkbun      official public API, no auth
+ *       dynadot      official price page, server-rendered payload
+ *       gandi        official price list, server-rendered table
+ *       hover        official price page, embedded JSON
+ *       ionos        official price list, embedded JSON
+ *   - Third-party snapshots → `source_snapshot`. Downloaded daily, but the
+ *     dates inside them are the dataset's own observation dates:
+ *       bestdomainregistrars  CC BY 4.0, carries a verification taxonomy
+ *       pikkly                 CC BY 4.0
+ *       opendomaindata         CC BY 4.0, monthly
+ *
+ * Ordering note: first-party adapters run first so a failure is visible early,
+ * but every source is independent — one failure never blocks another.
  */
 
-import type { RawOffer } from '../../../src/lib/pricingTypes.js';
+import type { RawOffer, VerificationStatus } from '../../../src/lib/pricingTypes.js';
 import { PORKBUN_SOURCE, fetchPorkbun } from './porkbun.js';
+import { DYNADOT_SOURCE, fetchDynadot } from './dynadot.js';
+import { GANDI_SOURCE, fetchGandi } from './gandi.js';
+import { HOVER_SOURCE, fetchHover } from './hover.js';
+import { IONOS_SOURCE, fetchIonos } from './ionos.js';
+import { BDR_SOURCE, fetchBdr } from './bestdomainregistrars.js';
 import { PIKKLY_SOURCE, fetchPikkly } from './pikkly.js';
 import { ODD_SOURCE, fetchOdd } from './opendomaindata.js';
 
@@ -26,23 +43,41 @@ export interface SourceAdapter {
   license: string;
   attribution: string | null;
   priority: number;
+  /** How this source's figures are obtained; drives offer classification. */
+  verificationStatus: VerificationStatus;
   /** Env vars this source needs (none for keyless sources). */
   requiresEnv: string[];
-  fetchOffers: () => Promise<RawOffer[]>;
+  /** Receives the sync clock so first-party adapters stamp a real read time. */
+  fetchOffers: (now: Date) => Promise<RawOffer[]>;
 }
 
 function adapter(
-  meta: { id: string; name: string; url: string; license: string; attribution: string | null; priority: number },
-  fetchOffers: () => Promise<RawOffer[]>,
+  meta: {
+    id: string;
+    name: string;
+    url: string;
+    license: string;
+    attribution: string | null;
+    priority: number;
+    verificationStatus: VerificationStatus;
+  },
+  fetchOffers: (now: Date) => Promise<RawOffer[]>,
   requiresEnv: string[] = [],
 ): SourceAdapter {
   return { ...meta, requiresEnv, fetchOffers };
 }
 
 export const sourceAdapters: SourceAdapter[] = [
-  adapter(PORKBUN_SOURCE, fetchPorkbun),
-  adapter(PIKKLY_SOURCE, fetchPikkly),
-  adapter(ODD_SOURCE, fetchOdd),
+  // First-party reads.
+  adapter(PORKBUN_SOURCE, now => fetchPorkbun(now)),
+  adapter(DYNADOT_SOURCE, now => fetchDynadot(now)),
+  adapter(GANDI_SOURCE, now => fetchGandi(now)),
+  adapter(HOVER_SOURCE, now => fetchHover(now)),
+  adapter(IONOS_SOURCE, now => fetchIonos(now)),
+  // Openly licensed snapshots.
+  adapter(BDR_SOURCE, () => fetchBdr()),
+  adapter(PIKKLY_SOURCE, () => fetchPikkly()),
+  adapter(ODD_SOURCE, () => fetchOdd()),
 ];
 
 export function missingEnvFor(adapter: SourceAdapter): string[] {

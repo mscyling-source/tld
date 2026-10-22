@@ -165,8 +165,80 @@ export function rawOffer(overrides: Partial<RawOffer> = {}): RawOffer {
     source_id: 'porkbun',
     source_url: 'https://porkbun.com/tld/com',
     purchase_url: 'https://porkbun.com/tld/com',
-    last_checked: '2026-10-20T00:00:00.000Z',
+    price_observed_at: '2026-10-20T00:00:00.000Z',
+    price_verified_at: '2026-10-20T00:00:00.000Z',
+    verification_status: 'verified',
     source_status_stale: false,
     ...overrides,
   };
 }
+
+/** A third-party snapshot row: observed on `date`, never first-party verified. */
+export function snapshotOffer(overrides: Partial<RawOffer> = {}): RawOffer {
+  return rawOffer({
+    source_id: 'opendomaindata',
+    source_url: 'https://www.opendomaindata.org/datasets/tld-pricing',
+    purchase_url: null,
+    price_verified_at: null,
+    verification_status: 'source_snapshot',
+    price_observed_at: '2026-08-19T00:00:00Z',
+    ...overrides,
+  });
+}
+
+/**
+ * A minimal Hover `data-props` page. Hover's parser refuses payloads with
+ * fewer than 100 usable rows (a guard against silently publishing a truncated
+ * catalogue), so the fixture pads the payload with synthetic TLDs.
+ */
+export function hoverPage(entries: Record<string, unknown[]>): string {
+  const prices: Record<string, unknown[]> = { ...entries };
+  for (let i = 0; prices[`tld${i}`] === undefined && i < 120; i++) {
+    prices[`tld${i}`] = [1, 9.99 + i, 14.99 + i, 14.99 + i];
+  }
+  const payload = JSON.stringify({ prices }).replace(/'/g, '&#39;');
+  return `<html><body><div data-props='${payload}'></div></body></html>`;
+}
+
+/** A minimal Gandi price table. Values are `[tld, creation, transfer, renewal]`. */
+export function gandiPage(rows: Array<[string, string, string, string]>): string {
+  const body = rows
+    .map(([tld, creation, transfer, renewal]) =>
+      `<tr><td>${tld}</td><td>${creation}</td><td>${transfer}</td><td>${renewal}</td></tr>`,
+    )
+    .join('');
+  return `<html><body><table><tbody>${body}</tbody></table></body></html>`;
+}
+
+/** A minimal IONOS `__NEXT_DATA__` page with one prices table. */
+export function ionosPage(entries: Array<Record<string, unknown>>): string {
+  const payload = JSON.stringify({
+    props: {
+      pageProps: {
+        componentsWithPrices: [{ content: { domainPrices: entries } }],
+      },
+    },
+  });
+  return `<html><body><script id="__NEXT_DATA__" type="application/json">${payload}</script></body></html>`;
+}
+
+/** BDR pricing CSV plus its verification taxonomy. */
+export const bdrCsv = [
+  'registrar_id,tld,first_year_price,renewal_price,transfer_price,currency,last_checked,source_url',
+  'porkbun,com,11.08,11.08,11.08,USD,2026-10-21,https://porkbun.com/tld/com',
+  'godaddy,com,11.99,21.99,11.99,USD,2026-10-21,https://www.godaddy.com/tlds/com',
+  'squarespace,com,20.00,20.00,,USD,2026-10-21,https://domains.squarespace.com',
+  'cloudflare,com,10.46,10.46,,USD,2026-10-21,https://www.cloudflare.com/products/registrar/',
+  'namecheap,com,11.28,18.48,11.48,EUR,2026-10-21,https://www.namecheap.com',
+  'unknownshop,com,1.00,1.00,1.00,USD,2026-10-21,https://example.com',
+].join('\n');
+
+export const bdrVerification = {
+  registrars: {
+    porkbun: { status: 'verified' },
+    godaddy: { status: 'verified' },
+    squarespace: { status: 'sample' },
+    cloudflare: { status: 'model_confirmed' },
+    namecheap: { status: 'verified' },
+  },
+};

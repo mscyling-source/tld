@@ -2,14 +2,17 @@
  * scripts/sync-prices.ts — registrar price sync pipeline.
  *
  * Design rules (docs/PRICING-DATA.md):
- *   - Authorized sources only: official public APIs and openly-licensed
- *     datasets. No registrar scraping, no anti-bot bypasses.
- *   - Validate before replace: a source that fails, returns zero valid
- *     rows, or shrinks by >50% keeps its previous rows untouched.
+ *   - Authorized sources only: official public APIs, officially published
+ *     pricing pages that permit automated read-only access, and openly
+ *     licensed datasets. No authentication bypass, no CAPTCHA solving, no
+ *     anti-bot evasion.
+ *   - Three timestamps, never conflated: when we FETCHED a source, when the
+ *     source OBSERVED a price, and when we VERIFIED it against the registrar.
+ *     A fetch never promotes a price to "verified".
+ *   - Validate before replace: a source that fails, returns zero valid rows,
+ *     or shrinks by >50% keeps its previous rows untouched.
  *   - Empty results never overwrite good data; total failure exits 1 and
  *     leaves data/prices.json byte-for-byte unchanged.
- *   - Freshness comes from source timestamps (`last_checked`), never from
- *     "when we rebuilt the site".
  *   - Atomic writes: tmp file + rename.
  *   - data/tlds.json (IANA catalog) is read-only here; this script never
  *     writes it.
@@ -17,15 +20,23 @@
  * Exit codes: 0 = dataset written (possibly partial), 1 = failure.
  */
 
-import { readFile, writeFile, rename } from 'node:fs/promises';
+import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { sourceAdapters, missingEnvFor, type SourceAdapter } from './pricing/sources/index.js';
 import { validateOffers, countRejections } from './pricing/validate.js';
 import { mergeBatches } from './pricing/merge.js';
+import { migrateDataset } from './pricing/migrate.js';
+import { buildReport, diffPrices, renderMarkdown, type SourceReport } from './pricing/report.js';
 import { purchaseUrlFor } from '../src/config/registrars.js';
-import { calcThreeYear, effectiveQuality } from '../src/lib/pricingCalc.js';
+import { applyTrustPolicy, quarantineReason } from './pricing/trust.js';
+import {
+  calcThreeYear,
+  effectiveEvidenceDate,
+  effectiveFreshness,
+  freshnessToQuality,
+} from '../src/lib/pricingCalc.js';
 import type {
   PriceDataset,
   PriceMeta,
@@ -33,13 +44,17 @@ import type {
   PriceSourceInfo,
   RawOffer,
   SourceBatch,
+  VerificationStatus,
 } from '../src/lib/pricingTypes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const PROJECT_ROOT = resolve(dirname(__filename), '..');
 const TLDS_PATH = resolve(PROJECT_ROOT, 'data', 'tlds.json');
-const PRICES_PATH = resolve(PROJECT_ROOT, 'data', 'prices.json');
-const PRICES_META_PATH = resolve(PROJECT_ROOT, 'data', 'prices-meta.json');
+const DATA_DIR = resolve(PROJECT_ROOT, 'data');
+const PRICES_PATH = resolve(DATA_DIR, 'prices.json');
+const PRICES_META_PATH = resolve(DATA_DIR, 'prices-meta.json');
+const REPORT_JSON_PATH = resolve(DATA_DIR, 'price-sync-report.json');
+const REPORT_MD_PATH = resolve(DATA_DIR, 'price-sync-report.md');
 
 /** A source must produce at least this fraction of its previous rows. */
 const SHRINK_RATIO = 0.5;
@@ -64,6 +79,7 @@ async function loadJson<T>(path: string): Promise<T | null> {
 }
 
 async function atomicWrite(path: string, value: unknown): Promise<void> {
+  await mkdir(dirname(path), { recursive: true });
   const tmp = `${path}.tmp`;
   await writeFile(tmp, `${JSON.stringify(value, null, 2)}\n`, 'utf-8');
   await rename(tmp, path);
@@ -74,53 +90,60 @@ async function runSource(
   adapter: SourceAdapter,
   knownTlds: Set<string>,
   previousBySource: Map<string, PriceOffer[]>,
+  previousFetchedAt: Map<string, string>,
   now: Date,
 ): Promise<SourceOutcome> {
+  const fetchedAt = now.toISOString();
   const base: PriceSourceInfo = {
     id: adapter.id,
     name: adapter.name,
     url: adapter.url,
     license: adapter.license,
     attribution: adapter.attribution,
+    verification_status: adapter.verificationStatus,
     rows: 0,
-    fetched_at: now.toISOString(),
+    fetched_at: fetchedAt,
+    oldest_observed_at: null,
     status: 'ok',
   };
   const previous = previousBySource.get(adapter.id) ?? [];
+  // When we keep previous rows we must NOT claim this run's fetch time for
+  // them — the old rows keep whatever fetch timestamp they were written with.
+  const keptFetchedAt = previousFetchedAt.get(adapter.id) ?? fetchedAt;
+
+  const keepPrevious = (status: PriceSourceInfo['status'], error: string, rejections: Record<string, number> = {}): SourceOutcome => {
+    const dates = previous
+      .map(o => effectiveEvidenceDate(o))
+      .filter((d): d is string => typeof d === 'string')
+      .sort();
+    return {
+      info: {
+        ...base,
+        status,
+        rows: previous.length,
+        fetched_at: keptFetchedAt,
+        oldest_observed_at: dates[0] ?? null,
+        error,
+        rejections,
+      },
+      offers: previous,
+      rejections,
+    };
+  };
 
   const missingEnv = missingEnvFor(adapter);
   if (missingEnv.length > 0) {
-    if (previous.length > 0) {
-      log(`${adapter.id}: missing env ${missingEnv.join(', ')} — keeping ${previous.length} previous rows`);
-      return {
-        info: { ...base, status: 'kept-previous', error: `missing env: ${missingEnv.join(', ')}` },
-        offers: previous,
-        rejections: {},
-      };
-    }
-    log(`${adapter.id}: missing env ${missingEnv.join(', ')} — source skipped`);
-    return {
-      info: { ...base, status: 'failed', error: `missing env: ${missingEnv.join(', ')}` },
-      offers: [],
-      rejections: {},
-    };
+    log(`${adapter.id}: missing env ${missingEnv.join(', ')} — ${previous.length ? `keeping ${previous.length} previous rows` : 'source skipped'}`);
+    return keepPrevious('kept-previous', `missing env: ${missingEnv.join(', ')}`);
   }
 
   let raw: RawOffer[];
   try {
-    raw = await adapter.fetchOffers();
+    raw = await adapter.fetchOffers(now);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    if (previous.length > 0) {
-      log(`${adapter.id}: fetch failed (${message}) — keeping ${previous.length} previous rows`);
-      return {
-        info: { ...base, status: 'kept-previous', error: message },
-        offers: previous,
-        rejections: {},
-      };
-    }
-    log(`${adapter.id}: fetch failed (${message}) — no previous data`);
-    return { info: { ...base, status: 'failed', error: message }, offers: [], rejections: {} };
+    log(`${adapter.id}: fetch failed (${message})`);
+    return keepPrevious(previous.length > 0 ? 'kept-previous' : 'failed', message);
   }
 
   const { valid, rejected } = validateOffers(raw, knownTlds);
@@ -128,42 +151,40 @@ async function runSource(
 
   // Empty/garbage results must never overwrite a working dataset.
   if (valid.length === 0) {
-    if (previous.length > 0) {
-      log(`${adapter.id}: 0 valid rows (raw=${raw.length}) — keeping ${previous.length} previous rows`);
-      return {
-        info: { ...base, status: 'kept-previous', rows: previous.length, error: 'no valid rows returned' },
-        offers: previous,
-        rejections: rejectionCounts,
-      };
-    }
-    log(`${adapter.id}: 0 valid rows (raw=${raw.length}) — source failed`);
-    return {
-      info: { ...base, status: 'failed', error: 'no valid rows returned' },
-      offers: [],
-      rejections: rejectionCounts,
-    };
+    log(`${adapter.id}: 0 valid rows (raw=${raw.length})`);
+    return keepPrevious(previous.length > 0 ? 'kept-previous' : 'failed', 'no valid rows returned', rejectionCounts);
   }
 
   // Sudden shrinkage usually means a broken payload — keep known-good data.
   if (previous.length > 0 && valid.length < previous.length * SHRINK_RATIO) {
-    log(
-      `${adapter.id}: suspicious shrink ${previous.length} → ${valid.length} — keeping previous rows`,
+    log(`${adapter.id}: suspicious shrink ${previous.length} → ${valid.length} — keeping previous rows`);
+    return keepPrevious(
+      'shrunk-kept-previous',
+      `shrink ${previous.length} → ${valid.length} (< ${SHRINK_RATIO * 100}%)`,
+      rejectionCounts,
     );
-    return {
-      info: {
-        ...base,
-        status: 'shrunk-kept-previous',
-        rows: previous.length,
-        error: `shrink ${previous.length} → ${valid.length} (< ${SHRINK_RATIO * 100}%)`,
-      },
-      offers: previous,
-      rejections: rejectionCounts,
-    };
   }
 
+  const dates = valid
+    .map(o => effectiveEvidenceDate(o))
+    .filter((d): d is string => typeof d === 'string')
+    .sort();
+
   const rejectedTotal = Object.values(rejectionCounts).reduce((a, b) => a + b, 0);
-  log(`${adapter.id}: ${valid.length} valid rows (${rejectedTotal} rejected: ${JSON.stringify(rejectionCounts)})`);
-  return { info: { ...base, rows: valid.length }, offers: valid, rejections: rejectionCounts };
+  log(
+    `${adapter.id}: ${valid.length} valid rows (${rejectedTotal} rejected: ${JSON.stringify(rejectionCounts)}), ` +
+      `oldest observation ${dates[0] ?? 'unknown'}`,
+  );
+  return {
+    info: {
+      ...base,
+      rows: valid.length,
+      oldest_observed_at: dates[0] ?? null,
+      rejections: rejectionCounts,
+    },
+    offers: valid,
+    rejections: rejectionCounts,
+  };
 }
 
 async function main(): Promise<void> {
@@ -180,19 +201,38 @@ async function main(): Promise<void> {
   }
   const knownTlds = new Set(tldDataset.records.map(r => r.ascii_name.toLowerCase()));
 
-  const previous = await loadJson<PriceDataset>(PRICES_PATH);
+  // Read and migrate whatever schema the repository currently holds.
+  const rawPrevious = await loadJson<unknown>(PRICES_PATH);
+  let previous: PriceDataset | null = null;
+  if (rawPrevious) {
+    try {
+      const { dataset, changed } = migrateDataset(rawPrevious);
+      previous = dataset;
+      if (changed) log('previous dataset migrated to schema v2 in memory');
+    } catch (e) {
+      log(`previous dataset unreadable (${e instanceof Error ? e.message : String(e)}) — treating as absent`);
+      previous = null;
+    }
+  }
+
   const previousBySource = new Map<string, PriceOffer[]>();
+  const previousFetchedAt = new Map<string, string>();
   for (const offer of previous?.offers ?? []) {
     const list = previousBySource.get(offer.source_id) ?? [];
     list.push(offer);
     previousBySource.set(offer.source_id, list);
   }
+  for (const source of previous?.sources ?? []) {
+    if (source.fetched_at) previousFetchedAt.set(source.id, source.fetched_at);
+  }
 
-  log(`starting: ${sourceAdapters.length} sources, catalog ${knownTlds.size} TLDs, previous ${previous?.offers.length ?? 0} offers`);
+  log(
+    `starting: ${sourceAdapters.length} sources, catalog ${knownTlds.size} TLDs, previous ${previous?.offers.length ?? 0} offers`,
+  );
 
   const outcomes: SourceOutcome[] = [];
   for (const adapter of sourceAdapters) {
-    outcomes.push(await runSource(adapter, knownTlds, previousBySource, now));
+    outcomes.push(await runSource(adapter, knownTlds, previousBySource, previousFetchedAt, now));
   }
 
   const anyRows = outcomes.some(o => o.offers.length > 0);
@@ -211,7 +251,7 @@ async function main(): Promise<void> {
     }
   }
 
-  // Merge across sources: one offer per (registrar, TLD), freshest wins.
+  // Merge across sources: one offer per (registrar, TLD), best evidence wins.
   const batches: SourceBatch[] = sourceAdapters
     .map(adapter => ({
       sourceId: adapter.id,
@@ -221,28 +261,58 @@ async function main(): Promise<void> {
     .filter(b => b.offers.length > 0);
   const merge = mergeBatches(batches);
 
-  const offers: PriceOffer[] = merge.merged.map(raw => ({
-    tld: raw.tld,
-    registrar_id: raw.registrar_id,
-    registrar_name: raw.registrar_name,
-    currency: 'USD',
-    register_usd: raw.register_usd,
-    renewal_usd: raw.renewal_usd,
-    transfer_usd: raw.transfer_usd,
-    promotional: raw.promotional,
-    promo_code: raw.promo_code,
-    promo_restrictions: raw.promo_restrictions,
-    three_year_usd: calcThreeYear(raw.register_usd, raw.renewal_usd),
-    source_id: raw.source_id,
-    source_url: raw.source_url,
-    purchase_url: raw.purchase_url,
-    last_checked: raw.last_checked,
-    quality: effectiveQuality(
-      { last_checked: raw.last_checked, source_status_stale: raw.source_status_stale },
+  const mapped: PriceOffer[] = merge.merged.map(raw => {
+    const evidenceDate = effectiveEvidenceDate(raw);
+    const verificationStatus: VerificationStatus = raw.verification_status ?? 'source_snapshot';
+    const freshness = effectiveFreshness(
+      {
+        price_verified_at: raw.price_verified_at ?? null,
+        price_observed_at: raw.price_observed_at,
+        verification_status: verificationStatus,
+        source_status_stale: raw.source_status_stale,
+      },
       now,
-    ),
-    source_status_stale: raw.source_status_stale,
-  }));
+    );
+    return {
+      tld: raw.tld,
+      registrar_id: raw.registrar_id,
+      registrar_name: raw.registrar_name,
+      currency: 'USD',
+      register_usd: raw.register_usd,
+      renewal_usd: raw.renewal_usd,
+      transfer_usd: raw.transfer_usd,
+      promotional: raw.promotional,
+      promo_code: raw.promo_code,
+      promo_restrictions: raw.promo_restrictions,
+      promotion_expires_at: raw.promotion_expires_at ?? null,
+      three_year_usd: calcThreeYear(raw.register_usd, raw.renewal_usd),
+      source_id: raw.source_id,
+      source_name: sourceNameFor(raw.source_id),
+      source_url: raw.source_url,
+      purchase_url: raw.purchase_url,
+      source_fetched_at:
+        outcomes.find(o => o.info.id === raw.source_id)?.info.fetched_at ?? nowIso,
+      price_observed_at: raw.price_observed_at,
+      price_verified_at: raw.price_verified_at ?? null,
+      verification_status: verificationStatus,
+      last_checked: evidenceDate ?? '',
+      freshness,
+      quality: freshnessToQuality(freshness),
+      source_status_stale: raw.source_status_stale,
+    };
+  });
+
+  // Placeholder pricing (see UNTRUSTED_REGISTRAR_PRICES) is kept but stripped
+  // of every trust signal, so it can never be presented as a current quote.
+  const trust = applyTrustPolicy(mapped);
+  const offers = trust.offers;
+  if (trust.quarantined.length > 0) {
+    log(
+      `quarantined as unverified: ${trust.quarantined
+        .map(id => `${id} — ${quarantineReason(id) ?? 'placeholder data'}`)
+        .join('; ')}`,
+    );
+  }
 
   if (offers.length === 0) {
     await writeFailureMeta(nowIso, 'merge produced zero offers — data/prices.json untouched');
@@ -253,18 +323,32 @@ async function main(): Promise<void> {
   const bySource: Record<string, number> = {};
   const tldsSeen = new Set<string>();
   const registrarsSeen = new Set<string>();
-  let verified = 0;
+  const byVerification: Record<VerificationStatus, number> = {
+    verified: 0,
+    source_snapshot: 0,
+    model_derived: 0,
+    unverified: 0,
+  };
+  let recent = 0;
+  let aging = 0;
   let stale = 0;
+  let unknown = 0;
   for (const offer of offers) {
     bySource[offer.source_id] = (bySource[offer.source_id] ?? 0) + 1;
+    byVerification[offer.verification_status] = (byVerification[offer.verification_status] ?? 0) + 1;
     tldsSeen.add(offer.tld);
     registrarsSeen.add(offer.registrar_id);
-    if (offer.quality === 'verified') verified++;
-    else stale++;
+    if (offer.freshness === 'recent') recent++;
+    else if (offer.freshness === 'aging') aging++;
+    else if (offer.freshness === 'stale') stale++;
+    else unknown++;
   }
+  // "verified_offers" counts first-party reads specifically; freshness is
+  // reported separately by recent/aging/stale/unknown.
+  const verified = byVerification.verified;
 
   const dataset: PriceDataset = {
-    schema_version: 1,
+    schema_version: 2,
     generated_at: nowIso,
     currency: 'USD',
     sources: outcomes.map(o => o.info),
@@ -281,6 +365,22 @@ async function main(): Promise<void> {
     .filter(o => o.info.error)
     .map(o => `${o.info.id}: ${o.info.error}`);
 
+  // Report: what we stand behind, not just what we downloaded.
+  const sourceReports: SourceReport[] = outcomes.map(o => ({
+    source_id: o.info.id,
+    source_name: o.info.name,
+    status: o.info.status,
+    verification_status: o.info.verification_status,
+    rows: o.info.rows,
+    rejected: Object.values(o.info.rejections ?? {}).reduce((a, b) => a + b, 0),
+    rejections: o.info.rejections ?? {},
+    fetched_at: o.info.fetched_at,
+    oldest_observed_at: o.info.oldest_observed_at,
+    error: o.info.error ?? null,
+  }));
+  const changes = diffPrices(previous, dataset);
+  const report = buildReport({ runAt: nowIso, dataset, sources: sourceReports, changes, now });
+
   const previousMeta = await loadJson<PriceMeta>(PRICES_META_PATH);
   const meta: PriceMeta = {
     last_success_at: metaStatus === 'failed' ? previousMeta?.last_success_at ?? null : nowIso,
@@ -292,8 +392,12 @@ async function main(): Promise<void> {
       tlids: tldsSeen.size,
       registrars: registrarsSeen.size,
       verified_offers: verified,
-      stale_offers: stale,
+      stale_offers: stale + unknown,
+      recent_offers: recent,
+      aging_offers: aging,
+      unknown_offers: unknown,
       by_source: bySource,
+      by_verification: byVerification,
     },
     history: [
       {
@@ -308,15 +412,33 @@ async function main(): Promise<void> {
 
   await atomicWrite(PRICES_PATH, dataset);
   await atomicWrite(PRICES_META_PATH, meta);
+  await atomicWrite(REPORT_JSON_PATH, report);
+  await writeFile(REPORT_MD_PATH, renderMarkdown(report), 'utf-8');
 
-  const supersededNote = merge.superseded > 0 ? `, ${merge.superseded} superseded by fresher copies` : '';
+  const supersededNote =
+    merge.superseded > 0
+      ? `, ${merge.superseded} superseded (${merge.upgradedByVerification} by better verification)`
+      : '';
   log(
     `done: ${offers.length} offers across ${tldsSeen.size} TLDs and ${registrarsSeen.size} registrars ` +
-      `(verified=${verified}, stale=${stale}${supersededNote}), status=${metaStatus}`,
+      `(verified=${byVerification.verified}, snapshot=${byVerification.source_snapshot}, ` +
+      `model=${byVerification.model_derived}, unverified=${byVerification.unverified}; ` +
+      `recent=${recent}, aging=${aging}, stale=${stale}, unknown=${unknown}${supersededNote}), status=${metaStatus}`,
   );
   for (const o of outcomes) {
-    log(`  source ${o.info.id}: ${o.info.status}${o.info.error ? ` (${o.info.error})` : ''} rows=${o.info.rows}`);
+    log(
+      `  source ${o.info.id} [${o.info.verification_status}]: ${o.info.status}` +
+        `${o.info.error ? ` (${o.info.error})` : ''} rows=${o.info.rows} oldest=${o.info.oldest_observed_at ?? 'unknown'}`,
+    );
   }
+  if (changes.length > 0) {
+    log(`significant price changes: ${changes.length} (see data/price-sync-report.md)`);
+  }
+}
+
+/** Display name for a source id, used on `source_name`. */
+function sourceNameFor(sourceId: string): string {
+  return sourceAdapters.find(a => a.id === sourceId)?.name ?? sourceId;
 }
 
 /** Write failure metadata without touching the price dataset. */
@@ -333,9 +455,16 @@ async function writeFailureMeta(nowIso: string, error: string): Promise<void> {
       registrars: 0,
       verified_offers: 0,
       stale_offers: 0,
+      recent_offers: 0,
+      aging_offers: 0,
+      unknown_offers: 0,
       by_source: {},
+      by_verification: { verified: 0, source_snapshot: 0, model_derived: 0, unverified: 0 },
     },
-    history: [{ at: nowIso, status: 'failed', offers: previousMeta?.counts.offers ?? 0, note: error }, ...(previousMeta?.history ?? [])].slice(0, 50),
+    history: [
+      { at: nowIso, status: 'failed', offers: previousMeta?.counts.offers ?? 0, note: error },
+      ...(previousMeta?.history ?? []),
+    ].slice(0, 50),
   };
   await atomicWrite(PRICES_META_PATH, meta);
 }

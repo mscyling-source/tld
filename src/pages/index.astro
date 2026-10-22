@@ -43,6 +43,8 @@ const unpricedTlds = allRecords
     generatedAt={priceStats?.generatedAt ?? null}
     tlids={priceStats?.tlids ?? 0}
     registrars={priceStats?.registrars ?? 0}
+    verifiedOffers={priceStats?.verifiedOffers ?? 0}
+    snapshotOffers={priceStats?.snapshotOffers ?? 0}
   />
 
   <section class="py-16 bg-white" aria-labelledby="popular-heading">
@@ -133,7 +135,7 @@ const unpricedTlds = allRecords
       <header class="text-center mb-12">
         <h2 id="stats-heading" class="text-2xl sm:text-3xl font-bold text-ink-900">Data at a Glance</h2>
       </header>
-      <dl class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-4xl mx-auto">
+      <dl class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 max-w-5xl mx-auto">
         <div class="text-center">
           <dt class="text-4xl sm:text-5xl font-bold text-brand-600">{allRecords.length}</dt>
           <dd class="text-ink-600">Total TLDs</dd>
@@ -141,6 +143,14 @@ const unpricedTlds = allRecords
         <div class="text-center">
           <dt class="text-4xl sm:text-5xl font-bold text-brand-600">{priceStats?.tlids ?? 0}</dt>
           <dd class="text-ink-600">Extensions with price data</dd>
+        </div>
+        <div class="text-center">
+          <dt class="text-4xl sm:text-5xl font-bold text-brand-600">{(priceStats?.verifiedOffers ?? 0).toLocaleString('en-US')}</dt>
+          <dd class="text-ink-600">Prices read from a registrar</dd>
+        </div>
+        <div class="text-center">
+          <dt class="text-4xl sm:text-5xl font-bold text-brand-600">{(priceStats?.snapshotOffers ?? 0).toLocaleString('en-US')}</dt>
+          <dd class="text-ink-600">Prices from dated snapshots</dd>
         </div>
         <div class="text-center">
           <dt class="text-4xl sm:text-5xl font-bold text-brand-600">{priceStats?.registrars ?? 0}</dt>

@@ -97,11 +97,38 @@ describe('sync-prices workflow — sync job', () => {
     expect(runs).toContain('last_success_at');
   });
 
-  it('commits only the price data files and pushes them to main', () => {
+  it('rejects provenance that a download timestamp could have faked', () => {
+    const runs = stepsOf(syncJob)
+      .map(s => s.run ?? '')
+      .join('\n');
+    // schema v2 is required, and the two provenance invariants are enforced:
+    expect(runs).toContain('schema_version !== 2');
+    expect(runs).toContain("o.verification_status === 'verified' && !o.price_verified_at");
+    expect(runs).toContain("o.verification_status !== 'verified' && o.price_verified_at");
+    expect(runs).toContain('o.last_checked !== evidence');
+  });
+
+  it('publishes the sync report to the run summary and as an artefact', () => {
+    const runs = stepsOf(syncJob)
+      .map(s => s.run ?? '')
+      .join('\n');
+    expect(runs).toContain('data/price-sync-report.md');
+    expect(runs).toContain('GITHUB_STEP_SUMMARY');
+
+    const upload = findStep(syncJob, s => s.uses?.startsWith('actions/upload-artifact'));
+    expect(upload).toBeDefined();
+    const paths = String(upload.with.path);
+    expect(paths).toContain('data/price-sync-report.json');
+    expect(paths).toContain('data/price-sync-report.md');
+  });
+
+  it('commits the price data and the report that describes it', () => {
     const run = stepsOf(syncJob)
       .map(s => s.run ?? '')
       .join('\n');
     expect(run).toContain('git add data/prices.json data/prices-meta.json');
+    expect(run).toContain('data/price-sync-report.json');
+    expect(run).toContain('data/price-sync-report.md');
     expect(run).toMatch(/git push origin HEAD:main/);
   });
 
@@ -202,10 +229,19 @@ describe('price dataset satisfies the workflow contract', () => {
     }
   });
 
-  it('keeps a check date on every offer so freshness never depends on the build', () => {
+  it('keeps an evidence date on every offer so freshness never depends on the build', () => {
     for (const offer of dataset.offers) {
-      expect(offer.last_checked).toBeTruthy();
-      expect(Number.isNaN(Date.parse(offer.last_checked))).toBe(false);
+      if (dataset.schema_version === 2) {
+        // v2: last_checked is the evidence alias and must agree with provenance.
+        const evidence = offer.price_verified_at || offer.price_observed_at || '';
+        expect(offer.last_checked).toBe(evidence);
+        if (offer.verification_status !== 'unverified') {
+          expect(Number.isNaN(Date.parse(evidence))).toBe(false);
+        }
+      } else {
+        expect(offer.last_checked).toBeTruthy();
+        expect(Number.isNaN(Date.parse(offer.last_checked))).toBe(false);
+      }
     }
   });
 

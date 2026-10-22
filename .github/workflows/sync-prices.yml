@@ -57,7 +57,7 @@ jobs:
   sync:
     name: Refresh price data
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     outputs:
       changed: ${{ steps.changes.outputs.changed }}
       pushed_commit: ${{ steps.push.outputs.commit }}
@@ -82,24 +82,35 @@ jobs:
           npm run sync:prices 2>&1 | tee sync-prices-output.log
           echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
-      - name: Upload sync log
+      - name: Upload sync log and report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: sync-prices-log
-          path: sync-prices-output.log
+          path: |
+            sync-prices-output.log
+            data/price-sync-report.json
+            data/price-sync-report.md
           retention-days: 30
 
       # A sync that "succeeded" but leaves an implausible dataset must fail
       # loudly — never publish a build generated from a gutted price file.
       # The licence/attribution check keeps the CC BY 4.0 credit requirements
       # from being dropped by a future source change.
+      #
+      # The provenance checks are the important ones: a `verified` row must
+      # carry a verification date, and a non-verified row must NOT — that is
+      # what stops a download timestamp from masquerading as a verification.
       - name: Verify dataset
         if: steps.sync.outputs.exit_code == '0'
         run: |
           node -e "
             const d = require('./data/prices.json');
             const m = require('./data/prices-meta.json');
+            if (d.schema_version !== 2) {
+              console.error('Expected schema_version 2, got ' + d.schema_version);
+              process.exit(1);
+            }
             if (!d.offers || d.offers.length < 500) {
               console.error('Price dataset implausibly small: ' + (d.offers || []).length);
               process.exit(1);
@@ -112,6 +123,7 @@ jobs:
               console.error('Unexpected dataset currency: ' + d.currency);
               process.exit(1);
             }
+            const tiers = new Set(['verified', 'source_snapshot', 'model_derived', 'unverified']);
             for (const s of d.sources || []) {
               if (/CC[ -]?BY/i.test(s.license || '') && !s.attribution) {
                 console.error('Source ' + s.id + ' requires attribution but has none');
@@ -119,42 +131,46 @@ jobs:
               }
             }
             for (const o of d.offers) {
-              if (!o.last_checked) {
-                console.error('Offer without a check date: ' + o.registrar_id + '/' + o.tld);
+              const label = o.registrar_id + '/' + o.tld;
+              if (!tiers.has(o.verification_status)) {
+                console.error('Offer without a valid verification_status: ' + label);
+                process.exit(1);
+              }
+              if (o.verification_status === 'verified' && !o.price_verified_at) {
+                console.error('Verified offer without a verification date: ' + label);
+                process.exit(1);
+              }
+              if (o.verification_status !== 'verified' && o.price_verified_at) {
+                console.error('Non-verified offer claims a verification date: ' + label);
+                process.exit(1);
+              }
+              // last_checked is the compatibility alias for the EVIDENCE date,
+              // never the fetch date. It must agree with the provenance fields.
+              const evidence = o.price_verified_at || o.price_observed_at || '';
+              if (o.last_checked !== evidence) {
+                console.error('Evidence date does not match the offer provenance: ' + label);
+                process.exit(1);
+              }
+              if (!evidence && o.verification_status !== 'unverified') {
+                console.error('Offer without an evidence date: ' + label);
                 process.exit(1);
               }
             }
-            console.log('Price dataset OK: ' + d.offers.length + ' offers, status=' + m.status);
+            console.log('Price dataset OK: ' + d.offers.length + ' offers, status=' + m.status +
+              ', verified=' + m.counts.verified_offers + ', stale=' + m.counts.stale_offers);
           "
 
-      - name: Summarise sources
+      # The report is written by the sync itself (data/price-sync-report.md) so
+      # the workflow summary and the artefact can never disagree about how much
+      # of the published data we actually stand behind.
+      - name: Publish sync report to the run summary
         if: steps.sync.outputs.exit_code == '0'
         run: |
-          node -e "
-            const fs = require('fs');
-            const d = require('./data/prices.json');
-            const m = require('./data/prices-meta.json');
-            const lines = [];
-            lines.push('### Registrar price sync');
-            lines.push('');
-            lines.push('- Offers: **' + d.offers.length + '** across **' +
-              new Set(d.offers.map(o => o.tld)).size + '** TLDs and **' +
-              new Set(d.offers.map(o => o.registrar_id)).size + '** registrars');
-            lines.push('- Verified: ' + m.counts.verified_offers + ' · stale: ' + m.counts.stale_offers);
-            lines.push('- Dataset generated: ' + d.generated_at);
-            lines.push('');
-            lines.push('| Source | Status | Rows | Licence | Attribution |');
-            lines.push('|---|---|---|---|---|');
-            for (const s of d.sources) {
-              lines.push('| ' + s.id + ' | ' + s.status + ' | ' + s.rows + ' | ' + s.license +
-                ' | ' + (s.attribution || '—') + ' |');
-            }
-            if (m.last_error) {
-              lines.push('');
-              lines.push('> **Warnings:** ' + m.last_error);
-            }
-            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
-          "
+          if [ -f data/price-sync-report.md ]; then
+            cat data/price-sync-report.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::data/price-sync-report.md was not written by the sync"
+          fi
 
       - name: Run unit tests
         if: steps.sync.outputs.exit_code == '0'
@@ -178,7 +194,10 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add data/prices.json data/prices-meta.json
+          # The report is committed alongside the dataset it describes, so the
+          # repo always keeps the provenance snapshot for the data it serves.
+          git add data/prices.json data/prices-meta.json \
+            data/price-sync-report.json data/price-sync-report.md
           git commit -m "chore: sync registrar pricing ($(date -u +'%Y-%m-%d'))"
           # Rebase onto a possibly newer main so a human commit made during
           # the run does not turn the push into a non-fast-forward failure.

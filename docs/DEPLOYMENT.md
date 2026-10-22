@@ -100,10 +100,11 @@ credentials, and it never prints a partial value. Until the secrets exist:
 
 | Stage | Behaviour |
 |---|---|
-| **Fetch** | `npm run sync:prices` pulls Porkbun's public pricing API, Pikkly (CC BY 4.0) and Open Domain Data (CC BY 4.0). A source that fails, returns nothing usable, or shrinks by more than 50 % **keeps its previous rows**. If every source fails, the script exits 1 and `data/prices.json` is left byte-for-byte unchanged. |
-| **Validate** | Rows with unknown TLDs, invalid prices, missing USD currency, invalid URLs, unparsable dates or duplicates are rejected and counted. Every offer keeps its own `last_checked` date; every source keeps its licence and attribution string. |
+| **Fetch** | `npm run sync:prices` reads five registrars' own published price lists (Porkbun API, Dynadot, Gandi, Hover, IONOS) plus three CC BY 4.0 datasets (Best Domain Registrars, Pikkly, Open Domain Data). A source that fails, returns nothing usable, or shrinks by more than 50 % **keeps its previous rows** and keeps its original fetch timestamp. If every source fails, the script exits 1 and `data/prices.json` is left byte-for-byte unchanged. |
+| **Validate** | Rows with unknown TLDs, invalid prices, missing USD currency, invalid URLs, unparsable dates, duplicates, or a `verified` claim with no verification date are rejected and counted. Every offer keeps its three provenance timestamps; every source keeps its licence and attribution string. |
+| **Report** | `data/price-sync-report.json` + `.md` state how many offers are first-party reads, how many are snapshots, and the oldest evidence in the dataset. The Markdown is appended to the run summary and both files are uploaded as artefacts on every run. |
 | **Test** | `npm test` must pass before anything is published. |
-| **Commit** | Only `data/prices.json` and `data/prices-meta.json` are committed, as `chore: sync registrar pricing (<date>)`. The push is rebased onto `main` first, so a human commit made during the run does not break the push. |
+| **Commit** | Only `data/prices.json`, `data/prices-meta.json` and the two report files are committed, as `chore: sync registrar pricing (<date>)`. The push is rebased onto `main` first, so a human commit made during the run does not break the push. |
 | **Build** | `PUBLIC_SITE_URL=https://tld-directory.pages.dev npm run build`, then a sanity check that the built homepage contains the price table and that the built price index comes from the freshly synced dataset. |
 | **Publish** | `npx wrangler@<pinned> pages deploy dist --project-name tld-directory --branch main --commit-hash <sha>` — the same project, the same hostname, the same direct-upload architecture. |
 | **Verify** | The live homepage and `/prices-index.json` are fetched; the run fails if the live dataset is not the one just built. |

@@ -5,15 +5,18 @@
  * with the IANA catalog for types. All functions run during `astro build` —
  * no runtime I/O.
  *
- * Freshness is recomputed from each offer's source `last_checked` at build
- * time, so a rebuild can never make old prices look "current": quality only
- * ever degrades with age (source-flagged stale rows never upgrade).
+ * Freshness is recomputed from each offer's own evidence date at build time,
+ * so a rebuild can never make old prices look current: an offer's freshness
+ * band only ever degrades with age, because it is derived from the source's
+ * observation/verification date rather than from the build clock. A row with
+ * no usable evidence date is shown as unverified rather than being dated "now".
  */
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { ComparisonRow, PriceDataset, PriceMeta, PriceOffer } from './pricingTypes.js';
-import { cheapestPoint, effectiveQuality } from './pricingCalc.js';
+import type { ComparisonRow, PriceDataset, PriceMeta, PriceOffer, VerificationStatus } from './pricingTypes.js';
+import { cheapestPoint, effectiveFreshness, freshnessToQuality } from './pricingCalc.js';
+import { isFirstPartySource } from '../config/sources.js';
 import { loadAllRecords } from './store.js';
 
 const DATA_DIR = path.resolve(process.cwd(), 'data');
@@ -21,6 +24,95 @@ const PRICES_PATH = path.join(DATA_DIR, 'prices.json');
 const PRICES_META_PATH = path.join(DATA_DIR, 'prices-meta.json');
 
 let cache: { dataset: PriceDataset | null; meta: PriceMeta | null } | null = null;
+
+/**
+ * Normalise a possibly-v1 dataset read from disk.
+ *
+ * v1 rows carry a single `last_checked` and no verification tier. They are
+ * treated as `source_snapshot` with that date as the observation date, which
+ * is exactly what v1 documented ("the most conservative timestamp the source
+ * exposes") — never as verified, because a v1 row cannot prove we read it.
+ */
+function normalizeOffer(raw: Record<string, unknown>): PriceOffer | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const tld = typeof raw.tld === 'string' ? raw.tld : null;
+  const registrarId = typeof raw.registrar_id === 'string' ? raw.registrar_id : null;
+  if (!tld || !registrarId) return null;
+
+  const num = (v: unknown): number | null =>
+    typeof v === 'number' && Number.isFinite(v) ? v : null;
+  const iso = (v: unknown): string | null => {
+    if (typeof v !== 'string' || !v) return null;
+    return Number.isNaN(Date.parse(v)) ? null : v;
+  };
+
+  const observedAt = iso(raw.price_observed_at) ?? iso(raw.last_checked);
+  const verifiedAt = iso(raw.price_verified_at);
+  const declared = raw.verification_status;
+  const sourceId = typeof raw.source_id === 'string' ? raw.source_id : 'unknown';
+  // A v1 row declares no tier. Classify it by the source that produced it:
+  // first-party reads may be `verified`, everything else is a snapshot. A
+  // declared tier always wins, because the adapter is the authority on how it
+  // obtained the figure.
+  const inferred: VerificationStatus = isFirstPartySource(sourceId)
+    ? // A first-party read is only "verified" if it carries a date to back it.
+      observedAt
+      ? 'verified'
+      : 'unverified'
+    : 'source_snapshot';
+  const verificationStatus: VerificationStatus =
+    declared === 'verified' || declared === 'source_snapshot' || declared === 'model_derived' || declared === 'unverified'
+      ? declared
+      : inferred;
+  // A snapshot can never carry a verification date, whatever the file says.
+  const effectiveVerifiedAt =
+    verificationStatus === 'verified' ? (verifiedAt ?? observedAt) : null;
+
+  return {
+    tld,
+    registrar_id: registrarId,
+    registrar_name: typeof raw.registrar_name === 'string' ? raw.registrar_name : registrarId,
+    currency: 'USD',
+    register_usd: num(raw.register_usd),
+    renewal_usd: num(raw.renewal_usd),
+    transfer_usd: num(raw.transfer_usd),
+    promotional: raw.promotional === true,
+    promo_code: typeof raw.promo_code === 'string' ? raw.promo_code : null,
+    promo_restrictions: typeof raw.promo_restrictions === 'string' ? raw.promo_restrictions : null,
+    promotion_expires_at: iso(raw.promotion_expires_at),
+    three_year_usd: num(raw.three_year_usd),
+    source_id: sourceId,
+    source_name: typeof raw.source_name === 'string' ? raw.source_name : 'Unknown source',
+    source_url: typeof raw.source_url === 'string' ? raw.source_url : '',
+    purchase_url: typeof raw.purchase_url === 'string' ? raw.purchase_url : null,
+    source_fetched_at: iso(raw.source_fetched_at) ?? '',
+    price_observed_at: observedAt,
+    price_verified_at: effectiveVerifiedAt,
+    verification_status: verificationStatus,
+    last_checked: effectiveVerifiedAt ?? observedAt ?? '',
+    freshness: 'unknown',
+    quality: 'stale',
+    source_status_stale: raw.source_status_stale === true,
+  };
+}
+
+function normalizeDataset(raw: unknown): PriceDataset | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const record = raw as Record<string, unknown>;
+  const offersRaw = Array.isArray(record.offers) ? record.offers : [];
+  const offers = offersRaw
+    .map(o => normalizeOffer(o as Record<string, unknown>))
+    .filter((o): o is PriceOffer => o !== null);
+  const sourcesRaw = Array.isArray(record.sources) ? record.sources : [];
+  return {
+    // v1 datasets are migrated in memory; the in-memory shape is always v2.
+    schema_version: 2,
+    generated_at: typeof record.generated_at === 'string' ? record.generated_at : '',
+    currency: 'USD',
+    sources: sourcesRaw as PriceDataset['sources'],
+    offers,
+  };
+}
 
 async function readPrices(): Promise<{ dataset: PriceDataset | null; meta: PriceMeta | null }> {
   if (cache) return cache;
@@ -32,7 +124,8 @@ async function readPrices(): Promise<{ dataset: PriceDataset | null; meta: Price
       throw e;
     }
   };
-  cache = { dataset: await read(PRICES_PATH), meta: await read(PRICES_META_PATH) };
+  const [rawDataset, meta] = await Promise.all([read(PRICES_PATH), read(PRICES_META_PATH)]);
+  cache = { dataset: normalizeDataset(rawDataset), meta };
   return cache;
 }
 
@@ -46,15 +139,30 @@ export async function readPriceMeta(): Promise<PriceMeta | null> {
   return (await readPrices()).meta;
 }
 
+/** Recompute freshness/quality for every offer against the build clock. */
+export function refreshOffers(offers: PriceOffer[], now: Date): PriceOffer[] {
+  return offers.map(o => {
+    const freshness = effectiveFreshness(o, now);
+    return {
+      ...o,
+      freshness,
+      quality: freshnessToQuality(freshness),
+      // Keep the compatibility alias in step with the recomputed evidence date.
+      last_checked: o.price_verified_at ?? o.price_observed_at ?? '',
+    };
+  });
+}
+
 /** Freshness-adjusted offers for one TLD (`com` or `.com`). */
 export async function getOffersForTld(tld: string): Promise<PriceOffer[]> {
   const ds = await readPrices();
   if (!ds?.dataset) return [];
   const bare = tld.replace(/^\./, '').toLowerCase();
   const now = new Date();
-  return ds.dataset.offers
-    .filter(o => o.tld === bare)
-    .map(o => ({ ...o, quality: effectiveQuality(o, now) }));
+  return refreshOffers(
+    ds.dataset.offers.filter(o => o.tld === bare),
+    now,
+  );
 }
 
 /**
@@ -80,8 +188,8 @@ export async function buildComparisonRows(): Promise<ComparisonRow[]> {
 
   const rows: ComparisonRow[] = [];
   for (const [tld, offers] of byTld) {
-    // Refresh quality against the build clock for honest sorting/filtering.
-    const fresh = offers.map(o => ({ ...o, quality: effectiveQuality(o, now) }));
+    // Refresh freshness against the build clock for honest sorting/filtering.
+    const fresh = refreshOffers(offers, now);
     const register = cheapestPoint(fresh, 'register_usd', now);
     const renewal = cheapestPoint(fresh, 'renewal_usd', now);
     const transfer = cheapestPoint(fresh, 'transfer_usd', now);
@@ -91,17 +199,22 @@ export async function buildComparisonRows(): Promise<ComparisonRow[]> {
     const registrars = [...new Set(fresh.map(o => o.registrar_name))].sort((a, b) =>
       a.localeCompare(b, 'en'),
     );
-    const latest = fresh.reduce(
-      (max, o) => (Date.parse(o.last_checked) > Date.parse(max) ? o.last_checked : max),
-      fresh[0].last_checked,
-    );
+    const dates = fresh
+      .map(o => o.last_checked)
+      .filter((d): d is string => typeof d === 'string' && d !== '');
+    const latest = dates.length
+      ? dates.reduce((max, d) => (Date.parse(d) > Date.parse(max) ? d : max))
+      : '';
 
     rows.push({
       suffix: `.${tld}`,
       tld,
       type: typeByTld.get(tld) ?? null,
       offers: fresh.length,
-      verified_offers: fresh.filter(o => o.quality === 'verified').length,
+      // "Verified" counts first-party reads regardless of age — freshness is a
+      // separate axis and is reported by `stale_offers` and each point's badge.
+      verified_offers: fresh.filter(o => o.verification_status === 'verified').length,
+      stale_offers: fresh.filter(o => o.freshness === 'stale' || o.freshness === 'unknown').length,
       register,
       renewal,
       transfer,
@@ -112,6 +225,9 @@ export async function buildComparisonRows(): Promise<ComparisonRow[]> {
       visit_registrar: firstPoint?.registrar_name ?? '',
       registrars,
       latest_checked: latest,
+      // When nothing was read from a registrar's own source, the UI must
+      // qualify the cheapest figure instead of calling it a current best.
+      only_snapshots: fresh.length > 0 && fresh.every(o => o.verification_status !== 'verified'),
     });
   }
 
@@ -119,21 +235,43 @@ export async function buildComparisonRows(): Promise<ComparisonRow[]> {
 }
 
 /** Headline numbers for the homepage / footer. */
-export async function getPriceStats(): Promise<{
+export interface PriceStats {
   tlids: number;
   registrars: number;
   offers: number;
   generatedAt: string | null;
-  sources: Array<{ id: string; name: string; url: string; license: string; attribution: string | null; status: string }>;
-} | null> {
-  const { dataset, meta } = await readPrices();
+  /** Offers read from a registrar's own published price list. */
+  verifiedOffers: number;
+  /** Offers carried by a dated third-party dataset. */
+  snapshotOffers: number;
+  /** Offers whose evidence is older than 30 days, or has no date at all. */
+  staleOffers: number;
+  sources: Array<{
+    id: string;
+    name: string;
+    url: string;
+    license: string;
+    attribution: string | null;
+    status: string;
+    verification_status: string;
+    oldest_observed_at: string | null;
+  }>;
+}
+
+export async function getPriceStats(): Promise<PriceStats | null> {
+  const { dataset } = await readPrices();
   if (!dataset) return null;
-  const registrars = new Set(dataset.offers.map(o => o.registrar_id));
+  const now = new Date();
+  const fresh = refreshOffers(dataset.offers, now);
+  const registrars = new Set(fresh.map(o => o.registrar_id));
   return {
-    tlids: new Set(dataset.offers.map(o => o.tld)).size,
+    tlids: new Set(fresh.map(o => o.tld)).size,
     registrars: registrars.size,
-    offers: dataset.offers.length,
+    offers: fresh.length,
     generatedAt: dataset.generated_at,
+    verifiedOffers: fresh.filter(o => o.verification_status === 'verified').length,
+    snapshotOffers: fresh.filter(o => o.verification_status === 'source_snapshot').length,
+    staleOffers: fresh.filter(o => o.freshness === 'stale' || o.freshness === 'unknown').length,
     sources: dataset.sources.map(s => ({
       id: s.id,
       name: s.name,
@@ -141,6 +279,8 @@ export async function getPriceStats(): Promise<{
       license: s.license,
       attribution: s.attribution,
       status: s.status,
+      verification_status: s.verification_status ?? 'source_snapshot',
+      oldest_observed_at: s.oldest_observed_at ?? null,
     })),
   };
 }

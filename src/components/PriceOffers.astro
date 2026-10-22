@@ -1,9 +1,27 @@
 ---
 // PriceOffers.astro — per-TLD registrar price comparison on detail pages.
-// Every figure is a stored source quote with its own last-checked date;
-// missing values render as "—" with an explanation, never as 0.
+//
+// Every figure is a stored source quote with its own evidence date. The two
+// provenance questions are answered separately and visibly:
+//   - how the price was obtained  (verified / snapshot / modelled)
+//   - how old that evidence is    (recent / aging / stale / unknown)
+// A missing value renders as "—" with an explanation, never as 0, and a price
+// whose evidence is older than the stale threshold is never presented as a
+// current quote without saying so.
 import type { PriceOffer } from '../lib/pricingTypes.js';
-import { cheapestPoint, effectiveQuality, formatUsd } from '../lib/pricingCalc.js';
+import {
+  cheapestPoint,
+  effectiveFreshness,
+  formatDate,
+  formatUsd,
+  isPromotionExpired,
+} from '../lib/pricingCalc.js';
+import {
+  FRESHNESS_EXPLANATION,
+  FRESHNESS_LABEL,
+  VERIFICATION_EXPLANATION,
+  VERIFICATION_LABEL,
+} from '../config/freshness.js';
 import { outboundRel, hasAffiliate } from '../config/registrars.js';
 
 interface Props {
@@ -14,7 +32,10 @@ interface Props {
 const { suffix, offers } = Astro.props;
 const now = new Date();
 
-const fresh = offers.map(o => ({ ...o, quality: effectiveQuality(o, now) }));
+const fresh = offers.map(o => ({
+  ...o,
+  freshness: effectiveFreshness(o, now),
+}));
 const minRegister = cheapestPoint(fresh, 'register_usd', now);
 const minRenewal = cheapestPoint(fresh, 'renewal_usd', now);
 const minThreeYear = cheapestPoint(fresh, 'three_year_usd', now);
@@ -26,23 +47,46 @@ const sorted = [...fresh].sort((a, b) => {
   return a.registrar_name.localeCompare(b.registrar_name, 'en');
 });
 
-const latest = fresh.reduce(
-  (max, o) => (Date.parse(o.last_checked) > Date.parse(max) ? o.last_checked : max),
-  fresh[0]?.last_checked ?? '',
-);
+const dates = fresh.map(o => o.last_checked).filter(d => typeof d === 'string' && d !== '');
+const latest = dates.length
+  ? dates.reduce((max, d) => (Date.parse(d) > Date.parse(max) ? d : max))
+  : '';
 const latestLabel = latest
   ? new Date(latest).toLocaleDateString('en-US', { dateStyle: 'long', timeZone: 'UTC' })
   : null;
 
+// A "cheapest" badge must never imply a current quote when the winning row is
+// only a snapshot, is stale, or has no usable date — the badge is suppressed
+// and the row's own provenance badges carry the caveat.
+const cheapestIsCurrent = (point: typeof minRegister): boolean =>
+  point !== null &&
+  point.verification_status === 'verified' &&
+  point.freshness !== 'stale' &&
+  point.freshness !== 'unknown';
+
+const anyVerified = fresh.some(o => o.verification_status === 'verified');
 const anyAffiliate = fresh.some(o => hasAffiliate(o.registrar_id));
 const fmt = (v: number | null) => (v === null ? null : formatUsd(v));
+
+const badgeClass: Record<string, string> = {
+  recent: 'bg-emerald-100 text-emerald-800',
+  aging: 'bg-amber-100 text-amber-800',
+  stale: 'bg-rose-100 text-rose-800',
+  unknown: 'bg-ink-200 text-ink-700',
+};
+const verificationBadgeClass: Record<string, string> = {
+  verified: 'bg-sky-100 text-sky-800',
+  source_snapshot: 'bg-violet-100 text-violet-800',
+  model_derived: 'bg-amber-100 text-amber-800',
+  unverified: 'bg-ink-200 text-ink-700',
+};
 ---
 
 {fresh.length === 0 ? (
   <section class="mt-8 rounded-xl border border-ink-200 bg-white p-5" aria-labelledby="no-prices-heading">
     <h2 id="no-prices-heading" class="text-lg font-semibold text-ink-900">Registrar prices for {suffix}</h2>
     <p class="mt-2 text-sm text-ink-600">
-      No verified price data for {suffix} yet. We only show prices sourced from published registrar
+      No price data for {suffix} yet. We only show prices sourced from published registrar
       price lists — never estimates. Check the official sources below, or revisit later: price data
       updates on a schedule. <a href="/data-sources/" class="text-brand-600 hover:underline">How our price data works →</a>
     </p>
@@ -53,12 +97,20 @@ const fmt = (v: number | null) => (v === null ? null : formatUsd(v));
       <h2 id="price-heading" class="text-lg font-semibold text-ink-900">
         Where to register {suffix} — price comparison
       </h2>
-      {latestLabel && (
-        <p class="text-xs text-ink-500">
-          All prices in USD · last checked <time datetime={latest}>{latestLabel}</time>
-        </p>
-      )}
+      <p class="text-xs text-ink-500">
+        All prices in USD
+        {latestLabel && <> · newest price evidence <time datetime={latest}>{latestLabel}</time></>}
+      </p>
     </header>
+
+    {!anyVerified && (
+      <p class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <strong>No price below was read from a registrar’s own price list.</strong>
+        These figures come from openly licensed dated snapshots, so they reflect what their
+        sources recorded on the date shown — not necessarily today’s price. Confirm at the
+        registrar before buying.
+      </p>
+    )}
 
     <div class="overflow-x-auto">
       <table class="min-w-[720px] w-full text-sm">
@@ -70,24 +122,35 @@ const fmt = (v: number | null) => (v === null ? null : formatUsd(v));
             <th scope="col" class="px-3 py-2.5 font-semibold text-ink-700">Transfer</th>
             <th scope="col" class="px-3 py-2.5 font-semibold text-ink-700">3-year cost</th>
             <th scope="col" class="px-3 py-2.5 font-semibold text-ink-700">Promotion</th>
-            <th scope="col" class="px-3 py-2.5 font-semibold text-ink-700">Last checked<span class="block text-xs font-normal text-ink-500">links to source</span></th>
+            <th scope="col" class="px-3 py-2.5 font-semibold text-ink-700">Price evidence<span class="block text-xs font-normal text-ink-500">how obtained &amp; when</span></th>
             <th scope="col" class="px-3 py-2.5"><span class="sr-only">Buy</span></th>
           </tr>
         </thead>
         <tbody class="divide-y divide-ink-100">
           {sorted.map(o => {
-            const checked = new Date(o.last_checked).toLocaleDateString('en-US', { dateStyle: 'medium', timeZone: 'UTC' });
-            const stale = o.quality === 'stale';
-            const cheapestRegister = minRegister?.registrar_id === o.registrar_id;
-            const cheapestRenewal = minRenewal?.registrar_id === o.registrar_id;
-            const bestValue = minThreeYear?.registrar_id === o.registrar_id;
+            const evidenceDate = o.price_verified_at ?? o.price_observed_at ?? null;
+            const checked = formatDate(evidenceDate);
+            const evidenceKind = o.price_verified_at ? 'verified' : 'observed';
+            const promoExpired = isPromotionExpired(o.promotion_expires_at, now);
+            const cheapestRegister =
+              minRegister?.registrar_id === o.registrar_id && cheapestIsCurrent(minRegister);
+            const cheapestRenewal =
+              minRenewal?.registrar_id === o.registrar_id && cheapestIsCurrent(minRenewal);
+            const bestValue =
+              minThreeYear?.registrar_id === o.registrar_id && cheapestIsCurrent(minThreeYear);
+            const showPromo = o.promotional && !promoExpired;
             return (
               <tr>
                 <td class="px-3 py-3 font-medium text-ink-900">
                   {o.registrar_name}
-                  {stale && (
-                    <span class="ml-1 align-middle px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-800 rounded" title="This source's data is older than 30 days">stale</span>
-                  )}
+                  <span
+                    class={`ml-1 align-middle px-1.5 py-0.5 text-[10px] font-medium rounded ${verificationBadgeClass[o.verification_status]}`}
+                    title={VERIFICATION_EXPLANATION[o.verification_status]}
+                  >{VERIFICATION_LABEL[o.verification_status]}</span>
+                  <span
+                    class={`ml-1 align-middle px-1.5 py-0.5 text-[10px] font-medium rounded ${badgeClass[o.freshness]}`}
+                    title={FRESHNESS_EXPLANATION[o.freshness]}
+                  >{FRESHNESS_LABEL[o.freshness]}</span>
                 </td>
                 <td class="px-3 py-3">
                   {fmt(o.register_usd) ? (
@@ -96,7 +159,8 @@ const fmt = (v: number | null) => (v === null ? null : formatUsd(v));
                     <span class="text-ink-400" title="This source does not publish a registration price">—</span>
                   )}
                   {cheapestRegister && <span class="ml-1.5 align-middle px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-800 rounded">cheapest</span>}
-                  {o.promotional && <span class="ml-1.5 align-middle px-1.5 py-0.5 text-[10px] font-medium bg-sky-100 text-sky-800 rounded" title="Source flags this as a promotional first-year price">promo</span>}
+                  {showPromo && <span class="ml-1.5 align-middle px-1.5 py-0.5 text-[10px] font-medium bg-sky-100 text-sky-800 rounded" title="Source flags this as a promotional first-year price">promo</span>}
+                  {promoExpired && <span class="ml-1.5 align-middle px-1.5 py-0.5 text-[10px] font-medium bg-ink-200 text-ink-700 rounded" title="The published promotion end date has passed">promo ended</span>}
                 </td>
                 <td class="px-3 py-3">
                   {fmt(o.renewal_usd) ? (
@@ -120,12 +184,14 @@ const fmt = (v: number | null) => (v === null ? null : formatUsd(v));
                   )}
                 </td>
                 <td class="px-3 py-3 text-xs text-ink-600">
-                  {o.promo_code ? (
+                  {promoExpired ? (
+                    <span class="text-ink-500">Promotion ended {formatDate(o.promotion_expires_at)}</span>
+                  ) : o.promo_code ? (
                     <>
                       <code class="px-1 py-0.5 bg-ink-100 rounded">{o.promo_code}</code>
                       {o.promo_restrictions && <span class="block mt-0.5">{o.promo_restrictions}</span>}
                     </>
-                  ) : o.promotional ? (
+                  ) : showPromo ? (
                     <span>Promotional first-year price — conditions may apply at the registrar</span>
                   ) : (
                     <span class="text-ink-400">—</span>
@@ -136,9 +202,9 @@ const fmt = (v: number | null) => (v === null ? null : formatUsd(v));
                     href={o.source_url}
                     target="_blank"
                     rel="noopener"
-                    title={`Price source: ${o.source_id} — open the page where this price was published`}
+                    title={`Price source: ${o.source_name} — ${VERIFICATION_EXPLANATION[o.verification_status]}`}
                     class="underline decoration-dotted hover:text-brand-600"
-                  ><time datetime={o.last_checked}>{checked}</time></a>
+                  >{checked ?? 'no date'}<span class="block text-[10px] text-ink-400">{evidenceKind}</span></a>
                 </td>
                 <td class="px-3 py-3 text-right">
                   {o.purchase_url && (
@@ -161,6 +227,18 @@ const fmt = (v: number | null) => (v === null ? null : formatUsd(v));
 
     <footer class="mt-4 space-y-2 text-xs text-ink-500">
       <p>
+        <strong>Price evidence</strong> is not the same as “checked today”. A
+        <span class="mx-1 px-1 rounded bg-sky-100 text-sky-800">{VERIFICATION_LABEL.verified}</span>
+        badge means we read the figure from that registrar’s own published price list; the date shown
+        is when we read it. A
+        <span class="mx-1 px-1 rounded bg-violet-100 text-violet-800">{VERIFICATION_LABEL.source_snapshot}</span>
+        badge means the figure comes from an openly licensed dated dataset and the date shown is that
+        dataset’s observation date — the registrar may have changed price since.
+        <span class="mx-1 px-1 rounded bg-amber-100 text-amber-800">{FRESHNESS_LABEL.stale}</span>
+        means the evidence is older than 30 days and should be treated as a historical reference,
+        not a quote. Only rows we verified from the registrar itself can be labelled “cheapest”.
+      </p>
+      <p>
         3-year cost = first-year registration + 2 × standard renewal at the same registrar; shown only
         when the source publishes both prices. A low first-year promotional price can still renew high —
         compare the renewal column for the long-term picture. Standard list prices are shown; premium
@@ -170,7 +248,7 @@ const fmt = (v: number | null) => (v === null ? null : formatUsd(v));
         {anyAffiliate
           ? 'Some registrar links may be affiliate links — affiliate relationships never affect price rankings. '
           : 'Links to registrars are ordinary links with no tracking parameters; price rankings depend only on published prices. '}
-        Sources: <a href="/data-sources/" class="underline hover:text-brand-600">price data sources & licences</a>.
+        Sources: <a href="/data-sources/" class="underline hover:text-brand-600">price data sources &amp; licences</a>.
         Verify the current price at the registrar before purchasing.
       </p>
     </footer>

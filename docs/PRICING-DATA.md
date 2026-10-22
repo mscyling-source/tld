@@ -1,179 +1,296 @@
-# Pricing Data — Source Evaluation & Pipeline
+# Pricing Data — Source Evaluation, Provenance & Pipeline
 
-This document records the Phase 4 investigation: which registrar pricing
-sources were evaluated, why the current three were chosen, and how the
-pipeline behaves. The site must never display a fabricated price — if a
-figure isn't published by a source, the UI shows **"Price unavailable"**.
+This document is the technical reference for the registrar price pipeline: which
+sources are read, how each figure is dated, how conflicts are resolved, and what
+the site is allowed to claim about a price.
 
-## Data layout
+The governing rule is simple: **the site must never display a fabricated price,
+and must never claim a price is fresher than its evidence.** If a source doesn't
+publish a figure, the UI shows **"Price unavailable"**.
+
+---
+
+## 1. Why the schema changed (v1 → v2)
+
+The v1 dataset carried a single `last_checked` per offer, written by the sync
+run. That conflated three different questions:
+
+| Question | v1 answer |
+|---|---|
+| When did *we* download this source? | `last_checked` |
+| When does the *source* say it observed this price? | lost |
+| When did *we* read it from the registrar itself? | lost |
+
+Because the sync overwrote `last_checked` on every run, **every price looked
+freshly verified every morning** — including a Cloudflare row from a community
+dump dated 2026-08-04 and a GoDaddy row from a monthly snapshot dated
+2026-05-12. The "Last checked" column on the site was therefore reporting our
+download time, not the age of the evidence.
+
+v2 separates the timestamps and adds an explicit verification tier.
+
+## 2. Data layout
 
 | File | Contents | Writer |
 |---|---|---|
-| `data/tlds.json` | IANA delegation metadata (1,437 TLDs) | `npm run sync:tlds` (IANA only) |
-| `data/prices.json` | Registrar offers, one row per (registrar, TLD) | `npm run sync:prices` |
-| `data/prices-meta.json` | Last attempt/success, counts, history, errors | `npm run sync:prices` |
+| `data/tlds.json` | IANA delegation metadata (1,437 TLDs) | `npm run sync:tlds` |
+| `data/prices.json` | Registrar offers, one row per (registrar, TLD), **schema v2** | `npm run sync:prices` |
+| `data/prices-meta.json` | Last attempt/success, counts by tier and freshness, history | `npm run sync:prices` |
+| `data/price-sync-report.json` | Machine-readable monitoring report for the run | `npm run sync:prices` |
+| `data/price-sync-report.md` | Human-readable summary (also the CI step summary) | `npm run sync:prices` |
 
-The two pipelines never write each other's files. Price rows reference the
-IANA catalog by bare TLD label; rows whose TLD isn't in the catalog are
-**rejected** (e.g. registry second-level names like `com.mx`, which have no
-page here).
+The TLD and price pipelines never write each other's files. Price rows reference
+the IANA catalog by bare TLD label; rows whose TLD isn't in the catalog are
+**rejected** (e.g. registry second-level names like `com.mx`, which have no page
+here).
 
-## Selected sources
+## 3. Provenance model
 
-### 1. Porkbun API — primary, official, keyless
+### 3.1 Three timestamps
 
-- **Endpoint:** `https://api.porkbun.com/api/json/v3/pricing/get`
-- **Access:** none required — Porkbun's own documentation states *"Does not
-  require authentication. Prices are in US dollars."*
-- **Auth:** none. No API key, no account, no rate-limit surprises documented
-  for the pricing endpoint.
-- **Coverage:** every TLD Porkbun sells (~900 list entries).
-- **Fields:** `registration`, `renewal`, `transfer`, optional `coupons`.
-- **Freshness:** checked at fetch time (daily) → always "verified".
-- **Terms:** official API intended for programmatic use; not scraping.
-- **Purchase links:** per-TLD pages `https://porkbun.com/tld/<tld>` (pattern
-  verified against real source data).
+| Field | Meaning | Written by |
+|---|---|---|
+| `source_fetched_at` | When **we** downloaded the source. Says nothing about how old the numbers inside are. | every adapter |
+| `price_observed_at` | When the **source** says it observed the price (a dated snapshot's own date). | snapshot adapters |
+| `price_verified_at` | When **we** read the figure from the registrar's own published source. `null` for snapshots. | first-party adapters |
 
-### 2. Pikkly open data — multi-registrar, CC BY 4.0
+`last_checked` is retained as a compatibility alias and is defined as the
+**evidence date**: `price_verified_at` when present, otherwise
+`price_observed_at`, otherwise `''`. It is **never** the fetch date. This is
+enforced in `effectiveEvidenceDate()` (`src/lib/pricingCalc.ts`) and re-checked
+by the workflow before publishing.
 
-- **URL:** `https://pikkly.dev/data/domains/prices.json`
-- **Access:** static JSON, no auth, rebuilt **daily** (`generated_at`).
-- **Licence:** **CC BY 4.0** — attribution *"Price data by Pikkly"* +
-  link to `https://pikkly.dev` (rendered on `/data-sources/` and in
-  `data/prices.json` source metadata).
-- **Coverage:** 6 registrars × ~3,300 rows: Porkbun, Cloudflare, Dynadot,
-  Gandi, Hover, IONOS. Fields: `first_year_usd`, `renewal_usd`,
-  `transfer_usd` (nullable), per-row `source_url`, `last_checked`, `status`.
-- **Freshness handling (conservative):**
-  - rows with `meta.dump_date` (e.g. Cloudflare's community dump) use the
-    **dump date** as `last_checked`, not the daily rebuild time;
-  - rows the source flags `stale` are pinned stale forever;
-  - rows flagged `unavailable` (source down / null value) are **skipped** so
-    they can't overwrite good previous data.
-- **Terms:** openly published JSON dump specifically for reuse; we mirror the
-  publisher's attribution requirements.
+### 3.2 Verification tiers
 
-### 3. Open Domain Data `tld_pricing` — breadth, CC BY 4.0
+| `verification_status` | Meaning | UI label |
+|---|---|---|
+| `verified` | Read from the registrar's own published price list during a sync run | **Verified** |
+| `source_snapshot` | Carried by an openly licensed dated dataset | **Snapshot** |
+| `model_derived` | Derived from a documented pricing policy, not a published list | **Modelled** |
+| `unverified` | No trustworthy observation date, or upstream flagged it as a placeholder | **Unverified** |
 
-- **URL:** `https://www.opendomaindata.org/api/tld_pricing.json`
-- **Access:** bulk JSON, no auth.
-- **Licence:** **CC BY 4.0** — citation *"Open Domain Data (2026).
-  tld_pricing, opendomaindata.org"*, shown on `/data-sources/`.
-- **Cadence:** monthly snapshot; each record carries its own `last_checked`
-  (often weeks old → automatically classified "stale" past 30 days).
-- **Coverage (why it matters):** the **only** source for GoDaddy,
-  Namecheap, Spaceship and Squarespace Domains; plus Porkbun/Dynadot/
-  Cloudflare rows. Fields: `register_usd`, `renew_usd`, `transfer_usd`,
-  `promotional` flag, `sources[]`, `verification_status`.
-- **Currency:** dataset header declares USD normalisation; a non-USD header
-  makes the whole payload fail closed.
+A tier is a property of *how* a figure was obtained, not of how old it is. A
+three-year-old snapshot is still `source_snapshot`.
 
-### Combined coverage (from the first live sync)
+### 3.3 Freshness bands
 
-- **3,306 offers · 811 TLDs · 10 registrars** — Porkbun, Cloudflare,
-  Dynadot, Gandi, Hover, IONOS, GoDaddy, Namecheap, Spaceship,
-  Squarespace Domains.
-- 1,058 cross-source duplicates resolved by freshness; 2,846 offers
-  "verified", 460 "stale" at first sync.
+Derived at build time from the tier plus the evidence date
+(`src/config/freshness.ts`):
 
-## Evaluated and rejected
+| Band | Rule | UI label |
+|---|---|---|
+| `recent` | evidence ≤ 7 days old **and** tier is `verified` | Recently verified |
+| `aging` | evidence 8–30 days old, or any snapshot regardless of age | Verification not recent |
+| `stale` | evidence > 30 days old, or the source flagged the row stale | Stale |
+| `unknown` | no parsable date, date > 1 day in the future, or tier `unverified` | Unverified |
 
-| Source | Why not used (yet) |
+`RECENT_WITHIN_DAYS = 7`, `STALE_AFTER_DAYS = 30`,
+`MAX_FUTURE_SKEW_DAYS = 1`. Freshness is **recomputed on every build** from the
+evidence date, so a rebuild can only make a price look older, never newer.
+
+## 4. Sources
+
+### 4.1 First-party reads → `verified`
+
+All five are read live on every run. Each writes `price_verified_at` = the run
+clock and `price_observed_at` = the same instant.
+
+| Source | Endpoint | Access notes |
+|---|---|---|
+| **Porkbun** | `api.porkbun.com/api/json/v3/pricing/get` | Official public API, keyless, documented as not requiring auth. |
+| **Dynadot** | `dynadot.com/domain/prices` | Server-rendered Nuxt `__NUXT_DATA__` payload, decoded from devalue. A struck `original_reg_price` above the current price marks a promotion. |
+| **Gandi** | `gandi.net/en-US/domain/tld?prefix=<a–z>` | 27 server-rendered HTML tables, 1 s delay between requests. A `Promo $X $Y` cell is read as current = `$Y`. |
+| **Hover** | `hover.com/domain-pricing` | `data-props` JSON on the page; array shape `[availabilityFlag, register, renewal, transfer, …]`. |
+| **IONOS** | `ionos.com/domains/domain-name-prices` | Next.js `__NEXT_DATA__`; columns `welcomeOffer` (year 1), `specialOffer` (existing customer), `regularRenewalFee`, `domainTransfer`. The bundle price is never used. |
+
+**Access policy.** Each adapter performs a plain HTTP GET with an identifying
+user agent (`TLD-Directory-PriceSync/2.0`), only on paths the site's
+`robots.txt` allows, at a low request rate. No authentication, no JavaScript
+execution, no anti-bot circumvention, no per-domain availability lookups.
+
+**Promotions.** A promotion is recorded only when the source itself presents
+one (a struck original price, a `Promo` label, a first-year rate below the
+renewal rate). `promotion_expires_at` is filled **only** from an explicit end
+date the source publishes — never inferred. An expired promotion is rendered as
+`Promotion ended` and is excluded from the "cheapest" badge.
+
+### 4.2 Openly licensed datasets → `source_snapshot`
+
+| Source | Licence | Cadence / notes |
+|---|---|---|
+| **Best Domain Registrars** (`best-domain-registrars.com/data`) | CC BY 4.0 | Per-registrar CSV **plus a verification taxonomy**. Rows marked `sample` are dropped entirely (currently Squarespace); `model_confirmed` becomes `model_derived` (currently Cloudflare); `verified` becomes `source_snapshot`, because that attestation belongs to the publisher — it is not a read we performed, and claiming it as `verified` would let a third party's claim masquerade as ours. |
+| **Pikkly** (`pikkly.dev/data/domains/prices.json`) | CC BY 4.0 | Rebuilt daily; rows with `meta.dump_date` use the dump date, not the rebuild time. Source-flagged `stale` rows stay stale; `unavailable` rows are skipped. |
+| **Open Domain Data** (`opendomaindata.org/api/tld_pricing.json`) | CC BY 4.0 | Monthly snapshot, USD-normalised. Each record carries its own `last_checked`. |
+
+Attribution strings are stored in `data/prices.json` → `sources[].attribution`
+and rendered on `/data-sources/`. A CC BY source without an attribution string
+fails the workflow's dataset check.
+
+### 4.3 Evaluated and rejected
+
+| Source | Why not used |
 |---|---|
-| **name.com API** | Requires signup + API key; reseller pricing tiers need approval. Adapter-ready when a key exists. |
-| **Porkbun / Dynadot / Namesilo / DNSimple authenticated APIs** | All require account keys. Porkbun's *public* pricing endpoint made its key unnecessary; the others stay future adapters. |
-| **Namecheap API** | Requires an approved account with linked funds; developer terms restrict redistribution. |
-| **TLD-List / TLDbee / Pikkly comparison pages** | Scraping comparison sites violates their purpose/terms; **Pikkly's published JSON dump** (CC BY 4.0) is the sanctioned machine-readable alternative and is used instead. |
-| **Commercial pricing APIs** | Paid; no budget approved. Architecture keeps them pluggable. |
-| **Registrar website scraping** | Rejected by policy: anti-bot circumvention, fragile markup, ToS risk. |
-| **Cloudflare community price dumps** | Reachable only *via* Pikkly's licensed dataset (direct scraping of a GitHub dump is allowed by repo licence but the dump is dated/stale — Pikkly's normalised copy with attribution is preferred). |
+| **name.com / Namecheap / DNSimple APIs** | Require account keys and, for Namecheap, an approved funded account with redistribution restrictions. Adapter-ready when a key exists. |
+| **Commercial pricing APIs** | Paid; no budget approved. The adapter registry keeps them pluggable. |
+| **Cloudflare community dumps** | Reachable only via Pikkly's licensed, normalised copy — preferred over mirroring a dated GitHub dump. |
+| **Comparison-site scraping** | Violates their terms; the sanctioned machine-readable alternatives above are used instead. |
+| **Per-domain quote scraping** | Rejected by policy: anti-bot circumvention, ToS risk, and it produces a price for a *name*, not a published list price. |
 
-## Adapter architecture
+## 5. Merge: how conflicts are resolved
 
-```
-scripts/pricing/
-  sources/porkbun.ts          # parse + fetch, one file per provider
-  sources/pikkly.ts
-  sources/opendomaindata.ts
-  sources/index.ts            # SourceAdapter registry (add a provider = 1 file + 1 line)
-  validate.ts                 # unknown TLD / bad price / currency / URL / duplicates
-  merge.ts                    # one offer per (registrar, TLD); freshest wins
-scripts/sync-prices.ts        # orchestration, guards, atomic writes, meta
-```
+One offer survives per `(registrar, TLD)`. Ranking, in order
+(`scripts/pricing/merge.ts`):
 
-`SourceAdapter` = `{ id, name, url, license, attribution, priority,
-requiresEnv[], fetchOffers() }`. A credentialed provider lists its env var
-names in `requiresEnv`; the sync run treats a missing var as a failed source
-(keeping previous rows) rather than failing the whole run. Credentials come
-from GitHub Actions secrets only — never committed.
+1. **Verification tier** — `verified` > `source_snapshot` > `model_derived` >
+   `unverified`. Checked **before** age on purpose: a snapshot downloaded an
+   hour ago is still a snapshot and must not displace a first-party read.
+2. **Evidence age** — within the same tier, the fresher observation wins.
+3. **Source priority** — stable tie-break so output is deterministic.
 
-## Validation rules (row → rejected)
+Distinct registrars are never collapsed: a comparison needs all of them.
 
-- **unknown TLD** — not in `data/tlds.json`
-- **invalid-price** — present but ≤0, NaN, or > $100,000 (also when a source
-  string fails to parse: the row carries `invalid_fields`)
-- **missing-currency** — row doesn't declare USD (all sources are
-  USD-normalised upstream; no FX conversion happens here)
-- **invalid-url** / **invalid-timestamp** — non-http(s) source/purchase URL,
-  or unparsable `last_checked`
+`upgradedByVerification` counts the cases where tier beat age — the exact
+situations the old merge got wrong.
+
+## 6. Validation (row → rejected)
+
+- **unknown-tld** — not in `data/tlds.json`
+- **invalid-price** — present but ≤ 0, NaN, or > $100,000; also when a source
+  string fails to parse (the row carries `invalid_fields`)
+- **missing-currency** — row doesn't declare USD (no FX conversion happens here)
+- **invalid-url** / **invalid-timestamp** — non-http(s) source/purchase URL, or
+  an unparsable date
+- **unverifiable** — a `verified` claim with **no** `price_verified_at`, or an
+  unknown `verification_status`. This is the guard that stops an adapter from
+  "verifying" rows using the fetch clock.
 - **duplicate** — same (registrar, TLD) twice inside one source batch
 - **no-price** — all three price fields null
 - **missing-identity** — empty registrar id/name
 
-## Dataset guards (run → run)
+Deliberately **not** a reject rule: a snapshot row with no observation date.
+Those are kept and surface as `unverified`, because dropping them would silently
+shrink the catalogue.
+
+## 7. Migration (v1 → v2)
+
+`scripts/pricing/migrate.ts` upgrades any dataset on disk, and is idempotent:
+
+- `last_checked` → `price_observed_at`
+- `price_verified_at` set **only** for sources that are first-party reads we
+  perform (`porkbun`); everything else stays `null`
+- `verification_status` = `verified` only for those rows, otherwise
+  `source_snapshot`
+- `source_fetched_at` filled from the dataset's own `generated_at`, never from
+  `now`
+- `changed: false` when the input is already v2
+
+The build-time store (`src/lib/pricing.ts`) applies the same rules in memory, so
+an un-migrated file still renders honestly.
+
+## 8. Monitoring report
+
+Every run writes two files that answer one question: *how much of what we
+publish do we actually stand behind?*
+
+`data/price-sync-report.json` contains:
+
+- `totals.by_verification` and `totals.by_freshness` — counts per tier and band
+- `totals.oldest_observed_at` / `newest_observed_at` — the evidence span
+- `sources[]` — per-source status, tier, rows, rejections by reason, error
+- `significant_changes[]` — figures that moved by ≥ 20% since the previous run
+- `degraded_sources[]` — sources that failed or fell back to previous data
+- `summary` — one-paragraph plain-language statement
+
+`data/price-sync-report.md` is the same content rendered for humans and is
+appended to the GitHub Actions run summary. Both are uploaded as artefacts on
+every run (including failures) and committed alongside the dataset when the
+dataset changes.
+
+## 9. Dataset guards (run → run)
 
 1. Source fetch throws → previous rows for that source kept
    (`kept-previous`), other sources still update.
 2. Source returns **0 valid rows** → treated as failure; previous rows kept.
-3. Source shrinks by **>50%** vs previous run → `shrunk-kept-previous`.
+3. Source shrinks by **> 50%** vs the previous run → `shrunk-kept-previous`.
 4. **All** sources failed → exit 1, `data/prices.json` **byte-for-byte
    untouched**, failure recorded in `data/prices-meta.json` only.
 5. Writes are atomic (`.tmp` + rename).
-6. Freshness (`verified`/`stale`, 30-day threshold) is derived from each
-   source's own `last_checked` — a site rebuild **never** re-dates prices.
+6. Rows kept from a previous run retain their **original** `source_fetched_at`;
+   the run does not claim today's fetch time for data it didn't fetch.
 
-## Three-year cost formula
+## 10. Three-year cost
 
 ```
 three_year_usd = register_usd + 2 × renewal_usd     (null unless both exist)
 ```
 
-Shown only when the source publishes both figures. Promotional first-year
-prices are kept in the registration column with a visible `promo` flag and
-are never used to label a "best long-term value" — that badge follows the
-3-year column, which is driven by standard renewal prices.
+Promotional first-year prices stay in the registration column with a visible
+promo flag and are never used for a "best long-term value" claim — that follows
+the 3-year column, which is driven by standard renewal prices.
 
-## Adding a credentialed provider later
+## 11. Adapter architecture
 
-1. Create `scripts/pricing/sources/<provider>.ts` with a pure `parse*`
-   function (fixture-testable) and a `fetch*` that reads
-   `process.env.<SECRET>` from `requiresEnv`.
-2. Register it in `scripts/pricing/sources/index.ts`.
-3. Add the secret in GitHub → Settings → Secrets → Actions, and document it
-   here.
-4. Add a fixture + parse/validation tests in `tests/pricing.test.ts`.
+```
+scripts/pricing/
+  http.ts                     # dependency-free fetch/CSV/HTML helpers, shared UA
+  sources/porkbun.ts          # one file per provider: pure parse* + fetch*
+  sources/dynadot.ts          # (parse* is fixture-testable, fetch* does I/O)
+  sources/gandi.ts
+  sources/hover.ts
+  sources/ionos.ts
+  sources/bestdomainregistrars.ts
+  sources/pikkly.ts
+  sources/opendomaindata.ts
+  sources/index.ts            # SourceAdapter registry: add a provider = 1 file + 1 line
+  validate.ts                 # tier-aware row validation
+  merge.ts                    # tier → age → priority
+  migrate.ts                  # v1 → v2, idempotent
+  report.ts                   # JSON + Markdown monitoring report
+scripts/sync-prices.ts        # orchestration, guards, atomic writes, meta, report
+```
+
+`SourceAdapter` = `{ id, name, url, license, attribution, priority,
+verificationStatus, requiresEnv[], fetchOffers(now) }`. A credentialed provider
+lists its env var names in `requiresEnv`; a missing var marks that source
+`kept-previous` rather than failing the run. Credentials come from GitHub
+Actions secrets only — never committed.
+
+## 12. Adding a provider
+
+1. Create `scripts/pricing/sources/<provider>.ts` exporting a pure
+   `parse<Provider>()` and a `fetch<Provider>(now)`.
+2. Decide the tier honestly. If you are not reading the registrar's own
+   published source, it is **not** `verified`.
+3. Register it in `scripts/pricing/sources/index.ts` with a priority and the
+   correct `verificationStatus`.
+4. Add a fixture plus parse/validation tests in `tests/pricing.test.ts`.
+5. If it requires credentials, add the secret in GitHub → Settings → Secrets →
+   Actions and document it here.
 
 No affiliate IDs are ever baked into data. Affiliate links are configured
-per-registrar in `src/config/registrars.ts` (`affiliate.buildUrl`) only from
-a real agreement; rankings never read that field.
+per-registrar in `src/config/registrars.ts` (`affiliate.buildUrl`) only from a
+real agreement; rankings never read that field.
 
-## How the data reaches the live site
+## 13. How the data reaches the live site
 
 `.github/workflows/sync-prices.yml` runs daily (04:45 UTC) and:
 
-1. syncs the sources above (this script, `npm run sync:prices`),
-2. validates the dataset — including that every CC BY source still carries its
-   attribution string and that every offer still has a check date,
-3. runs the test suite,
-4. commits `data/prices.json` + `data/prices-meta.json` to `main`,
-5. builds the site with `PUBLIC_SITE_URL=https://tld-directory.pages.dev`,
-6. publishes `dist/` to the existing Cloudflare Pages project with
+1. syncs the sources above (`npm run sync:prices`),
+2. verifies the dataset — schema v2, ≥ 500 offers, CC BY attribution present,
+   and the provenance invariants: a `verified` row has a `price_verified_at`,
+   a non-verified row does not, and `last_checked` equals the evidence date,
+3. appends `data/price-sync-report.md` to the run summary and uploads the report
+   as an artefact,
+4. runs the test suite,
+5. commits `data/prices.json`, `data/prices-meta.json` and the two report files
+   to `main` **only when the dataset changed**,
+6. builds with `PUBLIC_SITE_URL=https://tld-directory.pages.dev`,
+7. publishes `dist/` with
    `wrangler pages deploy --project-name tld-directory --branch main`,
-7. verifies that the live site serves the dataset it just built.
+8. verifies the live site serves the dataset it just built.
 
 The publish step is skipped when the live deployment already publishes the
-current commit, and it refuses to overwrite a *newer* live deployment. If the
-sync fails, the deploy never runs and the site keeps serving the last
-successful dataset — stale or failed sources are reported in
-`data/prices-meta.json` and in the run's step summary, never silently
-dropped. Setup, secrets and recovery recipes: `docs/DEPLOYMENT.md` §3.
+current commit, and refuses to overwrite a *newer* live deployment. If the sync
+fails, the deploy never runs and the site keeps serving the last successful
+dataset — degraded sources are reported in the report and the run summary, never
+silently dropped. Setup, secrets and recovery recipes: `docs/DEPLOYMENT.md` §3.

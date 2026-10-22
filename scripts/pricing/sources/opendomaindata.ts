@@ -13,9 +13,10 @@
  *           flag, sources[], verification_status, per-record last_checked.
  */
 
-import type { RawOffer } from '../../../src/lib/pricingTypes.js';
+import type { RawOffer, VerificationStatus } from '../../../src/lib/pricingTypes.js';
 import { normalizePrice } from '../../../src/lib/pricingCalc.js';
 import { registrars } from '../../../src/config/registrars.js';
+import { toIsoDate } from '../http.js';
 
 export const ODD_SOURCE = {
   id: 'opendomaindata',
@@ -24,6 +25,10 @@ export const ODD_SOURCE = {
   license: 'CC BY 4.0',
   attribution: 'Open Domain Data (2026). tld_pricing, opendomaindata.org — licensed CC BY 4.0',
   priority: 2, // monthly snapshot — wins only when strictly fresher than the others
+  // Monthly snapshot. Per-record dates are kept as observation dates; a record
+  // that declares itself verified upstream keeps that claim, but a record with
+  // no usable date becomes `unverified` rather than borrowing the fetch time.
+  verificationStatus: 'source_snapshot' as VerificationStatus,
 };
 
 export const ODD_PRICING_URL = 'https://www.opendomaindata.org/api/tld_pricing.json';
@@ -95,6 +100,17 @@ export function parseOdd(payload: OddPayload): { offers: RawOffer[]; skipped: nu
     const renewal = safePrice(row.renew_usd, 'renew_usd');
     const transfer = safePrice(row.transfer_usd, 'transfer_usd');
 
+    // The record's own date is the observation date. A record with no usable
+    // date stays `unverified` — it never inherits the fetch timestamp.
+    const observedAt = toIsoDate(row.last_checked);
+    const upstreamStatus = (row.verification_status ?? '').trim().toLowerCase();
+    const declaredVerified = upstreamStatus === 'verified' || upstreamStatus === 'verified_primary';
+    const verificationStatus: VerificationStatus = observedAt
+      ? declaredVerified
+        ? 'verified'
+        : ODD_SOURCE.verificationStatus
+      : 'unverified';
+
     offers.push({
       tld,
       registrar_id: registrarId,
@@ -106,13 +122,18 @@ export function parseOdd(payload: OddPayload): { offers: RawOffer[]; skipped: nu
       promotional: row.promotional === true,
       promo_code: null, // dataset publishes no codes — never invent one
       promo_restrictions: null,
+      promotion_expires_at: null,
       source_id: ODD_SOURCE.id,
       source_url:
         typeof row.source_url === 'string' && /^https?:\/\//.test(row.source_url)
           ? row.source_url
           : ODD_SOURCE.url,
       purchase_url: null, // resolved from the registrar registry at sync time
-      last_checked: typeof row.last_checked === 'string' ? row.last_checked : '',
+      price_observed_at: observedAt,
+      // Upstream attests it read the figure from the registrar; we did not
+      // verify it ourselves, so we keep its observation date as the evidence.
+      price_verified_at: null,
+      verification_status: verificationStatus,
       source_status_stale: false,
       invalid_fields: invalid.length ? invalid : undefined,
     });

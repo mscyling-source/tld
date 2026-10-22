@@ -6,9 +6,18 @@
 // dataset (no runtime API — the rows JSON is generated at build time).
 // All prices come from data/prices.json; missing values render as
 // "Price unavailable", never as 0 or a guess.
+//
+// Each price carries its own evidence: how it was obtained (verified /
+// snapshot / modelled) and how old that evidence is. A snapshot-only cheapest
+// price is labelled as such instead of being presented as a current quote.
 import type { ComparisonRow } from '../lib/pricingTypes.js';
 import type { PricePoint } from '../lib/pricingTypes.js';
-import { sortComparisonRows } from '../lib/pricingCalc.js';
+import { sortComparisonRows, formatDate } from '../lib/pricingCalc.js';
+import {
+  FRESHNESS_LABEL,
+  VERIFICATION_EXPLANATION,
+  VERIFICATION_LABEL,
+} from '../config/freshness.js';
 
 interface Props {
   rows: ComparisonRow[];
@@ -16,9 +25,11 @@ interface Props {
   generatedAt: string | null;
   tlids: number;
   registrars: number;
+  verifiedOffers: number;
+  snapshotOffers: number;
 }
 
-const { rows, unpricedTlds, generatedAt, tlids, registrars } = Astro.props;
+const { rows, unpricedTlds, generatedAt, tlids, registrars, verifiedOffers, snapshotOffers } = Astro.props;
 
 const initial = sortComparisonRows(rows, 'register-asc').slice(0, 40);
 const types = [...new Set(rows.map(r => r.type).filter((t): t is string => Boolean(t)))].sort();
@@ -29,7 +40,22 @@ const updatedDate = generatedAt
   : null;
 
 function pointDate(p: PricePoint | null): string {
-  return p ? new Date(p.last_checked).toLocaleDateString('en-US', { dateStyle: 'medium', timeZone: 'UTC' }) : '';
+  return p ? formatDate(p.last_checked) ?? 'no date' : '';
+}
+/** Compact provenance suffix shown under each price. */
+function pointTag(p: PricePoint): string {
+  const parts: string[] = [];
+  if (p.promotion_expired) parts.push('promo ended');
+  else if (p.promotional) parts.push('promo');
+  if (p.verification_status !== 'verified') parts.push(VERIFICATION_LABEL[p.verification_status].toLowerCase());
+  if (p.freshness === 'stale') parts.push('stale');
+  else if (p.freshness === 'aging') parts.push(FRESHNESS_LABEL.aging.toLowerCase());
+  else if (p.freshness === 'unknown') parts.push('unverified');
+  return parts.length ? ` · ${parts.join(' · ')}` : '';
+}
+function pointTitle(p: PricePoint): string {
+  const kind = p.verification_status === 'verified' ? 'verified' : 'observed';
+  return `${VERIFICATION_EXPLANATION[p.verification_status]} ${kind} ${pointDate(p)}.`;
 }
 function visitRel(): string {
   return 'noopener';
@@ -49,10 +75,16 @@ function visitRel(): string {
       </p>
       {updatedDate && (
         <p class="mt-1 text-sm text-ink-500">
-          Price data last updated <time datetime={generatedAt}>{updatedDate}</time> from published registrar
-          price lists. Prices change — always confirm at the registrar before buying.
+          Price data assembled <time datetime={generatedAt}>{updatedDate}</time> from published registrar
+          price lists and openly licensed dated datasets. Prices change — always confirm at the
+          registrar before buying.
         </p>
       )}
+      <p class="mt-1 text-sm text-ink-500">
+        {verifiedOffers.toLocaleString('en-US')} prices were read directly from a registrar’s own
+        published price list; {snapshotOffers.toLocaleString('en-US')} come from dated open-data
+        snapshots. Each price shows how it was obtained and the date of that evidence.
+      </p>
     </header>
 
     <!-- Controls -->
@@ -84,9 +116,9 @@ function visitRel(): string {
           <option value="suffix-asc">Extension A–Z</option>
         </select>
       </div>
-      <label class="flex items-center gap-2 text-sm text-ink-700 pb-2.5 cursor-pointer">
+      <label class="flex items-center gap-2 text-sm text-ink-700 pb-2.5 cursor-pointer" title="Show only extensions where at least one price was read from a registrar's own published price list.">
         <input id="pc-verified" type="checkbox" class="rounded border-ink-300 text-brand-600 focus:ring-brand-500" />
-        Only verified prices
+        First-party prices only
       </label>
     </div>
 
@@ -112,47 +144,44 @@ function visitRel(): string {
               <td class="px-4 py-3">
                 <a href={`/tld/${row.tld}/`} class="font-mono font-semibold text-ink-900 hover:text-brand-600">{row.suffix}</a>
                 <span class="block text-xs text-ink-500">{row.offers} offer{row.offers === 1 ? '' : 's'}</span>
-              </td>
-              <td class="px-4 py-3">
-                {row.register ? (
-                  <>
-                    <span class="font-semibold text-ink-900" title={`Last checked ${pointDate(row.register)}`}>${row.register.usd.toFixed(2)}</span>
-                    <span class="block text-xs text-ink-600">{row.register.registrar_name}{row.register.quality === 'stale' ? ' · stale' : ''}</span>
-                  </>
-                ) : (
-                  <span class="text-ink-400">Price unavailable</span>
+                {row.only_snapshots && (
+                  <span class="block text-[10px] text-violet-700" title="No price for this extension was read from a registrar’s own price list.">
+                    snapshot data only
+                  </span>
                 )}
               </td>
-              <td class="px-4 py-3">
-                {row.renewal ? (
-                  <>
-                    <span class="font-semibold text-ink-900" title={`Last checked ${pointDate(row.renewal)}`}>${row.renewal.usd.toFixed(2)}</span>
-                    <span class="block text-xs text-ink-600">{row.renewal.registrar_name}{row.renewal.quality === 'stale' ? ' · stale' : ''}</span>
-                  </>
-                ) : (
-                  <span class="text-ink-400">Price unavailable</span>
-                )}
-              </td>
-              <td class="px-4 py-3">
-                {row.transfer ? (
-                  <>
-                    <span class="font-semibold text-ink-900" title={`Last checked ${pointDate(row.transfer)}`}>${row.transfer.usd.toFixed(2)}</span>
-                    <span class="block text-xs text-ink-600">{row.transfer.registrar_name}{row.transfer.quality === 'stale' ? ' · stale' : ''}</span>
-                  </>
-                ) : (
-                  <span class="text-ink-400">Price unavailable</span>
-                )}
-              </td>
-              <td class="px-4 py-3">
-                {row.three_year ? (
-                  <>
-                    <span class="font-semibold text-ink-900" title={`Last checked ${pointDate(row.three_year)}`}>${row.three_year.usd.toFixed(2)}</span>
-                    <span class="block text-xs text-ink-600">{row.three_year.registrar_name}{row.three_year.quality === 'stale' ? ' · stale' : ''}</span>
-                  </>
-                ) : (
-                  <span class="text-ink-400">Price unavailable</span>
-                )}
-              </td>
+              {row.register ? (
+                <td class="px-4 py-3">
+                  <span class="font-semibold text-ink-900" title={pointTitle(row.register)}>${row.register.usd.toFixed(2)}</span>
+                  <span class="block text-xs text-ink-600">{row.register.registrar_name}{pointTag(row.register)}</span>
+                </td>
+              ) : (
+                <td class="px-4 py-3"><span class="text-ink-400">Price unavailable</span></td>
+              )}
+              {row.renewal ? (
+                <td class="px-4 py-3">
+                  <span class="font-semibold text-ink-900" title={pointTitle(row.renewal)}>${row.renewal.usd.toFixed(2)}</span>
+                  <span class="block text-xs text-ink-600">{row.renewal.registrar_name}{pointTag(row.renewal)}</span>
+                </td>
+              ) : (
+                <td class="px-4 py-3"><span class="text-ink-400">Price unavailable</span></td>
+              )}
+              {row.transfer ? (
+                <td class="px-4 py-3">
+                  <span class="font-semibold text-ink-900" title={pointTitle(row.transfer)}>${row.transfer.usd.toFixed(2)}</span>
+                  <span class="block text-xs text-ink-600">{row.transfer.registrar_name}{pointTag(row.transfer)}</span>
+                </td>
+              ) : (
+                <td class="px-4 py-3"><span class="text-ink-400">Price unavailable</span></td>
+              )}
+              {row.three_year ? (
+                <td class="px-4 py-3">
+                  <span class="font-semibold text-ink-900" title={pointTitle(row.three_year)}>${row.three_year.usd.toFixed(2)}</span>
+                  <span class="block text-xs text-ink-600">{row.three_year.registrar_name}{pointTag(row.three_year)}</span>
+                </td>
+              ) : (
+                <td class="px-4 py-3"><span class="text-ink-400">Price unavailable</span></td>
+              )}
               <td class="px-4 py-3 text-right">
                 {row.visit_url && (
                   <a
@@ -175,9 +204,16 @@ function visitRel(): string {
 
     <p class="mt-4 text-xs text-ink-500 max-w-4xl">
       3-year cost = first-year registration price + 2 × standard renewal price at the same registrar,
-      shown only when both prices are published. Prices are in USD as published by each source;
-      “stale” marks data older than 30 days. Extension detail pages list every offer with its source
-      and check date. Source and licence details on the <a href="/data-sources/" class="underline hover:text-brand-600">data sources page</a>.
+      shown only when both prices are published. Prices are in USD as published by each source.
+      Each price carries its own evidence date and a badge for how it was obtained:
+      <strong>Verified</strong> means we read it from the registrar’s own price list on that date;
+      <strong>Snapshot</strong> means it comes from an openly licensed dated dataset and reflects that
+      dataset’s observation date, not necessarily today; <strong>stale</strong> marks evidence older
+      than 30 days and should be read as a historical reference, not a current quote;
+      <strong>promo</strong> marks a first-year promotional rate that is not the renewal price.
+      Extension detail pages list every offer with its source and evidence date. Source and licence
+      details on the
+      <a href="/data-sources/" class="underline hover:text-brand-600">data sources page</a>.
     </p>
   </div>
 </section>
@@ -202,6 +238,41 @@ function visitRel(): string {
   const tbody = document.getElementById('pc-tbody') as HTMLTableSectionElement;
   const emptyEl = document.getElementById('pc-empty') as HTMLElement;
 
+  const VERIFICATION_LABEL: Record<string, string> = {
+    verified: 'Verified',
+    source_snapshot: 'Snapshot',
+    model_derived: 'Modelled',
+    unverified: 'Unverified',
+  };
+  const VERIFICATION_EXPLANATION: Record<string, string> = {
+    verified:
+      'Read directly from this registrar’s own published price list during our daily sync.',
+    source_snapshot:
+      'Taken from an openly licensed dated dataset, not read from the registrar today.',
+    model_derived: 'Derived from a documented pricing policy rather than a published price list.',
+    unverified: 'No trustworthy observation date, or flagged as placeholder data upstream.',
+  };
+
+  function fmtDate(iso: string | null | undefined): string {
+    if (!iso) return 'no date';
+    const t = Date.parse(iso);
+    if (Number.isNaN(t)) return 'no date';
+    return new Date(t).toLocaleDateString('en-US', { dateStyle: 'medium', timeZone: 'UTC' });
+  }
+
+  function pointTag(point: any): string {
+    const parts: string[] = [];
+    if (point.promotion_expired) parts.push('promo ended');
+    else if (point.promotional) parts.push('promo');
+    if (point.verification_status && point.verification_status !== 'verified') {
+      parts.push((VERIFICATION_LABEL[point.verification_status] || 'Unverified').toLowerCase());
+    }
+    if (point.freshness === 'stale') parts.push('stale');
+    else if (point.freshness === 'aging') parts.push('not recent');
+    else if (point.freshness === 'unknown') parts.push('unverified');
+    return parts.length ? ' · ' + parts.join(' · ') : '';
+  }
+
   function priceCell(point: any): HTMLTableCellElement {
     const td = document.createElement('td');
     td.className = 'px-4 py-3';
@@ -215,11 +286,17 @@ function visitRel(): string {
     const price = document.createElement('span');
     price.className = 'font-semibold text-ink-900';
     price.textContent = `$${Number(point.usd).toFixed(2)}`;
-    price.title = `Last checked ${new Date(point.last_checked).toLocaleDateString('en-US', { dateStyle: 'medium', timeZone: 'UTC' })}`;
+    price.title =
+      (VERIFICATION_EXPLANATION[point.verification_status] || '') +
+      ' ' +
+      (point.verification_status === 'verified' ? 'verified' : 'observed') +
+      ' ' +
+      fmtDate(point.last_checked) +
+      '.';
     td.appendChild(price);
     const sub = document.createElement('span');
     sub.className = 'block text-xs text-ink-600';
-    sub.textContent = point.registrar_name + (point.quality === 'stale' ? ' · stale' : '');
+    sub.textContent = point.registrar_name + pointTag(point);
     td.appendChild(sub);
     return td;
   }
@@ -257,6 +334,13 @@ function visitRel(): string {
       offers.className = 'block text-xs text-ink-500';
       offers.textContent = `${row.offers} offer${row.offers === 1 ? '' : 's'}`;
       tdTld.appendChild(offers);
+      if (row.only_snapshots) {
+        const snap = document.createElement('span');
+        snap.className = 'block text-[10px] text-violet-700';
+        snap.textContent = 'snapshot data only';
+        snap.title = 'No price for this extension was read from a registrar’s own price list.';
+        tdTld.appendChild(snap);
+      }
       tr.appendChild(tdTld);
 
       tr.appendChild(priceCell(row.register));

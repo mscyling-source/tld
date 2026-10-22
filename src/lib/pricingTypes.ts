@@ -1,5 +1,5 @@
 /**
- * Registrar pricing data model.
+ * Registrar pricing data model (schema v2).
  *
  * Deliberately separate from the IANA catalog (`src/lib/types.ts`):
  * `data/tlds.json` holds delegation facts sourced from IANA, while
@@ -9,14 +9,41 @@
  *
  * Rules encoded in this schema:
  *   - A missing value is `null` — never `0`, never guessed.
- *   - Every offer carries its own source URL and check timestamp, so the
- *     UI can show "last checked" per row instead of claiming real-time data.
+ *   - Every offer carries THREE distinct timestamps, because they answer
+ *     three different questions and conflating them is what made the old
+ *     dataset dishonest:
+ *       `source_fetched_at` — when WE downloaded the source file. Says
+ *                             nothing about how old the numbers inside it are.
+ *       `price_observed_at`— when the SOURCE says it saw the price (a dated
+ *                             snapshot's own observation date).
+ *       `price_verified_at`— when WE read the figure from the registrar's own
+ *                             published source. Null for snapshot rows.
+ *     `last_checked` is retained as a compatibility alias and is defined as
+ *     the *evidence* date (verified → verified, else observed), never the
+ *     fetch date. See `effectiveEvidenceDate`.
+ *   - `verification_status` records HOW a figure was obtained, independently
+ *     of how old it is. A 3-year-old snapshot is `source_snapshot`, not
+ *     `verified`, no matter that we downloaded it this morning.
  *   - `currency` is always `'USD'`: all upstream sources publish
- *     USD-normalised figures (Porkbun quotes USD directly; Pikkly and
- *     Open Domain Data normalise to USD and state so in their payloads).
+ *     USD-normalised figures (Porkbun quotes USD directly; Pikkly, Open
+ *     Domain Data and the registrar pages themselves state USD).
+ *
+ * Schema v1 → v2 migration lives in `scripts/pricing/migrate.ts`; v1 files
+ * keep working because every new field is optional at read time.
  */
 
-export type PriceQuality = 'verified' | 'stale';
+/**
+ * How a price figure was obtained. Defined here (not in the config module) so
+ * the data model has no import cycle; `src/config/freshness.ts` imports these
+ * and owns the thresholds and labels.
+ */
+export type VerificationStatus = 'verified' | 'source_snapshot' | 'model_derived' | 'unverified';
+
+/** How old the evidence behind a figure is, derived at build time. */
+export type PriceFreshness = 'recent' | 'aging' | 'stale' | 'unknown';
+
+/** The four comparable price figures carried by an offer. */
+export type PriceField = 'register_usd' | 'renewal_usd' | 'transfer_usd' | 'three_year_usd';
 
 /** One registrar's offer for one TLD (merged, unique per registrar+TLD). */
 export interface PriceOffer {
@@ -40,25 +67,61 @@ export interface PriceOffer {
   /** Documented eligibility restrictions for the promotion. Never invented. */
   promo_restrictions: string | null;
   /**
+   * Explicit promotion end date published by a trustworthy source, ISO date.
+   * Never derived from anything else. When present and in the past, the offer
+   * must not be shown as an active promotion.
+   */
+  promotion_expires_at: string | null;
+  /**
    * Best-effort 3-year ownership cost = registration + 2 × renewal.
    * Only set when BOTH prices exist; otherwise null (see `calcThreeYear`).
    */
   three_year_usd: number | null;
-  /** Source adapter that produced this row (`porkbun` | `pikkly` | `opendomaindata`). */
+  /** Source adapter that produced this row (`porkbun` | `pikkly` | …). */
   source_id: string;
+  /** Human-readable source name for display ("Porkbun pricing API"). */
+  source_name: string;
   /** Per-row source page (where the price was observed). */
   source_url: string;
   /** Ordinary (non-affiliate) link to the registrar for purchasing; null when no link is known. */
   purchase_url: string | null;
+
+  /* ---- v2 provenance: three timestamps that must never be conflated ---- */
+
+  /** When we downloaded this source. Says nothing about the figures' age. */
+  source_fetched_at: string;
+  /** When the source states it observed the price. null when unknown. */
+  price_observed_at: string | null;
+  /** When we read the figure from the registrar itself. null for snapshots. */
+  price_verified_at: string | null;
+  /** HOW the figure was obtained. Never derived from a fetch timestamp. */
+  verification_status: VerificationStatus;
+
   /**
-   * Effective last-checked date: the most conservative timestamp the source
-   * exposes (e.g. Pikkly rows sourced from a dated dump use the dump date,
-   * not the daily rebuild time).
+   * Compatibility alias for the pre-v2 frontend field. Defined as the
+   * *evidence* date: `price_verified_at` for first-party reads, otherwise
+   * `price_observed_at`. Never the fetch date. Kept so existing consumers and
+   * older generated data keep working.
    */
   last_checked: string;
-  /** Computed at sync time from `last_checked` — recomputed at build time too. */
-  quality: PriceQuality;
-  /** True when the upstream source itself flagged the row as stale. */
+
+  /**
+   * Derived at build time from `verification_status` + the evidence date
+   * (see `src/config/freshness.ts`). Recomputed on every build so it can only
+   * ever degrade with age, never be refreshed by a rebuild.
+   */
+  freshness: PriceFreshness;
+
+  /**
+   * Legacy v1 aggregate quality flag, still emitted so existing JSON consumers
+   * do not break. `verified` ⇔ freshness is `recent` or `aging`.
+   */
+  quality: 'verified' | 'stale';
+
+  /**
+   * Set when the upstream source itself marked this row as stale. Such a row
+   * can never be presented as fresh, whatever its own date says.
+   */
   source_status_stale: boolean;
 }
 
@@ -67,8 +130,16 @@ export interface PricePoint {
   usd: number;
   registrar_id: string;
   registrar_name: string;
-  quality: PriceQuality;
+  verification_status: VerificationStatus;
+  freshness: PriceFreshness;
+  /** The evidence date behind this figure (see `effectiveEvidenceDate`). */
   last_checked: string;
+  /** True when the source presents this figure as a first-year promotion. */
+  promotional: boolean;
+  /** True when the promotion's explicit end date has already passed. */
+  promotion_expired: boolean;
+  /** Legacy v1 quality flag, derived from `freshness`. */
+  quality: 'verified' | 'stale';
 }
 
 /** Per-TLD aggregation used by the homepage comparison table. */
@@ -77,7 +148,10 @@ export interface ComparisonRow {
   tld: string;
   type: string | null;
   offers: number;
+  /** Offers read from a registrar's own published source (any age). */
   verified_offers: number;
+  /** Offers whose evidence is older than the stale threshold or unknown. */
+  stale_offers: number;
   register: PricePoint | null;
   renewal: PricePoint | null;
   transfer: PricePoint | null;
@@ -87,8 +161,14 @@ export interface ComparisonRow {
   visit_registrar: string;
   /** Display names of every registrar with an offer for this TLD. */
   registrars: string[];
-  /** Freshest `last_checked` across this TLD's offers. */
+  /** Freshest evidence date across this TLD's offers. */
   latest_checked: string;
+  /**
+   * True when NO offer for this TLD was read from a registrar's own source.
+   * The UI must qualify the cheapest price in that case instead of presenting
+   * it as a current best.
+   */
+  only_snapshots: boolean;
 }
 
 /** Source provenance recorded in `data/prices.json`. */
@@ -100,14 +180,21 @@ export interface PriceSourceInfo {
   license: string;
   /** Attribution string required by the licence (null when not required). */
   attribution: string | null;
+  /** How this source's figures are obtained (drives offer classification). */
+  verification_status: VerificationStatus;
   rows: number;
+  /** When this source file was downloaded during the run. */
   fetched_at: string;
+  /** Oldest observation date carried by the source's rows, when known. */
+  oldest_observed_at: string | null;
   status: 'ok' | 'kept-previous' | 'failed' | 'shrunk-kept-previous';
   error?: string;
+  /** Rows rejected by validation, grouped by reason. */
+  rejections?: Record<string, number>;
 }
 
 export interface PriceDataset {
-  schema_version: 1;
+  schema_version: 2;
   generated_at: string;
   currency: 'USD';
   sources: PriceSourceInfo[];
@@ -125,7 +212,11 @@ export interface PriceMeta {
     registrars: number;
     verified_offers: number;
     stale_offers: number;
+    recent_offers: number;
+    aging_offers: number;
+    unknown_offers: number;
     by_source: Record<string, number>;
+    by_verification: Record<VerificationStatus, number>;
   };
   history: Array<{ at: string; status: string; offers: number; note?: string }>;
 }
@@ -142,12 +233,17 @@ export interface RawOffer {
   promotional: boolean;
   promo_code: string | null;
   promo_restrictions: string | null;
+  promotion_expires_at?: string | null;
   source_id: string;
   source_url: string;
   /** Set when the source publishes an explicit purchase/deep link. */
   purchase_url: string | null;
-  /** ISO date the price was observed (conservative). */
-  last_checked: string;
+  /** When the source states it observed this price (null when unknown). */
+  price_observed_at: string | null;
+  /** Set only when we read the figure from the registrar's own source. */
+  price_verified_at?: string | null;
+  /** How this row was obtained. Defaults to `source_snapshot` when absent. */
+  verification_status?: VerificationStatus;
   /** Set when the upstream source itself marked this row stale. */
   source_status_stale: boolean;
   /**

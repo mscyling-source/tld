@@ -1,0 +1,147 @@
+{
+  "run_at": "2026-10-22T10:29:22.133Z",
+  "dataset_generated_at": "2026-10-22T10:29:22.133Z",
+  "schema_version": 2,
+  "totals": {
+    "offers": 3549,
+    "tlids": 811,
+    "registrars": 10,
+    "by_verification": {
+      "verified": 2844,
+      "source_snapshot": 699,
+      "model_derived": 0,
+      "unverified": 6
+    },
+    "by_freshness": {
+      "recent": 2844,
+      "aging": 18,
+      "stale": 681,
+      "unknown": 6
+    },
+    "oldest_observed_at": "2026-05-12",
+    "newest_observed_at": "2026-10-22T10:29:22.133Z"
+  },
+  "sources": [
+    {
+      "source_id": "porkbun",
+      "source_name": "Porkbun API",
+      "status": "ok",
+      "verification_status": "verified",
+      "rows": 540,
+      "rejected": 372,
+      "rejections": {
+        "unknown-tld": 367,
+        "invalid-price": 5
+      },
+      "fetched_at": "2026-10-22T10:29:22.133Z",
+      "oldest_observed_at": "2026-10-22T10:29:22.133Z",
+      "error": null
+    },
+    {
+      "source_id": "dynadot",
+      "source_name": "Dynadot pricing page",
+      "status": "ok",
+      "verification_status": "verified",
+      "rows": 621,
+      "rejected": 191,
+      "rejections": {
+        "unknown-tld": 187,
+        "invalid-price": 4
+      },
+      "fetched_at": "2026-10-22T10:29:22.133Z",
+      "oldest_observed_at": "2026-10-22T10:29:22.133Z",
+      "error": null
+    },
+    {
+      "source_id": "gandi",
+      "source_name": "Gandi price list",
+      "status": "ok",
+      "verification_status": "verified",
+      "rows": 759,
+      "rejected": 94,
+      "rejections": {
+        "unknown-tld": 94
+      },
+      "fetched_at": "2026-10-22T10:29:22.133Z",
+      "oldest_observed_at": "2026-10-22T10:29:22.133Z",
+      "error": null
+    },
+    {
+      "source_id": "hover",
+      "source_name": "Hover pricing page",
+      "status": "ok",
+      "verification_status": "verified",
+      "rows": 497,
+      "rejected": 17,
+      "rejections": {
+        "unknown-tld": 16,
+        "invalid-price": 1
+      },
+      "fetched_at": "2026-10-22T10:29:22.133Z",
+      "oldest_observed_at": "2026-10-22T10:29:22.133Z",
+      "error": null
+    },
+    {
+      "source_id": "ionos",
+      "source_name": "IONOS domain price list",
+      "status": "ok",
+      "verification_status": "verified",
+      "rows": 427,
+      "rejected": 4,
+      "rejections": {
+        "unknown-tld": 4
+      },
+      "fetched_at": "2026-10-22T10:29:22.133Z",
+      "oldest_observed_at": "2026-10-22T10:29:22.133Z",
+      "error": null
+    },
+    {
+      "source_id": "bestdomainregistrars",
+      "source_name": "Best Domain Registrars open pricing data",
+      "status": "ok",
+      "verification_status": "source_snapshot",
+      "rows": 1377,
+      "rejected": 16,
+      "rejections": {
+        "unknown-tld": 14,
+        "invalid-price": 2
+      },
+      "fetched_at": "2026-10-22T10:29:22.133Z",
+      "oldest_observed_at": "2026-05-12",
+      "error": null
+    },
+    {
+      "source_id": "pikkly",
+      "source_name": "Pikkly open data",
+      "status": "ok",
+      "verification_status": "source_snapshot",
+      "rows": 3231,
+      "rejected": 97,
+      "rejections": {
+        "unknown-tld": 94,
+        "invalid-price": 3
+      },
+      "fetched_at": "2026-10-22T10:29:22.133Z",
+      "oldest_observed_at": "2026-08-04",
+      "error": null
+    },
+    {
+      "source_id": "opendomaindata",
+      "source_name": "Open Domain Data",
+      "status": "ok",
+      "verification_status": "source_snapshot",
+      "rows": 593,
+      "rejected": 12,
+      "rejections": {
+        "unknown-tld": 10,
+        "invalid-price": 2
+      },
+      "fetched_at": "2026-10-22T10:29:22.133Z",
+      "oldest_observed_at": "2026-05-12",
+      "error": null
+    }
+  ],
+  "significant_changes": [],
+  "degraded_sources": [],
+  "summary": "3549 offers across 811 TLDs and 10 registrars. 2844 (80%) were read directly from the registrar's own published price list; 699 come from openly licensed dated snapshots; 0 are policy-derived; 6 cannot be dated. 681 offers (19%) are older than 30 days and are shown as stale. Oldest evidence: 2026-05-12."
+}

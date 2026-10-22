@@ -12,7 +12,7 @@
  * against real source data; used as both source_url and purchase_url).
  */
 
-import type { RawOffer } from '../../../src/lib/pricingTypes.js';
+import type { RawOffer, VerificationStatus } from '../../../src/lib/pricingTypes.js';
 import { normalizePrice } from '../../../src/lib/pricingCalc.js';
 
 export const PORKBUN_SOURCE = {
@@ -22,6 +22,7 @@ export const PORKBUN_SOURCE = {
   license: 'Official public API (no authentication required)',
   attribution: null,
   priority: 0, // official API checked at fetch time — wins freshness ties
+  verificationStatus: 'verified' as VerificationStatus,
 };
 
 export const PORKBUN_PRICING_URL = 'https://api.porkbun.com/api/json/v3/pricing/get';
@@ -43,8 +44,12 @@ export interface PorkbunPayload {
  * Extract a promo code from a coupon entry when the structure exposes one.
  * Unknown coupon shapes are ignored — codes are never guessed.
  */
-function extractPromo(coupons: unknown): { code: string | null; restrictions: string | null } {
-  if (!Array.isArray(coupons)) return { code: null, restrictions: null };
+function extractPromo(coupons: unknown): {
+  code: string | null;
+  restrictions: string | null;
+  expiresAt: string | null;
+} {
+  if (!Array.isArray(coupons)) return { code: null, restrictions: null, expiresAt: null };
   for (const entry of coupons) {
     if (entry && typeof entry === 'object') {
       const anyEntry = entry as Record<string, unknown>;
@@ -52,11 +57,17 @@ function extractPromo(coupons: unknown): { code: string | null; restrictions: st
         const notes: string[] = [];
         if (typeof anyEntry.type === 'string') notes.push(`applies to ${anyEntry.type}`);
         if (typeof anyEntry.expires === 'string') notes.push(`expires ${anyEntry.expires}`);
-        return { code: anyEntry.code.trim(), restrictions: notes.length ? notes.join(', ') : null };
+        return {
+          code: anyEntry.code.trim(),
+          restrictions: notes.length ? notes.join(', ') : null,
+          // Porkbun is the only source that publishes an explicit promo end
+          // date; it is preserved verbatim so an expired promo can be hidden.
+          expiresAt: typeof anyEntry.expires === 'string' ? anyEntry.expires : null,
+        };
       }
     }
   }
-  return { code: null, restrictions: null };
+  return { code: null, restrictions: null, expiresAt: null };
 }
 
 /** Pure parse of a Porkbun pricing payload (fixture-testable). */
@@ -96,10 +107,14 @@ export function parsePorkbun(payload: PorkbunPayload, observedAt: string): RawOf
       promotional: promo.code !== null,
       promo_code: promo.code,
       promo_restrictions: promo.restrictions,
+      promotion_expires_at: promo.expiresAt,
       source_id: PORKBUN_SOURCE.id,
       source_url: page,
       purchase_url: page,
-      last_checked: observedAt,
+      // Read from Porkbun's own API during this run: a genuine verification.
+      price_observed_at: observedAt,
+      price_verified_at: observedAt,
+      verification_status: PORKBUN_SOURCE.verificationStatus,
       source_status_stale: false,
       invalid_fields: invalid.length ? invalid : undefined,
     });
@@ -108,12 +123,12 @@ export function parsePorkbun(payload: PorkbunPayload, observedAt: string): RawOf
 }
 
 /** Network fetch for the sync pipeline. */
-export async function fetchPorkbun(): Promise<RawOffer[]> {
+export async function fetchPorkbun(now: Date = new Date()): Promise<RawOffer[]> {
   const res = await fetch(PORKBUN_PRICING_URL, {
     headers: { accept: 'application/json' },
     signal: AbortSignal.timeout(30_000),
   });
   if (!res.ok) throw new Error(`Porkbun pricing HTTP ${res.status}`);
   const payload = (await res.json()) as PorkbunPayload;
-  return parsePorkbun(payload, new Date().toISOString());
+  return parsePorkbun(payload, now.toISOString());
 }

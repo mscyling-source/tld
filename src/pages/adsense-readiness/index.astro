@@ -97,7 +97,7 @@ const checks = [
               const required = item.required ?? false;
               return (
                 <li class="flex items-start gap-3 py-2">
-                  <span class="flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center text-xs font-bold {pass ? 'border-emerald-500 text-emerald-600 bg-emerald-50' : 'border-red-500 text-red-600 bg-red-50'}">{pass ? '✓' : '✗'}</span>
+                  <span class={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center text-xs font-bold ${pass ? 'border-emerald-500 text-emerald-600 bg-emerald-50' : 'border-red-500 text-red-600 bg-red-50'}`}>{pass ? '✓' : '✗'}</span>
                   <span class="text-ink-700">{item.name}</span>
                   {required && !pass && <span class="text-red-600 text-sm ml-2">(required)</span>}
                   {item.path && <a href={item.path} class="ml-2 text-xs text-brand-600 hover:underline" target="_blank">view</a>}

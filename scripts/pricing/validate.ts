@@ -6,11 +6,19 @@
  *   - invalid price (negative, zero, NaN, above the sanity ceiling)
  *   - missing currency (row must declare USD — all sources are USD-normalised)
  *   - invalid source/purchase URL (must be http/https)
+ *   - unverifiable row: a `verified` claim with no verification date, or an
+ *     unusable date anywhere. This is the rule that stops a fetch timestamp
+ *     from silently standing in for an observation date.
  *   - duplicate offer within the same source batch
  *   - row with no usable price at all
+ *
+ * Note what is deliberately NOT a reject rule: a missing observation date on a
+ * `source_snapshot` row. Those rows are kept and surface as `unverified` in the
+ * UI, because dropping them would silently shrink the catalogue. Only a row
+ * that *claims* verification without a date is rejected outright.
  */
 
-import type { RawOffer } from '../../src/lib/pricingTypes.js';
+import type { RawOffer, VerificationStatus } from '../../src/lib/pricingTypes.js';
 import { isFinitePrice } from '../../src/lib/pricingCalc.js';
 
 export interface RejectedRow {
@@ -22,6 +30,7 @@ export interface RejectedRow {
     | 'missing-currency'
     | 'invalid-url'
     | 'invalid-timestamp'
+    | 'unverifiable'
     | 'duplicate'
     | 'no-price'
     | 'missing-identity';
@@ -33,6 +42,13 @@ export interface ValidationResult {
 }
 
 const TLD_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
+
+const KNOWN_VERIFICATIONS: ReadonlySet<string> = new Set([
+  'verified',
+  'source_snapshot',
+  'model_derived',
+  'unverified',
+]);
 
 function isHttpUrl(value: string): boolean {
   try {
@@ -65,7 +81,23 @@ export function validateOffer(offer: RawOffer, knownTlds: Set<string>): Rejected
   if (!isHttpUrl(offer.source_url)) return 'invalid-url';
   if (offer.purchase_url !== null && !isHttpUrl(offer.purchase_url)) return 'invalid-url';
 
-  if (Number.isNaN(Date.parse(offer.last_checked))) return 'invalid-timestamp';
+  const verification: VerificationStatus = offer.verification_status ?? 'source_snapshot';
+  if (!KNOWN_VERIFICATIONS.has(verification)) return 'unverifiable';
+
+  // A verification claim must be backed by a verification date. This is the
+  // guard that would catch an adapter that "verifies" rows using the fetch time.
+  if (verification === 'verified') {
+    const v = offer.price_verified_at;
+    if (typeof v !== 'string' || !v || Number.isNaN(Date.parse(v))) return 'unverifiable';
+  }
+
+  // Any date that is present must parse. A missing date on a snapshot row is
+  // allowed through and displayed as `unverified`.
+  for (const date of [offer.price_observed_at, offer.price_verified_at]) {
+    if (date === null || date === undefined || date === '') continue;
+    if (Number.isNaN(Date.parse(date))) return 'invalid-timestamp';
+  }
+
   return null;
 }
 

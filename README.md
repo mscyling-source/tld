@@ -4,8 +4,9 @@ An independent, open-source price-comparison and reference site for top-level do
 
 ## Features
 
-- **Registrar Price Comparison** — Homepage table comparing first-year registration, renewal, transfer and 3-year cost across registrars, with search, sorting, category filters and a verified-data-only mode
-- **Per-TLD Price Tables** — Every detail page lists each registrar's offer with promo terms, last-checked date and a direct purchase link
+- **Registrar Price Comparison** — Homepage table comparing first-year registration, renewal, transfer and 3-year cost across registrars, with search, sorting, category filters and a first-party-prices-only mode
+- **Per-TLD Price Tables** — Every detail page lists each registrar's offer with promo terms, evidence date, verification tier and a direct purchase link
+- **Honest Price Provenance** — Every price states how it was obtained (**Verified** from the registrar's own price list, **Snapshot** from a dated open dataset, **Modelled**, or **Unverified**) and how old that evidence is (**Recently verified** ≤ 7 days, **not recent** 8–30 days, **Stale** > 30 days). A download timestamp can never make a price look freshly verified.
 - **Complete TLD Directory** — Browse all 1,400+ delegated TLDs from the IANA Root Zone Database
 - **Search & Filter** — Find TLDs by name, registry, type, or first letter (instant client-side filtering)
 - **Category Pages** — Generic TLDs, Country-code TLDs, Sponsored TLDs, Internationalized TLDs, Special-use TLDs
@@ -13,7 +14,7 @@ An independent, open-source price-comparison and reference site for top-level do
 - **TLD Detail Pages** — Type, manager, official links (IANA, registry, WHOIS, RDAP), data quality indicators
 - **Comparison Tool** — Side-by-side comparison of multiple TLDs
 - **10+ Original Guides** — Practical articles on domains, DNS, registration, and choosing extensions
-- **Transparent Data Sources** — IANA metadata with weekly sync; pricing from an official public API + CC BY 4.0 datasets with a daily, guarded sync (see `docs/PRICING-DATA.md`)
+- **Transparent Data Sources** — IANA metadata with weekly sync; pricing read directly from five registrars' own published price lists plus three CC BY 4.0 datasets, with a daily, guarded sync and a per-run monitoring report (see `docs/PRICING-DATA.md`)
 - **SEO-Ready** — Static HTML, sitemap.xml, robots.txt, canonical URLs, structured data, Open Graph
 - **Privacy-First** — No tracking, no cookies, no third-party scripts
 - **Fast** — Static site generation (SSG) via Astro, deployed to Cloudflare Pages
@@ -76,9 +77,18 @@ Fetches latest IANA data, validates, and updates `data/tlds.json` + `data/meta.j
 npm run sync:prices
 ```
 
-Fetches all pricing sources (Porkbun public API + CC BY 4.0 datasets), validates, guards against
-empty/shrinking sources, and updates `data/prices.json` + `data/prices-meta.json`. Full source
-evaluation and failure semantics: `docs/PRICING-DATA.md`.
+Reads five registrars' own published price lists (Porkbun API, Dynadot, Gandi, Hover, IONOS) and
+three CC BY 4.0 datasets (Best Domain Registrars, Pikkly, Open Domain Data), validates every row,
+guards against empty/shrinking sources, and writes:
+
+| File | Contents |
+|---|---|
+| `data/prices.json` | Schema v2 offers — three provenance timestamps + verification tier per row |
+| `data/prices-meta.json` | Last attempt/success, counts by tier and freshness, history |
+| `data/price-sync-report.json` | Machine-readable monitoring report for the run |
+| `data/price-sync-report.md` | Human-readable summary (also the CI step summary) |
+
+Full source evaluation, provenance rules and failure semantics: `docs/PRICING-DATA.md`.
 
 ## Project Structure
 
@@ -89,15 +99,17 @@ evaluation and failure semantics: `docs/PRICING-DATA.md`.
 │   ├── components/       # Astro components (Layout, Hero, TldTable, FilterBar, etc.)
 │   ├── config/
 │   │   ├── site.ts       # Central brand/site configuration
+│   │   ├── freshness.ts  # Freshness thresholds, verification tiers, badge labels
+│   │   ├── sources.ts    # Which sources count as first-party reads
 │   │   └── registrars.ts # Registrar registry + affiliate extension point
 │   ├── lib/
 │   │   ├── iana.ts       # IANA parsing + normalization (pure functions, tested)
 │   │   ├── pricing.ts    # Build-time pricing store + aggregation
-│   │   ├── pricingCalc.ts# Three-year math, freshness, sorting (tested)
+│   │   ├── pricingCalc.ts# Three-year math, evidence dates, freshness, sorting (tested)
 │   │   ├── search.ts     # Search/filter/sort/pagination (pure functions, tested)
 │   │   ├── store.ts      # Server-side data access (build-time)
 │   │   ├── types.ts      # TypeScript interfaces
-│   │   └── pricingTypes.ts # Pricing data model (separate from IANA)
+│   │   └── pricingTypes.ts # Pricing data model, schema v2 (separate from IANA)
 │   ├── pages/
 │   │   ├── index.astro           # Homepage
 │   │   ├── tlds/                 # TLD directory + A-Z index
@@ -113,13 +125,15 @@ evaluation and failure semantics: `docs/PRICING-DATA.md`.
 │   ├── sync-tlds.ts      # Weekly IANA sync (GitHub Actions)
 │   ├── sync-prices.ts    # Daily pricing sync (GitHub Actions)
 │   ├── deploy-decision.ts# Decides whether a build must be published
-│   ├── pricing/          # Source adapters + validation + merge
+│   ├── pricing/          # http helpers, source adapters, validate, merge, migrate, report
 │   └── init-data.ts      # Initialize data from local files
 ├── data/
 │   ├── tlds.json         # Canonical TLD dataset (1,400+ records)
 │   ├── meta.json         # Sync metadata + history
-│   ├── prices.json       # Registrar offers (one per registrar+TLD)
-│   └── prices-meta.json  # Price sync metadata + history
+│   ├── prices.json       # Registrar offers, schema v2 (one per registrar+TLD)
+│   ├── prices-meta.json  # Price sync metadata + history
+│   ├── price-sync-report.json # Per-run provenance report (machine-readable)
+│   └── price-sync-report.md   # Per-run provenance report (human-readable)
 ├── tests/
 │   ├── fixtures.ts       # Test fixtures (IANA sample data)
 │   ├── iana.test.ts      # IANA parsing tests
@@ -147,8 +161,9 @@ so a commit to `main` does not rebuild the site; the workflow publishes explicit
               → commit data/tlds.json + data/meta.json → push to main
 
 .github/workflows/sync-prices.yml
-   └─ daily (04:45 UTC): fetch pricing sources → validate/guard → npm test
-              → commit data/prices*.json (only if changed) → push to main
+   └─ daily (04:45 UTC): fetch pricing sources → validate/guard → provenance checks
+              → publish report to run summary + artefacts → npm test
+              → commit data/prices*.json + price-sync-report.* (only if changed) → push to main
               → npm run build (PUBLIC_SITE_URL=https://tld-directory.pages.dev)
               → wrangler pages deploy dist --project-name tld-directory --branch main
               → verify the live site serves the new dataset

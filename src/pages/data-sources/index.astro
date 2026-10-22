@@ -43,46 +43,143 @@ import { siteConfig } from '../../config/site.js';
           published by the source itself — we never estimate, convert, or invent prices. Sources
           without a value are shown as "Price unavailable".
         </p>
+
+        <h3>First-party reads — labelled <em>Verified</em></h3>
+        <p>
+          These sources are the registrars' own published price lists, read directly by our daily
+          sync. A price from here is stamped with the moment we read it, and that timestamp is the
+          only thing that can make a price "recently verified".
+        </p>
         <dl>
           <dt><strong>Porkbun API</strong> — official, no authentication</dt>
           <dd>
             <a href="https://porkbun.com/api/json/v3/documentation" target="_blank" rel="noopener">Porkbun API v3 — pricing endpoint</a> —
-            registration, renewal and transfer list prices in USD for every TLD Porkbun sells
-            (~900). Documented as a public endpoint by Porkbun; fetched daily by our pipeline.
-            Prices checked at fetch time, so these rows are the freshest on the site.
+            registration, renewal and transfer list prices in USD for every TLD Porkbun sells.
+            Documented as a public endpoint by Porkbun; fetched daily.
+          </dd>
+
+          <dt><strong>Dynadot price list</strong></dt>
+          <dd>
+            <a href="https://www.dynadot.com/domain/prices" target="_blank" rel="noopener">dynadot.com/domain/prices</a> —
+            Dynadot's published catalogue, read from the server-rendered page payload. A struck
+            original price is treated as a promotion, exactly as the page presents it.
+          </dd>
+
+          <dt><strong>Gandi price list</strong></dt>
+          <dd>
+            <a href="https://www.gandi.net/en-US/domain/tld" target="_blank" rel="noopener">gandi.net/domain/tld</a> —
+            the official per-extension price table (creation, transfer, renewal). Fetched one letter
+            prefix at a time with a delay between requests; Gandi's robots.txt allows these pages.
+          </dd>
+
+          <dt><strong>Hover price list</strong></dt>
+          <dd>
+            <a href="https://www.hover.com/domain-pricing" target="_blank" rel="noopener">hover.com/domain-pricing</a> —
+            the published registration, renewal and transfer prices carried in the page's own data
+            payload.
+          </dd>
+
+          <dt><strong>IONOS price list</strong></dt>
+          <dd>
+            <a href="https://www.ionos.com/domains/domain-name-prices" target="_blank" rel="noopener">ionos.com/domains/domain-name-prices</a> —
+            first-year welcome price, existing-customer price, standard renewal fee and transfer fee.
+            IONOS's bundle price is never used, because it is not a single-domain price.
+          </dd>
+        </dl>
+
+        <h3>Openly licensed datasets — labelled <em>Snapshot</em></h3>
+        <p>
+          These are third-party datasets. They are downloaded fresh every day, but the dates inside
+          them are the dataset's <em>own</em> observation dates, which can be weeks old. They are
+          never labelled "verified", however recently we downloaded them.
+        </p>
+        <dl>
+          <dt><strong>Best Domain Registrars</strong> — licence: CC BY 4.0</dt>
+          <dd>
+            <a href="https://www.best-domain-registrars.com/data" target="_blank" rel="noopener">best-domain-registrars.com/data</a> —
+            per-registrar price table plus a verification taxonomy that distinguishes figures the
+            publisher verified, figures confirmed against a pricing model, and placeholder samples.
+            We reuse that taxonomy rather than flattening it: rows marked as samples (currently
+            Squarespace) are dropped, and model-confirmed rows are published as <em>Modelled</em>
+            rather than as quotes. Rows the publisher verified stay <em>Snapshot</em> here, because
+            that attestation is theirs — not a read we performed. Attribution:
+            <em>"Price data by Best Domain Registrars"</em>.
           </dd>
 
           <dt><strong>Pikkly open data</strong> — licence: CC BY 4.0</dt>
           <dd>
             <a href="https://pikkly.dev/data" target="_blank" rel="noopener">pikkly.dev/data</a> —
-            daily-rebuilt JSON of first-year, renewal and transfer prices for 6 registrars
-            (Porkbun, Cloudflare, Dynadot, Gandi, Hover, IONOS). Attribution:
-            <em>"Price data by Pikkly"</em>. Rows sourced from dated community dumps use the dump
-            date as their check date, not the rebuild time.
+            daily-rebuilt JSON covering 6 registrars. Rows sourced from dated community dumps use the
+            dump date as their observation date, not the rebuild time. Attribution:
+            <em>"Price data by Pikkly"</em>.
           </dd>
 
           <dt><strong>Open Domain Data — tld_pricing</strong> — licence: CC BY 4.0</dt>
           <dd>
             <a href="https://www.opendomaindata.org/datasets/tld-pricing" target="_blank" rel="noopener">opendomaindata.org</a> —
-            monthly snapshot of register/renew/transfer prices normalised to USD across 7 registrars,
-            including GoDaddy, Namecheap, Spaceship and Squarespace Domains. Citation:
-            <em>Open Domain Data (2026). tld_pricing, opendomaindata.org</em>. Records carry their own
-            check dates, which can be weeks old — anything past 30 days is labelled "stale".
+            monthly snapshot of register/renew/transfer prices normalised to USD across 7 registrars.
+            Citation: <em>Open Domain Data (2026). tld_pricing, opendomaindata.org</em>. Records carry
+            their own check dates, which can be weeks old — anything past 30 days is labelled
+            "stale".
           </dd>
         </dl>
+
+        <h3>Placeholder pricing we refuse to dress up</h3>
         <p>
-          We do not scrape registrar websites: these are an official public API and
-          openly-licensed datasets, each fetched directly from the publisher. If a source requires
-          credentials in the future, they are supplied via GitHub Actions secrets — never committed.
+          Squarespace Domains appears in both open datasets, but Best Domain Registrars marks its
+          figures as <code>sample</code> — the publisher's own read of Squarespace's pricing was
+          blocked, so those numbers are placeholders. Open Domain Data repeats the same figures
+          without that warning. We keep the rows so you can see the registrar exists, but they are
+          published as <strong>Unverified</strong>: no verification date, no freshness band, and they
+          can never be labelled "cheapest". The same rule applies to any registrar added to
+          <code>UNTRUSTED_REGISTRAR_PRICES</code>.
+        </p>
+
+        <h3>How a price is dated</h3>
+        <p>
+          The old dataset collapsed three different questions into one date, which is why prices
+          looked fresher than they were. Each offer now carries three separate timestamps:
+        </p>
+        <table>
+          <thead><tr><th>Field</th><th>Question it answers</th></tr></thead>
+          <tbody>
+            <tr><td><code>source_fetched_at</code></td><td>When did <em>we</em> download this source? Says nothing about how old the numbers are.</td></tr>
+            <tr><td><code>price_observed_at</code></td><td>When does the <em>source</em> say it observed this price?</td></tr>
+            <tr><td><code>price_verified_at</code></td><td>When did <em>we</em> read this figure from the registrar itself? Empty for snapshots.</td></tr>
+          </tbody>
+        </table>
+        <p>
+          The date shown next to a price is always the evidence date — the verification date for a
+          first-party read, otherwise the source's own observation date — never the download date.
+        </p>
+
+        <h3>Verification and freshness are two different things</h3>
+        <table>
+          <thead><tr><th>Badge</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Verified</strong></td><td>Read from the registrar's own published price list during a sync run.</td></tr>
+            <tr><td><strong>Snapshot</strong></td><td>From an openly licensed dated dataset, accurate as of that dataset's observation date.</td></tr>
+            <tr><td><strong>Modelled</strong></td><td>Derived from a documented pricing policy rather than a published price list.</td></tr>
+            <tr><td><strong>Unverified</strong></td><td>No trustworthy observation date, or flagged as placeholder data upstream.</td></tr>
+            <tr><td><strong>Recently verified</strong></td><td>Evidence is at most 7 days old. Only first-party reads can earn this label.</td></tr>
+            <tr><td><strong>Verification not recent</strong></td><td>Evidence is 8–30 days old.</td></tr>
+            <tr><td><strong>Stale</strong></td><td>Evidence is more than 30 days old — a historical reference, not a current quote.</td></tr>
+          </tbody>
+        </table>
+        <p>
+          When two sources disagree about the same registrar and extension, the better-verified copy
+          wins — <em>before</em> age is considered. A snapshot downloaded this morning cannot displace
+          a first-party read from three weeks ago.
         </p>
 
         <h3>Pricing data pipeline</h3>
         <ol>
           <li><strong>Daily fetch</strong> — GitHub Actions runs <code>npm run sync:prices</code>.</li>
-          <li><strong>Validation</strong> — rows are rejected for unknown TLDs (anything not in the IANA catalog), invalid or out-of-range prices, missing USD currency, invalid URLs, and duplicates.</li>
+          <li><strong>Validation</strong> — rows are rejected for unknown TLDs (anything not in the IANA catalog), invalid or out-of-range prices, missing USD currency, invalid URLs, duplicates, and — critically — a "verified" claim with no verification date behind it.</li>
           <li><strong>Failure guards</strong> — a source that errors, returns zero valid rows, or shrinks by more than 50% keeps its previous rows untouched; if every source fails, <code>data/prices.json</code> is left byte-for-byte unchanged and the run fails.</li>
-          <li><strong>Merge</strong> — one offer per registrar+TLD; when sources overlap, the freshest check date wins.</li>
-          <li><strong>Freshness</strong> — "verified" means the source's own check date is within 30 days; a rebuild can never re-date old prices.</li>
+          <li><strong>Merge</strong> — one offer per registrar+TLD, ranked by verification tier, then evidence age, then source priority.</li>
+          <li><strong>Freshness</strong> — recomputed from each offer's evidence date on every build, so a rebuild can never re-date an old price.</li>
+          <li><strong>Report</strong> — every run writes <code>data/price-sync-report.json</code> (machine-readable) and <code>data/price-sync-report.md</code> (human-readable), stating how many published prices are first-party reads, how many are snapshots, and the oldest evidence in the dataset.</li>
           <li><strong>Commit only on change</strong> — if the dataset is unchanged, nothing is committed, so no rebuild is triggered.</li>
         </ol>
       </section>
@@ -165,9 +262,10 @@ import { siteConfig } from '../../config/site.js';
       <section>
         <h2>What we do NOT do</h2>
         <ul>
-          <li>We do <strong>not</strong> scrape registrar websites for pricing or availability — pricing comes from an official public API and openly-licensed datasets (see "Registrar pricing sources").</li>
-          <li>We do <strong>not</strong> bypass authentication, anti-bot controls, or terms-of-use restrictions on any registrar's website.</li>
+          <li>We do <strong>not</strong> bypass authentication, anti-bot controls, or terms-of-use restrictions on any registrar's website. Where we read a registrar's published price list we use a plain HTTP GET with an identifying user agent, at a low rate, and only on paths its <code>robots.txt</code> allows.</li>
+          <li>We do <strong>not</strong> scrape quotes, carts, or availability checks for individual domain names.</li>
           <li>We do <strong>not</strong> guess prices: if a source doesn't publish a figure, we show "Price unavailable".</li>
+          <li>We do <strong>not</strong> convert currencies or infer a price from another extension's price.</li>
           <li>We do <strong>not</strong> let affiliate relationships (none exist today) influence which offer is labelled cheapest — rankings use published prices only.</li>
           <li>We do <strong>not</strong> guess or infer registration rules — only cite verified sources.</li>
           <li>We do <strong>not</strong> track domain ownership, WHOIS history, or aftermarket data.</li>
@@ -179,9 +277,10 @@ import { siteConfig } from '../../config/site.js';
         <p>IANA data is public domain / freely redistributable per <a href="https://www.iana.org/iana-legal" target="_blank" rel="noopener">IANA's legal notices</a>. Our compiled dataset, editorial content, and code are proprietary. You may link to our pages freely. For bulk data use, <a href="/contact/">contact us</a>.</p>
         <p>Third-party pricing datasets are reused under their own licences, with attribution shown here and on every detail page:</p>
         <ul>
+          <li><strong>Best Domain Registrars</strong> — CC BY 4.0. <em>"Price data by Best Domain Registrars" — <a href="https://www.best-domain-registrars.com" target="_blank" rel="noopener">best-domain-registrars.com</a></em>.</li>
           <li><strong>Pikkly</strong> — CC BY 4.0. <em>"Price data by Pikkly" — <a href="https://pikkly.dev" target="_blank" rel="noopener">pikkly.dev</a></em>.</li>
           <li><strong>Open Domain Data</strong> — CC BY 4.0. <em>Open Domain Data (2026). tld_pricing, <a href="https://www.opendomaindata.org/datasets/tld-pricing" target="_blank" rel="noopener">opendomaindata.org</a></em>.</li>
-          <li><strong>Porkbun</strong> — official public API, used per its published API documentation.</li>
+          <li><strong>Porkbun, Dynadot, Gandi, Hover, IONOS</strong> — their own published price lists, read as public pages and used as factual price references.</li>
         </ul>
       </section>
 

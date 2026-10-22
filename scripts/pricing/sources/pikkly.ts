@@ -19,9 +19,10 @@
  *     they must not overwrite good previous data.
  */
 
-import type { RawOffer } from '../../../src/lib/pricingTypes.js';
+import type { RawOffer, VerificationStatus } from '../../../src/lib/pricingTypes.js';
 import { normalizePrice } from '../../../src/lib/pricingCalc.js';
 import { registrars } from '../../../src/config/registrars.js';
+import { toIsoDate } from '../http.js';
 
 export const PIKKLY_SOURCE = {
   id: 'pikkly',
@@ -30,6 +31,9 @@ export const PIKKLY_SOURCE = {
   license: 'CC BY 4.0',
   attribution: 'Price data by Pikkly (https://pikkly.dev)',
   priority: 1,
+  // A third-party snapshot: downloaded daily, but the dates inside it are the
+  // dates Pikkly observed the prices, not the dates we downloaded the file.
+  verificationStatus: 'source_snapshot' as VerificationStatus,
 };
 
 export const PIKKLY_PRICES_URL = 'https://pikkly.dev/data/domains/prices.json';
@@ -108,10 +112,11 @@ export function parsePikkly(payload: PikklyPayload): { offers: RawOffer[]; skipp
     const renewal = safePrice(row.renewal_usd, 'renewal_usd');
     const transfer = safePrice(row.transfer_usd, 'transfer_usd');
 
-    // Effective check date: prefer the dated dump (conservative) over the
-    // daily rebuild timestamp.
-    const dumpDate = typeof row.meta?.dump_date === 'string' ? row.meta.dump_date : null;
-    const lastChecked = dumpDate && !Number.isNaN(Date.parse(dumpDate)) ? dumpDate : (row.last_checked ?? '');
+    // Observation date, and it is the *conservative* one: a row sourced from a
+    // dated dump uses that dump's date, never the daily rebuild timestamp, so a
+    // months-old dump cannot look freshly checked.
+    const dumpDate = toIsoDate(row.meta?.dump_date);
+    const observedAt = dumpDate ?? toIsoDate(row.last_checked);
 
     offers.push({
       tld,
@@ -125,10 +130,14 @@ export function parsePikkly(payload: PikklyPayload): { offers: RawOffer[]; skipp
       promotional: false,
       promo_code: null,
       promo_restrictions: null,
+      promotion_expires_at: null,
       source_id: PIKKLY_SOURCE.id,
       source_url: typeof row.source_url === 'string' && row.source_url ? row.source_url : PIKKLY_SOURCE.url,
       purchase_url: null, // resolved from the registrar registry at sync time
-      last_checked: lastChecked,
+      price_observed_at: observedAt,
+      // We did not read this from the registrar ourselves.
+      price_verified_at: null,
+      verification_status: PIKKLY_SOURCE.verificationStatus,
       source_status_stale: row.status === 'stale',
       invalid_fields: invalid.length ? invalid : undefined,
     });

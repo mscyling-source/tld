@@ -1,14 +1,18 @@
 /**
- * Pricing pipeline tests: pure calculations, validation, merge, source
- * parsers (fixtures shaped from real payloads), outbound-link policy,
- * and an integration pass over the committed dataset.
+ * Pricing pipeline tests: the freshness policy, pure calculations, validation,
+ * merge ranking, source parsers (fixtures shaped from real payloads), the sync
+ * report, schema migration, outbound-link policy, and an integration pass over
+ * the committed dataset.
  *
  * Invariants under test:
  *   - missing prices stay null ("Price unavailable"), never 0
  *   - three-year cost = register + 2×renewal, only when both exist
- *   - freshness derives from source timestamps, never from rebuild time
- *   - invalid rows (unknown TLD, bad price, bad URL, dupes) are rejected
- *   - freshest source wins a (registrar, TLD) conflict; registrars never merge
+ *   - a price is dated by its EVIDENCE, never by when we downloaded it
+ *   - a snapshot is never labelled "recently verified", however new the download
+ *   - a better-verified copy beats a fresher-looking snapshot for the same
+ *     registrar+TLD (tier is checked before age)
+ *   - invalid rows (unknown TLD, bad price, bad URL, dupes, unbacked
+ *     "verified" claims) are rejected
  *   - outbound links are ordinary links; no affiliate params by default
  */
 
@@ -16,19 +20,39 @@ import { describe, it, expect } from 'vitest';
 import {
   calcThreeYear,
   normalizePrice,
+  parseMoney,
   qualityFor,
-  effectiveQuality,
+  effectiveEvidenceDate,
+  effectiveFreshness,
+  freshnessToQuality,
+  isPromotionExpired,
   cheapestPoint,
   sortComparisonRows,
   formatUsd,
+  formatDate,
+  RECENT_WITHIN_DAYS,
   STALE_AFTER_DAYS,
   MAX_SANE_PRICE_USD,
 } from '../src/lib/pricingCalc.js';
+import {
+  FRESHNESS_EXPLANATION,
+  VERIFICATION_EXPLANATION,
+  VERIFICATION_RANK,
+  freshnessFor,
+} from '../src/config/freshness.js';
 import { validateOffers, countRejections } from '../scripts/pricing/validate.js';
 import { mergeBatches } from '../scripts/pricing/merge.js';
+import { applyTrustPolicy, quarantineReason } from '../scripts/pricing/trust.js';
+import { migrateDataset } from '../scripts/pricing/migrate.js';
+import { buildReport, diffPrices, renderMarkdown } from '../scripts/pricing/report.js';
 import { parsePorkbun } from '../scripts/pricing/sources/porkbun.js';
 import { parsePikkly } from '../scripts/pricing/sources/pikkly.js';
 import { parseOdd } from '../scripts/pricing/sources/opendomaindata.js';
+import { parseBdr, mapVerificationStatus } from '../scripts/pricing/sources/bestdomainregistrars.js';
+import { parseHover } from '../scripts/pricing/sources/hover.js';
+import { parseGandiPage } from '../scripts/pricing/sources/gandi.js';
+import { parseIonos } from '../scripts/pricing/sources/ionos.js';
+import { decodeDevalue, findTldCatalogue, parseDynadot } from '../scripts/pricing/sources/dynadot.js';
 import {
   purchaseUrlFor,
   outboundRel,
@@ -37,14 +61,112 @@ import {
   registrars,
 } from '../src/config/registrars.js';
 import { readPriceDataset, getOffersForTld, buildComparisonRows } from '../src/lib/pricing.js';
-import type { ComparisonRow, PriceOffer, RawOffer } from '../src/lib/pricingTypes.js';
-import { porkbunSuccess, pikklyPayload, oddPayload, rawOffer } from './fixtures/pricing-fixtures.js';
+import type {
+  ComparisonRow,
+  PriceDataset,
+  PriceOffer,
+  PricePoint,
+  RawOffer,
+} from '../src/lib/pricingTypes.js';
+import {
+  porkbunSuccess,
+  pikklyPayload,
+  oddPayload,
+  bdrCsv,
+  bdrVerification,
+  hoverPage,
+  gandiPage,
+  ionosPage,
+  rawOffer,
+  snapshotOffer,
+} from './fixtures/pricing-fixtures.js';
 
 const KNOWN_TLDS = new Set([
   'com', 'net', 'org', 'io', 'ai', 'dev', 'app', 'xyz', 'cloudflare', 'invalidtld',
 ]);
 
 const NOW = new Date('2026-10-20T12:00:00.000Z');
+const day = (n: number): string =>
+  new Date(NOW.getTime() + n * 86_400_000).toISOString();
+
+describe('freshness policy', () => {
+  it('bands verified evidence into recent / aging / stale', () => {
+    expect(freshnessFor('verified', day(0), NOW)).toBe('recent');
+    expect(freshnessFor('verified', day(-RECENT_WITHIN_DAYS), NOW)).toBe('recent');
+    expect(freshnessFor('verified', day(-RECENT_WITHIN_DAYS - 1), NOW)).toBe('aging');
+    expect(freshnessFor('verified', day(-STALE_AFTER_DAYS), NOW)).toBe('aging');
+    expect(freshnessFor('verified', day(-STALE_AFTER_DAYS - 1), NOW)).toBe('stale');
+    expect(freshnessFor('verified', '2026-05-12T00:00:00Z', NOW)).toBe('stale');
+  });
+
+  it('never lets a snapshot be labelled "recently verified"', () => {
+    // A dataset rebuilt this morning is still a snapshot of an older read.
+    expect(freshnessFor('source_snapshot', day(0), NOW)).toBe('aging');
+    expect(freshnessFor('model_derived', day(0), NOW)).toBe('aging');
+    expect(freshnessFor('unverified', day(0), NOW)).toBe('unknown');
+  });
+
+  it('treats missing, unparsable and far-future dates as unknown', () => {
+    expect(freshnessFor('verified', null, NOW)).toBe('unknown');
+    expect(freshnessFor('verified', 'not-a-date', NOW)).toBe('unknown');
+    // A date more than a day ahead is untrusted (clock skew, bad upstream data).
+    expect(freshnessFor('verified', day(3), NOW)).toBe('unknown');
+    expect(freshnessFor('verified', day(0.5), NOW)).toBe('recent');
+  });
+
+  it('keeps the documented thresholds and explanations in sync', () => {
+    expect(RECENT_WITHIN_DAYS).toBe(7);
+    expect(STALE_AFTER_DAYS).toBe(30);
+    expect(VERIFICATION_RANK.verified).toBeLessThan(VERIFICATION_RANK.source_snapshot);
+    expect(VERIFICATION_RANK.source_snapshot).toBeLessThan(VERIFICATION_RANK.model_derived);
+    for (const status of ['verified', 'source_snapshot', 'model_derived', 'unverified'] as const) {
+      expect(VERIFICATION_EXPLANATION[status].length).toBeGreaterThan(20);
+    }
+    for (const band of ['recent', 'aging', 'stale', 'unknown'] as const) {
+      expect(FRESHNESS_EXPLANATION[band].length).toBeGreaterThan(20);
+    }
+  });
+
+  it('derives freshness from evidence, never from when we fetched', () => {
+    // The row was downloaded a minute ago (source_fetched_at would be "now"),
+    // but the snapshot's own date is from May — that is the only date that
+    // counts, so the row is stale.
+    const offer = snapshotOffer({ price_observed_at: '2026-05-12T00:00:00Z' });
+    expect(effectiveEvidenceDate(offer)).toBe('2026-05-12T00:00:00Z');
+    expect(effectiveFreshness(offer, NOW)).toBe('stale');
+    expect(freshnessToQuality(effectiveFreshness(offer, NOW))).toBe('stale');
+  });
+
+  it('prefers the verification date over the observation date', () => {
+    expect(
+      effectiveEvidenceDate({
+        price_verified_at: '2026-10-20T00:00:00Z',
+        price_observed_at: '2026-01-01T00:00:00Z',
+      }),
+    ).toBe('2026-10-20T00:00:00Z');
+    expect(effectiveEvidenceDate({ price_verified_at: null, price_observed_at: null })).toBeNull();
+  });
+
+  it('never upgrades a row the source itself flagged stale', () => {
+    const flagged = rawOffer({ source_status_stale: true });
+    expect(effectiveFreshness(flagged, NOW)).toBe('stale');
+    expect(effectiveFreshness(rawOffer(), NOW)).toBe('recent');
+  });
+
+  it('qualityFor is a thin alias over the same policy', () => {
+    expect(qualityFor('verified', day(0), NOW)).toBe('recent');
+    expect(qualityFor('source_snapshot', '2026-05-12T00:00:00Z', NOW)).toBe('stale');
+  });
+});
+
+describe('promotion expiry', () => {
+  it('only expires a promotion with an explicit past end date', () => {
+    expect(isPromotionExpired('2026-10-01', NOW)).toBe(true);
+    expect(isPromotionExpired('2026-11-01', NOW)).toBe(false);
+    expect(isPromotionExpired(null, NOW)).toBe(false);
+    expect(isPromotionExpired('soon', NOW)).toBe(false);
+  });
+});
 
 describe('calcThreeYear', () => {
   it('computes register + 2×renewal rounded to cents', () => {
@@ -67,7 +189,7 @@ describe('calcThreeYear', () => {
   });
 });
 
-describe('normalizePrice', () => {
+describe('price parsing', () => {
   it('parses numeric strings with $ and separators', () => {
     expect(normalizePrice('11.08')).toBe(11.08);
     expect(normalizePrice('$11.08')).toBe(11.08);
@@ -81,6 +203,8 @@ describe('normalizePrice', () => {
     expect(normalizePrice('')).toBeNull();
     expect(normalizePrice('  ')).toBeNull();
     expect(normalizePrice('n/a')).toBeNull();
+    // Several sources use "-1" as an explicit "not published" sentinel.
+    expect(normalizePrice('-1')).toBeNull();
   });
 
   it('throws on invalid, negative or absurd prices', () => {
@@ -91,29 +215,21 @@ describe('normalizePrice', () => {
     expect(() => normalizePrice(MAX_SANE_PRICE_USD + 1)).toThrow();
     expect(() => normalizePrice({})).toThrow();
   });
-});
 
-describe('qualityFor / effectiveQuality', () => {
-  it('marks fresh data verified and old data stale', () => {
-    expect(qualityFor('2026-10-20T00:00:00Z', NOW)).toBe('verified');
-    expect(qualityFor('2026-09-25T00:00:00Z', NOW)).toBe('verified'); // 25 days
-    expect(qualityFor('2026-09-19T00:00:00Z', NOW)).toBe('stale'); // 31 days > 30
-    expect(qualityFor('2026-05-12T00:00:00Z', NOW)).toBe('stale');
+  it('parseMoney tolerates the display formats registrars actually publish', () => {
+    expect(parseMoney('$10.88')).toBe(10.88);
+    expect(parseMoney('10,88 €')).toBe(10.88);
+    expect(parseMoney('1,234.56')).toBe(1234.56);
+    expect(parseMoney('')).toBeNull();
+    expect(parseMoney('—')).toBeNull();
   });
 
-  it('treats unparsable and far-future timestamps as stale, not verified', () => {
-    expect(qualityFor('not-a-date', NOW)).toBe('stale');
-    expect(qualityFor('2026-11-30T00:00:00Z', NOW)).toBe('stale');
-    expect(STALE_AFTER_DAYS).toBe(30);
-  });
-
-  it('never upgrades a source-flagged stale row, no matter how recent', () => {
-    expect(
-      effectiveQuality({ last_checked: '2026-10-20T00:00:00Z', source_status_stale: true }, NOW),
-    ).toBe('stale');
-    expect(
-      effectiveQuality({ last_checked: '2026-10-20T00:00:00Z', source_status_stale: false }, NOW),
-    ).toBe('verified');
+  it('formats prices and dates for display without inventing values', () => {
+    expect(formatUsd(11.08)).toBe('$11.08');
+    expect(formatUsd(null)).toBe('');
+    expect(formatDate('2026-10-20T00:00:00Z')).toBe('Oct 20, 2026');
+    expect(formatDate('garbage')).toBeNull();
+    expect(formatDate(null)).toBeNull();
   });
 });
 
@@ -161,13 +277,32 @@ describe('validateOffers', () => {
       ).rejected[0].reason,
     ).toBe('no-price');
     expect(
-      validateOffers([rawOffer({ last_checked: 'garbage' })], KNOWN_TLDS).rejected[0].reason,
+      validateOffers([rawOffer({ price_observed_at: 'garbage' })], KNOWN_TLDS).rejected[0].reason,
     ).toBe('invalid-timestamp');
+  });
+
+  it('rejects a "verified" claim with no verification date', () => {
+    // This is the guard that stops an adapter from "verifying" a row with the
+    // time of the download rather than a real first-party read.
+    const { rejected } = validateOffers(
+      [rawOffer({ verification_status: 'verified', price_verified_at: null })],
+      KNOWN_TLDS,
+    );
+    expect(rejected[0].reason).toBe('unverifiable');
+  });
+
+  it('keeps undated snapshot rows and lets them surface as unverified', () => {
+    const { valid } = validateOffers(
+      [snapshotOffer({ price_observed_at: null, price_verified_at: null })],
+      KNOWN_TLDS,
+    );
+    expect(valid).toHaveLength(1);
+    expect(effectiveFreshness({ ...valid[0], source_status_stale: false }, NOW)).toBe('unknown');
   });
 
   it('deduplicates within a batch and counts rejection reasons', () => {
     const { valid, rejected } = validateOffers(
-      [rawOffer(), rawOffer(), rawOffer({ registrar_id: 'cloudflare' })],
+      [rawOffer(), rawOffer(), rawOffer({ registrar_id: 'cloudflare', registrar_name: 'Cloudflare Registrar' })],
       KNOWN_TLDS,
     );
     expect(valid).toHaveLength(2);
@@ -184,35 +319,51 @@ describe('mergeBatches', () => {
     offers,
   });
 
-  it('keeps one offer per (registrar, TLD) — freshest check date wins', () => {
-    const old = rawOffer({
-      source_id: 'opendomaindata',
-      last_checked: '2026-05-12T00:00:00.000Z',
-      register_usd: 11.99,
-    });
-    const fresh = rawOffer({
-      source_id: 'porkbun',
-      last_checked: '2026-10-20T00:00:00.000Z',
+  it('keeps one offer per (registrar, TLD) — freshest evidence wins within a tier', () => {
+    const old = snapshotOffer({ register_usd: 11.99 });
+    const fresh = snapshotOffer({
+      price_observed_at: '2026-10-20T00:00:00.000Z',
       register_usd: 11.08,
     });
     const { merged, superseded } = mergeBatches([
       batch('opendomaindata', 2, [old]),
-      batch('porkbun', 0, [fresh]),
+      batch('bdr', 1, [fresh]),
     ]);
     expect(merged).toHaveLength(1);
-    expect(merged[0].source_id).toBe('porkbun');
     expect(merged[0].register_usd).toBe(11.08);
     expect(superseded).toBe(1);
   });
 
-  it('breaks freshness ties by source priority', () => {
-    const stamp = '2026-10-20T00:00:00.000Z';
-    const { merged } = mergeBatches([
-      batch('opendomaindata', 2, [rawOffer({ source_id: 'opendomaindata', last_checked: stamp })]),
-      batch('porkbun', 0, [rawOffer({ source_id: 'porkbun', last_checked: stamp })]),
+  it('lets a first-party read displace a fresher snapshot', () => {
+    // The snapshot was observed TODAY; the first-party read is three weeks old.
+    // Age alone would keep the snapshot — tier must win.
+    const snapshot = snapshotOffer({
+      price_observed_at: day(0),
+      register_usd: 9.5,
+    });
+    const verified = rawOffer({
+      price_verified_at: day(-21),
+      price_observed_at: day(-21),
+      register_usd: 11.08,
+    });
+    const { merged, upgradedByVerification } = mergeBatches([
+      batch('opendomaindata', 0, [snapshot]),
+      batch('porkbun', 5, [verified]),
     ]);
     expect(merged).toHaveLength(1);
     expect(merged[0].source_id).toBe('porkbun');
+    expect(merged[0].register_usd).toBe(11.08);
+    expect(upgradedByVerification).toBe(1);
+  });
+
+  it('breaks same-tier, same-date ties by source priority', () => {
+    const stamp = '2026-10-20T00:00:00.000Z';
+    const { merged } = mergeBatches([
+      batch('opendomaindata', 2, [snapshotOffer({ source_id: 'opendomaindata', price_observed_at: stamp })]),
+      batch('bdr', 0, [snapshotOffer({ source_id: 'bdr', price_observed_at: stamp })]),
+    ]);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].source_id).toBe('bdr');
   });
 
   it('never collapses distinct registrars for the same TLD', () => {
@@ -232,7 +383,7 @@ describe('mergeBatches', () => {
 });
 
 describe('source parsers', () => {
-  it('parses the Porkbun public pricing payload', () => {
+  it('parses the Porkbun public pricing payload as a first-party read', () => {
     const offers = parsePorkbun(porkbunSuccess, NOW.toISOString());
     const com = offers.find(o => o.tld === 'com')!;
     expect(com.register_usd).toBe(11.08);
@@ -240,6 +391,8 @@ describe('source parsers', () => {
     expect(com.transfer_usd).toBe(11.08);
     expect(com.source_url).toBe('https://porkbun.com/tld/com');
     expect(com.purchase_url).toBe('https://porkbun.com/tld/com');
+    expect(com.verification_status).toBe('verified');
+    expect(com.price_verified_at).toBe(NOW.toISOString());
 
     // negative price recorded as an invalid field (row will be rejected)
     const xyz = offers.find(o => o.tld === 'xyz')!;
@@ -253,12 +406,14 @@ describe('source parsers', () => {
     expect(() => parsePorkbun({ status: 'ERROR' }, NOW.toISOString())).toThrow();
   });
 
-  it('parses Pikkly rows with conservative freshness and safe skips', () => {
+  it('parses Pikkly as a snapshot, dating rows by the dump and never verifying them', () => {
     const { offers, skipped } = parsePikkly(pikklyPayload);
 
     // dump_date wins over daily rebuild time
     const cloudflare = offers.find(o => o.registrar_id === 'cloudflare')!;
-    expect(cloudflare.last_checked).toBe('2026-08-04');
+    expect(cloudflare.price_observed_at).toBe('2026-08-04');
+    expect(cloudflare.price_verified_at).toBeNull();
+    expect(cloudflare.verification_status).toBe('source_snapshot');
     expect(cloudflare.register_usd).toBe(10.46);
     expect(cloudflare.transfer_usd).toBeNull();
 
@@ -278,6 +433,8 @@ describe('source parsers', () => {
     const { offers, skipped } = parseOdd(oddPayload);
     const cf = offers.find(o => o.registrar_id === 'cloudflare')!;
     expect(cf.source_url).toBe('https://www.cloudflare.com/products/registrar/');
+    expect(cf.verification_status).toBe('source_snapshot');
+    expect(cf.price_verified_at).toBeNull();
 
     const nc = offers.find(o => o.registrar_id === 'namecheap')!;
     expect(nc.promotional).toBe(true);
@@ -290,6 +447,135 @@ describe('source parsers', () => {
       parseOdd({ dataset: 'tld_pricing', currency: 'EUR', records: [] }),
     ).toThrow();
     expect(() => parseOdd({ dataset: 'wrong', records: [] })).toThrow();
+  });
+
+  it('parses Best Domain Registrars and drops placeholder rows', () => {
+    const { offers, skipped, statuses, oldestObservedAt } = parseBdr(bdrCsv, bdrVerification);
+
+    // squarespace is a `sample` upstream → dropped, never published.
+    expect(offers.find(o => o.registrar_id === 'squarespace')).toBeUndefined();
+    // non-USD rows are dropped rather than silently converted.
+    expect(offers.find(o => o.registrar_id === 'namecheap')).toBeUndefined();
+    // registrars we do not list are not our business.
+    expect(offers.find(o => o.registrar_id === 'unknownshop')).toBeUndefined();
+    expect(skipped).toBeGreaterThanOrEqual(3);
+
+    const porkbun = offers.find(o => o.registrar_id === 'porkbun')!;
+    expect(porkbun.verification_status).toBe('source_snapshot');
+    expect(porkbun.price_verified_at).toBeNull();
+    expect(porkbun.price_observed_at).toBe('2026-10-21');
+    expect(porkbun.register_usd).toBe(11.08);
+    expect(porkbun.source_id).toBe('bestdomainregistrars');
+
+    const cloudflare = offers.find(o => o.registrar_id === 'cloudflare')!;
+    expect(cloudflare.verification_status).toBe('model_derived');
+
+    expect(statuses.squarespace).toBe('sample');
+    expect(oldestObservedAt).toBe('2026-10-21');
+  });
+
+  it('maps upstream verification vocabulary conservatively', () => {
+    // BDR's "verified" is the publisher's attestation, not our own read.
+    expect(mapVerificationStatus('verified')).toBe('source_snapshot');
+    expect(mapVerificationStatus('model_confirmed')).toBe('model_derived');
+    expect(mapVerificationStatus('sample')).toBe('unverified');
+    expect(mapVerificationStatus('no_pricing_published')).toBe('unverified');
+    expect(mapVerificationStatus(undefined)).toBe('unverified');
+    // Unknown upstream values are not promoted.
+    expect(mapVerificationStatus('something-new')).toBe('source_snapshot');
+  });
+
+  it('parses Hover data-props and flags first-year promotions', () => {
+    const offers = parseHover(
+      hoverPage({
+        com: [1, 11.99, 19.99, 19.99],
+        'co.uk': [0, 9.99, 9.99, 9.99],
+      }),
+      NOW.toISOString(),
+    );
+    const com = offers.find(o => o.tld === 'com')!;
+    expect(com.register_usd).toBe(11.99);
+    expect(com.renewal_usd).toBe(19.99);
+    expect(com.promotional).toBe(true);
+    expect(com.promo_restrictions).toContain('First-year');
+    expect(com.verification_status).toBe('verified');
+
+    // values[0] is an availability flag, not a price
+    const uk = offers.find(o => o.tld === 'co.uk')!;
+    expect(uk.register_usd).toBe(9.99);
+    expect(uk.promotional).toBe(false);
+
+    expect(() => parseHover('<html></html>', NOW.toISOString())).toThrow();
+  });
+
+  it('parses a Gandi price table, taking the current figure of a promo cell', () => {
+    const offers = parseGandiPage(
+      gandiPage([
+        ['.com', '$11.00', '$11.00', '$11.00'],
+        ['.co', 'Promo $34.84 $15.99', '$15.99', '$34.84'],
+        ['.dev', '$14.00', '$14.00', '$14.00'],
+        ['.app', '$14.00', '$14.00', '$14.00'],
+        ['.io', '$39.00', '$39.00', '$39.00'],
+      ]),
+      NOW.toISOString(),
+    );
+    const com = offers.find(o => o.tld === 'com')!;
+    expect(com.register_usd).toBe(11);
+    expect(com.promotional).toBe(false);
+
+    const co = offers.find(o => o.tld === 'co')!;
+    expect(co.register_usd).toBe(15.99); // current, not the struck regular price
+    expect(co.renewal_usd).toBe(34.84);
+    expect(co.promotional).toBe(true);
+    expect(co.verification_status).toBe('verified');
+  });
+
+  it('parses IONOS welcome / special / renewal columns', () => {
+    const entries = Array.from({ length: 120 }, (_, i) => ({
+      title: `.tld${i}`,
+      prices: { welcomeOffer: 1, specialOffer: 5, regularRenewalFee: 20, domainTransfer: 9.5 },
+    }));
+    entries[0] = {
+      title: '.com',
+      prices: { welcomeOffer: 1, specialOffer: 9, regularRenewalFee: 20, domainTransfer: 9.5 },
+    };
+    const offers = parseIonos(ionosPage(entries), NOW.toISOString());
+    const com = offers.find(o => o.tld === 'com')!;
+    expect(com.register_usd).toBe(1); // welcome offer, not the bundle price
+    expect(com.renewal_usd).toBe(20);
+    expect(com.transfer_usd).toBe(9.5);
+    expect(com.promotional).toBe(true);
+    expect(com.promo_restrictions).toContain('welcome');
+  });
+
+  it('decodes Nuxt devalue payloads and reads the Dynadot catalogue', () => {
+    // A hand-built devalue array: index 0 is the root object, index 1 the data.
+    const rows = Array.from({ length: 51 }, (_, i) => ({
+      name: `.tld${i}`,
+      reg_price: '$10.88',
+      renew_price: '$12.88',
+      tr_price: '$10.88',
+    }));
+    rows[0] = {
+      name: '.com',
+      reg_price: '$10.88',
+      renew_price: '$12.88',
+      tr_price: '$10.88',
+      original_reg_price: '$12.99',
+    } as (typeof rows)[number];
+    const payload = [{ data: 1 }, rows];
+    const decoded = decodeDevalue(payload) as { data: unknown[] };
+    expect(Array.isArray(decoded.data)).toBe(true);
+    expect(findTldCatalogue(decoded)).toHaveLength(51);
+
+    const html = `<html><body><script id="__NUXT_DATA__" type="application/json">${JSON.stringify(payload)}</script></body></html>`;
+    const offers = parseDynadot(html, NOW.toISOString());
+    const com = offers.find(o => o.tld === 'com')!;
+    expect(com.register_usd).toBe(10.88);
+    expect(com.renewal_usd).toBe(12.88);
+    expect(com.promotional).toBe(true); // struck original price is higher
+    expect(com.verification_status).toBe('verified');
+    expect(com.price_verified_at).toBe(NOW.toISOString());
   });
 });
 
@@ -305,11 +591,18 @@ describe('cheapestPoint & sorting', () => {
     promotional: false,
     promo_code: null,
     promo_restrictions: null,
+    promotion_expires_at: null,
     three_year_usd: null,
     source_id: 'pikkly',
+    source_name: 'Pikkly open data',
     source_url: 'https://example.com',
     purchase_url: 'https://example.com',
+    source_fetched_at: '2026-10-20T00:00:00.000Z',
+    price_observed_at: '2026-10-20T00:00:00.000Z',
+    price_verified_at: null,
+    verification_status: 'source_snapshot',
     last_checked: '2026-10-20T00:00:00.000Z',
+    freshness: 'aging',
     quality: 'verified',
     source_status_stale: false,
     ...over,
@@ -328,34 +621,70 @@ describe('cheapestPoint & sorting', () => {
     expect(cheapestPoint(offers, 'transfer_usd', NOW)).toBeNull();
   });
 
-  it('prefers the verified quote when prices tie', () => {
+  it('carries provenance onto the point so the UI can label it', () => {
+    const point = cheapestPoint(
+      [
+        offer({
+          registrar_id: 'a',
+          registrar_name: 'A',
+          register_usd: 10,
+          verification_status: 'source_snapshot',
+          price_observed_at: '2026-05-12T00:00:00Z',
+        }),
+      ],
+      'register_usd',
+      NOW,
+    )!;
+    expect(point.verification_status).toBe('source_snapshot');
+    expect(point.freshness).toBe('stale');
+    expect(point.last_checked).toBe('2026-05-12T00:00:00Z');
+  });
+
+  it('prefers the better-verified quote when prices tie', () => {
     const offers = [
-      offer({ registrar_id: 'a', registrar_name: 'A', register_usd: 10, last_checked: '2026-05-01T00:00:00Z' }),
-      offer({ registrar_id: 'b', registrar_name: 'B', register_usd: 10, last_checked: '2026-10-20T00:00:00Z' }),
+      offer({ registrar_id: 'a', registrar_name: 'A', register_usd: 10 }),
+      offer({
+        registrar_id: 'b',
+        registrar_name: 'B',
+        register_usd: 10,
+        verification_status: 'verified',
+        price_verified_at: '2026-10-20T00:00:00Z',
+      }),
     ];
     expect(cheapestPoint(offers, 'register_usd', NOW)?.registrar_id).toBe('b');
   });
 
   it('sorts by each key with missing prices always last', () => {
+    const point = (usd: number, id: string): PricePoint => ({
+      usd,
+      registrar_id: id,
+      registrar_name: id.toUpperCase(),
+      verification_status: 'verified',
+      freshness: 'recent',
+      last_checked: '2026-10-20T00:00:00Z',
+      promotional: false,
+      promotion_expired: false,
+      quality: 'verified',
+    });
     const rows: ComparisonRow[] = [
       {
-        suffix: '.b', tld: 'b', type: 'generic', offers: 1, verified_offers: 1,
-        register: null, renewal: { usd: 5, registrar_id: 'x', registrar_name: 'X', quality: 'verified', last_checked: '2026-10-20T00:00:00Z' },
+        suffix: '.b', tld: 'b', type: 'generic', offers: 1, verified_offers: 1, stale_offers: 0,
+        register: null, renewal: point(5, 'x'),
         transfer: null, three_year: null, visit_url: '', visit_registrar: '',
-        registrars: ['X'], latest_checked: '2026-10-20T00:00:00Z',
+        registrars: ['X'], latest_checked: '2026-10-20T00:00:00Z', only_snapshots: false,
       },
       {
-        suffix: '.a', tld: 'a', type: 'generic', offers: 2, verified_offers: 2,
-        register: { usd: 20, registrar_id: 'y', registrar_name: 'Y', quality: 'verified', last_checked: '2026-10-20T00:00:00Z' },
-        renewal: null, transfer: null,
-        three_year: { usd: 60, registrar_id: 'y', registrar_name: 'Y', quality: 'verified', last_checked: '2026-10-20T00:00:00Z' },
-        visit_url: '', visit_registrar: '', registrars: ['Y'], latest_checked: '2026-10-20T00:00:00Z',
+        suffix: '.a', tld: 'a', type: 'generic', offers: 2, verified_offers: 2, stale_offers: 0,
+        register: point(20, 'y'), renewal: null, transfer: null,
+        three_year: point(60, 'y'),
+        visit_url: '', visit_registrar: '', registrars: ['Y'],
+        latest_checked: '2026-10-20T00:00:00Z', only_snapshots: false,
       },
       {
-        suffix: '.c', tld: 'c', type: 'generic', offers: 1, verified_offers: 1,
-        register: { usd: 9, registrar_id: 'z', registrar_name: 'Z', quality: 'verified', last_checked: '2026-10-20T00:00:00Z' },
-        renewal: null, transfer: null, three_year: null, visit_url: '', visit_registrar: '',
-        registrars: ['Z'], latest_checked: '2026-10-20T00:00:00Z',
+        suffix: '.c', tld: 'c', type: 'generic', offers: 1, verified_offers: 1, stale_offers: 0,
+        register: point(9, 'z'), renewal: null, transfer: null, three_year: null,
+        visit_url: '', visit_registrar: '', registrars: ['Z'],
+        latest_checked: '2026-10-20T00:00:00Z', only_snapshots: true,
       },
     ];
 
@@ -363,10 +692,238 @@ describe('cheapestPoint & sorting', () => {
     expect(sortComparisonRows(rows, 'three-year-asc').map(r => r.tld)).toEqual(['a', 'b', 'c']);
     expect(sortComparisonRows(rows, 'suffix-asc').map(r => r.tld)).toEqual(['a', 'b', 'c']);
   });
+});
 
-  it('formats display prices and keeps null display to the caller', () => {
-    expect(formatUsd(11.08)).toBe('$11.08');
-    expect(formatUsd(null)).toBe('');
+describe('schema migration', () => {
+  const v1 = {
+    schema_version: 1,
+    generated_at: '2026-10-20T11:30:38.660Z',
+    currency: 'USD',
+    sources: [
+      { id: 'porkbun', name: 'Porkbun', url: 'https://porkbun.com', rows: 1 },
+      { id: 'pikkly', name: 'Pikkly', url: 'https://pikkly.dev', rows: 1 },
+    ],
+    offers: [
+      {
+        tld: 'com', registrar_id: 'porkbun', registrar_name: 'Porkbun', currency: 'USD',
+        register_usd: 11.08, renewal_usd: 11.08, transfer_usd: 11.08,
+        source_id: 'porkbun', source_url: 'https://porkbun.com/tld/com',
+        purchase_url: 'https://porkbun.com/tld/com',
+        last_checked: '2026-10-20T09:06:25.657Z', quality: 'verified',
+      },
+      {
+        tld: 'com', registrar_id: 'cloudflare', registrar_name: 'Cloudflare Registrar',
+        currency: 'USD', register_usd: 10.46, renewal_usd: 10.46, transfer_usd: null,
+        source_id: 'pikkly', source_url: 'https://github.com/example/dump',
+        purchase_url: null, last_checked: '2026-08-04', quality: 'verified',
+      },
+    ],
+  };
+
+  it('turns v1 timestamps into evidence, not into a fresh verification', () => {
+    const { dataset, changed } = migrateDataset(v1);
+    expect(changed).toBe(true);
+    expect(dataset.schema_version).toBe(2);
+
+    const porkbun = dataset.offers.find(o => o.registrar_id === 'porkbun')!;
+    expect(porkbun.verification_status).toBe('verified');
+    expect(porkbun.price_verified_at).toBe('2026-10-20T09:06:25.657Z');
+
+    // A third-party row can never be promoted by a migration.
+    const cloudflare = dataset.offers.find(o => o.registrar_id === 'cloudflare')!;
+    expect(cloudflare.verification_status).toBe('source_snapshot');
+    expect(cloudflare.price_verified_at).toBeNull();
+    expect(cloudflare.price_observed_at).toBe('2026-08-04');
+
+    // The fetch time is the dataset's own generation time, not "now".
+    expect(porkbun.source_fetched_at).toBe('2026-10-20T11:30:38.660Z');
+  });
+
+  it('is idempotent on an already-v2 dataset', () => {
+    const first = migrateDataset(v1);
+    const second = migrateDataset(first.dataset);
+    expect(second.changed).toBe(false);
+    expect(second.dataset.offers).toHaveLength(first.dataset.offers.length);
+  });
+});
+
+describe('trust policy', () => {
+  const offer = (over: Partial<PriceOffer>): PriceOffer => ({
+    tld: 'com',
+    registrar_id: 'porkbun',
+    registrar_name: 'Porkbun',
+    currency: 'USD',
+    register_usd: 11.08,
+    renewal_usd: 11.08,
+    transfer_usd: 11.08,
+    promotional: false,
+    promo_code: null,
+    promo_restrictions: null,
+    promotion_expires_at: null,
+    three_year_usd: 33.24,
+    source_id: 'porkbun',
+    source_name: 'Porkbun pricing API',
+    source_url: 'https://porkbun.com/tld/com',
+    purchase_url: 'https://porkbun.com/tld/com',
+    source_fetched_at: '2026-10-20T12:00:00.000Z',
+    price_observed_at: '2026-10-20T00:00:00.000Z',
+    price_verified_at: '2026-10-20T00:00:00.000Z',
+    verification_status: 'verified',
+    last_checked: '2026-10-20T00:00:00.000Z',
+    freshness: 'recent',
+    quality: 'verified',
+    source_status_stale: false,
+    ...over,
+  });
+
+  it('keeps placeholder pricing but strips every trust signal', () => {
+    const { offers, quarantined } = applyTrustPolicy([
+      offer({}),
+      offer({
+        registrar_id: 'squarespace',
+        registrar_name: 'Squarespace Domains',
+        source_id: 'opendomaindata',
+        verification_status: 'source_snapshot',
+        price_verified_at: null,
+        price_observed_at: '2026-05-12T00:00:00Z',
+        freshness: 'stale',
+        quality: 'stale',
+      }),
+    ]);
+
+    expect(quarantined).toEqual(['squarespace']);
+    const porkbun = offers.find(o => o.registrar_id === 'porkbun')!;
+    expect(porkbun.verification_status).toBe('verified');
+
+    const squarespace = offers.find(o => o.registrar_id === 'squarespace')!;
+    expect(squarespace.verification_status).toBe('unverified');
+    expect(squarespace.freshness).toBe('unknown');
+    expect(squarespace.quality).toBe('stale');
+    expect(squarespace.price_verified_at).toBeNull();
+    // The figure is still there — we are labelling it, not hiding it.
+    expect(squarespace.register_usd).toBe(11.08);
+  });
+
+  it('never lets a quarantined row earn a cheapest badge', () => {
+    const { offers } = applyTrustPolicy([
+      offer({ registrar_id: 'squarespace', registrar_name: 'Squarespace Domains', register_usd: 1 }),
+      offer({ registrar_id: 'porkbun', registrar_name: 'Porkbun', register_usd: 11.08 }),
+    ]);
+    const point = cheapestPoint(offers, 'register_usd', NOW)!;
+    // Cheapest is still cheapest, but it is labelled unverified/unknown.
+    expect(point.usd).toBe(1);
+    expect(point.verification_status).toBe('unverified');
+    expect(point.freshness).toBe('unknown');
+    expect(quarantineReason('squarespace')).toContain('placeholder');
+    expect(quarantineReason('porkbun')).toBeNull();
+  });
+});
+
+describe('sync report', () => {
+  const dataset = (offers: PriceOffer[]): PriceDataset => ({
+    schema_version: 2,
+    generated_at: '2026-10-20T12:00:00.000Z',
+    currency: 'USD',
+    sources: [],
+    offers,
+  });
+
+  const offer = (over: Partial<PriceOffer>): PriceOffer => ({
+    tld: 'com',
+    registrar_id: 'porkbun',
+    registrar_name: 'Porkbun',
+    currency: 'USD',
+    register_usd: 11.08,
+    renewal_usd: 11.08,
+    transfer_usd: 11.08,
+    promotional: false,
+    promo_code: null,
+    promo_restrictions: null,
+    promotion_expires_at: null,
+    three_year_usd: 33.24,
+    source_id: 'porkbun',
+    source_name: 'Porkbun pricing API',
+    source_url: 'https://porkbun.com/tld/com',
+    purchase_url: 'https://porkbun.com/tld/com',
+    source_fetched_at: '2026-10-20T12:00:00.000Z',
+    price_observed_at: '2026-10-20T00:00:00.000Z',
+    price_verified_at: '2026-10-20T00:00:00.000Z',
+    verification_status: 'verified',
+    last_checked: '2026-10-20T00:00:00.000Z',
+    freshness: 'recent',
+    quality: 'verified',
+    source_status_stale: false,
+    ...over,
+  });
+
+  it('counts what we actually stand behind, by tier and by age', () => {
+    const report = buildReport({
+      runAt: NOW.toISOString(),
+      dataset: dataset([
+        offer({}),
+        offer({
+          tld: 'org',
+          registrar_id: 'godaddy',
+          verification_status: 'source_snapshot',
+          price_verified_at: null,
+          price_observed_at: '2026-05-12T00:00:00Z',
+          freshness: 'stale',
+        }),
+        offer({
+          tld: 'dev',
+          registrar_id: 'cloudflare',
+          verification_status: 'model_derived',
+          price_verified_at: null,
+          price_observed_at: null,
+          freshness: 'unknown',
+        }),
+      ]),
+      sources: [
+        {
+          source_id: 'porkbun', source_name: 'Porkbun', status: 'ok',
+          verification_status: 'verified', rows: 1, rejected: 0, rejections: {},
+          fetched_at: NOW.toISOString(), oldest_observed_at: '2026-10-20T00:00:00.000Z', error: null,
+        },
+        {
+          source_id: 'pikkly', source_name: 'Pikkly', status: 'kept-previous',
+          verification_status: 'source_snapshot', rows: 2, rejected: 4,
+          rejections: { 'unknown-tld': 4 }, fetched_at: null,
+          oldest_observed_at: '2026-05-12T00:00:00Z', error: 'HTTP 503',
+        },
+      ],
+      changes: [],
+      now: NOW,
+    });
+
+    expect(report.totals.offers).toBe(3);
+    expect(report.totals.tlids).toBe(3);
+    expect(report.totals.by_verification.verified).toBe(1);
+    expect(report.totals.by_verification.source_snapshot).toBe(1);
+    expect(report.totals.by_verification.model_derived).toBe(1);
+    expect(report.totals.by_freshness.stale).toBe(1);
+    expect(report.totals.by_freshness.unknown).toBe(1);
+    expect(report.totals.oldest_observed_at).toBe('2026-05-12T00:00:00Z');
+    expect(report.degraded_sources).toEqual(['pikkly (kept-previous)']);
+
+    const md = renderMarkdown(report);
+    expect(md).toContain('Registrar price sync report');
+    expect(md).toContain('pikkly');
+    expect(md).toContain('Sources needing attention');
+  });
+
+  it('surfaces only material price moves', () => {
+    const before = dataset([offer({ register_usd: 10 })]);
+    const after = dataset([
+      offer({ register_usd: 12 }), // +20% — exactly at the threshold
+      offer({ tld: 'org', registrar_id: 'gandi', register_usd: 10.5 }), // new offer
+    ]);
+    const changes = diffPrices(before, after);
+    expect(changes).toHaveLength(1);
+    expect(changes[0].change_pct).toBe(20);
+    expect(changes[0].field).toBe('register_usd');
+
+    // Nothing to compare against on the first run.
+    expect(diffPrices(null, after)).toEqual([]);
   });
 });
 
@@ -388,26 +945,50 @@ describe('outbound registrar links (monetisation policy)', () => {
 });
 
 describe('committed dataset integration', () => {
-  it('contains real offers with correct derived math and no missing links', async () => {
+  it('normalises whatever is on disk into a schema-v2 dataset', async () => {
     const dataset = await readPriceDataset();
     expect(dataset).not.toBeNull();
+    expect(dataset!.schema_version).toBe(2);
     expect(dataset!.offers.length).toBeGreaterThan(500);
     expect(dataset!.currency).toBe('USD');
 
     for (const o of dataset!.offers) {
-      expect(['verified', 'stale']).toContain(o.quality);
-      expect(o.currency).toBe('USD');
+      expect(['verified', 'source_snapshot', 'model_derived', 'unverified']).toContain(
+        o.verification_status,
+      );
+      // A snapshot row can never carry a verification date.
+      if (o.verification_status !== 'verified') expect(o.price_verified_at).toBeNull();
       if (o.three_year_usd !== null && o.register_usd !== null && o.renewal_usd !== null) {
         expect(o.three_year_usd).toBeCloseTo(o.register_usd + 2 * o.renewal_usd, 2);
       }
-      if (o.purchase_url !== null) {
-        expect(o.purchase_url).toMatch(/^https:\/\//);
-      }
+      if (o.purchase_url !== null) expect(o.purchase_url).toMatch(/^https:\/\//);
       expect(o.source_url).toMatch(/^https:\/\//);
     }
-    // every offer resolves to a known registrar
     const unknown = dataset!.offers.filter(o => !registrars[o.registrar_id]);
     expect(unknown).toHaveLength(0);
+  });
+
+  it('never promotes third-party rows to first-party verified', async () => {
+    // Whether the file on disk is v1 (no tier declared) or v2, a row carried by
+    // a third-party dataset must never be labelled `verified`. First-party
+    // reads are the only rows allowed to make that claim.
+    const dataset = await readPriceDataset();
+    const porkbun = dataset!.offers.filter(o => o.source_id === 'porkbun');
+    expect(porkbun.length).toBeGreaterThan(100);
+    expect(porkbun.every(o => o.verification_status === 'verified')).toBe(true);
+
+    const thirdParty = dataset!.offers.filter(
+      o => o.source_id === 'pikkly' || o.source_id === 'opendomaindata' || o.source_id === 'bestdomainregistrars',
+    );
+    expect(thirdParty.length).toBeGreaterThan(100);
+    expect(thirdParty.some(o => o.verification_status === 'verified')).toBe(false);
+    // Quarantined registrars (placeholder pricing) are `unverified`; the rest
+    // are dated snapshots.
+    expect(
+      thirdParty.every(
+        o => o.verification_status === 'source_snapshot' || o.verification_status === 'unverified',
+      ),
+    ).toBe(true);
   });
 
   it('serves .com offers across multiple registrars with null-safe prices', async () => {
@@ -416,6 +997,10 @@ describe('committed dataset integration', () => {
     expect(offers.every(o => o.tld === 'com')).toBe(true);
     expect(new Set(offers.map(o => o.registrar_id)).size).toBe(offers.length);
     expect(offers.some(o => o.renewal_usd !== null)).toBe(true);
+    // Freshness is recomputed at read time from evidence, never from the clock.
+    for (const o of offers) {
+      expect(['recent', 'aging', 'stale', 'unknown']).toContain(o.freshness);
+    }
   });
 
   it('builds comparison rows where every priced TLD links onward honestly', async () => {
@@ -433,9 +1018,12 @@ describe('committed dataset integration', () => {
     for (const row of rows) {
       expect(row.offers).toBeGreaterThanOrEqual(1);
       expect(row.verified_offers).toBeLessThanOrEqual(row.offers);
+      expect(row.stale_offers).toBeLessThanOrEqual(row.offers);
       if (row.three_year && row.register) {
         expect(row.three_year.usd).toBeGreaterThanOrEqual(row.register.usd);
       }
+      // `only_snapshots` must agree with the offers behind the row.
+      if (row.only_snapshots) expect(row.verified_offers).toBe(0);
     }
   });
 });

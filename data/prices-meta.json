@@ -1,28 +1,53 @@
 {
-  "last_success_at": "2026-10-22T09:37:15.998Z",
-  "last_attempt_at": "2026-10-22T09:37:15.998Z",
+  "last_success_at": "2026-10-22T10:29:22.133Z",
+  "last_attempt_at": "2026-10-22T10:29:22.133Z",
   "status": "ok",
   "last_error": null,
   "counts": {
-    "offers": 3306,
+    "offers": 3549,
     "tlids": 811,
     "registrars": 10,
-    "verified_offers": 2846,
-    "stale_offers": 460,
+    "verified_offers": 2844,
+    "stale_offers": 687,
+    "recent_offers": 2844,
+    "aging_offers": 18,
+    "unknown_offers": 6,
     "by_source": {
-      "pikkly": 2703,
+      "dynadot": 621,
+      "gandi": 759,
+      "ionos": 427,
       "porkbun": 540,
-      "opendomaindata": 63
+      "pikkly": 399,
+      "hover": 497,
+      "bestdomainregistrars": 268,
+      "opendomaindata": 38
+    },
+    "by_verification": {
+      "verified": 2844,
+      "source_snapshot": 699,
+      "model_derived": 0,
+      "unverified": 6
     }
   },
   "history": [
     {
-      "at": "2026-10-22T09:37:15.998Z",
+      "at": "2026-10-22T10:29:22.133Z",
       "status": "ok",
-      "offers": 3306
+      "offers": 3549
     },
     {
-      "at": "2026-10-21T09:37:40.152Z",
+      "at": "2026-10-22T10:27:57.093Z",
+      "status": "partial",
+      "offers": 3549,
+      "note": "porkbun: fetch failed"
+    },
+    {
+      "at": "2026-10-22T10:24:42.526Z",
+      "status": "ok",
+      "offers": 3549
+    },
+    {
+      "at": "2026-10-22T10:22:32.189Z",
       "status": "ok",
       "offers": 3306
     },
