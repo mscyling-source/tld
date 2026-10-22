@@ -23,6 +23,7 @@ export const GET: APIRoute = async () => {
         verified_offers: stats?.verifiedOffers ?? 0,
         snapshot_offers: stats?.snapshotOffers ?? 0,
         stale_offers: stats?.staleOffers ?? 0,
+        unknown_offers: stats?.unknownOffers ?? 0,
       },
       sources: stats?.sources ?? [],
       rows,

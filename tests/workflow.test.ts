@@ -122,6 +122,26 @@ describe('sync-prices workflow — sync job', () => {
     expect(paths).toContain('data/price-sync-report.md');
   });
 
+  it('uploads the log and report even when the sync or validation failed', () => {
+    const upload = findStep(syncJob, s => s.uses?.startsWith('actions/upload-artifact'));
+    // `always()` keeps the diagnostics for exactly the runs that need them.
+    expect(upload.if).toBe('always()');
+    // A missing file must not turn into a second, confusing failure.
+    expect(upload.with['if-no-files-found']).toBe('warn');
+  });
+
+  it('refuses to publish a report that disagrees with the dataset', () => {
+    const verify = findStep(syncJob, s => (s.run ?? '').includes('Report matches dataset'));
+    expect(verify).toBeDefined();
+    const run: string = verify.run;
+    expect(run).toContain('price-sync-report.json');
+    expect(run).toContain('r.dataset_generated_at !== d.generated_at');
+    expect(run).toContain("r.totals.offers !== d.offers.length");
+    // Every tier and every freshness band is recounted from prices.json.
+    expect(run).toContain("['verified', 'source_snapshot', 'model_derived', 'unverified']");
+    expect(run).toContain("['recent', 'aging', 'stale', 'unknown']");
+  });
+
   it('commits the price data and the report that describes it', () => {
     const run = stepsOf(syncJob)
       .map(s => s.run ?? '')
@@ -130,6 +150,24 @@ describe('sync-prices workflow — sync job', () => {
     expect(run).toContain('data/price-sync-report.json');
     expect(run).toContain('data/price-sync-report.md');
     expect(run).toMatch(/git push origin HEAD:main/);
+  });
+
+  it('detects report-only changes, not just price-row changes', () => {
+    const check = findStep(syncJob, s => s.id === 'changes');
+    expect(check).toBeDefined();
+    const run: string = check.run;
+    // porcelain catches a modified report and an untracked one, unlike `diff`.
+    expect(run).toContain('git status --porcelain --');
+    for (const path of [
+      'data/prices.json',
+      'data/prices-meta.json',
+      'data/price-sync-report.json',
+      'data/price-sync-report.md',
+    ]) {
+      expect(run).toContain(path);
+    }
+    expect(run).toContain('changed=true');
+    expect(run).toContain('changed=false');
   });
 
   it('exposes the change flag and the pushed commit to the deploy job', () => {

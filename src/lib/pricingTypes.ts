@@ -210,7 +210,14 @@ export interface PriceMeta {
     offers: number;
     tlids: number;
     registrars: number;
+    /** Offers read from a registrar's own published source (any age). */
     verified_offers: number;
+    /**
+     * Offers that are stale **or** have no usable date (`stale + unknown`).
+     * Note this differs from `price-sync-report.json` →
+     * `totals.by_freshness.stale`, which counts the `stale` band alone; the
+     * report also breaks `unknown` out separately.
+     */
     stale_offers: number;
     recent_offers: number;
     aging_offers: number;

@@ -244,8 +244,13 @@ export interface PriceStats {
   verifiedOffers: number;
   /** Offers carried by a dated third-party dataset. */
   snapshotOffers: number;
-  /** Offers whose evidence is older than 30 days, or has no date at all. */
+  /**
+   * Offers in the `stale` band: evidence older than 30 days. Counted alone so
+   * this agrees with `price-sync-report.json` → `totals.by_freshness.stale`.
+   */
   staleOffers: number;
+  /** Offers with no usable evidence date. */
+  unknownOffers: number;
   sources: Array<{
     id: string;
     name: string;
@@ -271,7 +276,8 @@ export async function getPriceStats(): Promise<PriceStats | null> {
     generatedAt: dataset.generated_at,
     verifiedOffers: fresh.filter(o => o.verification_status === 'verified').length,
     snapshotOffers: fresh.filter(o => o.verification_status === 'source_snapshot').length,
-    staleOffers: fresh.filter(o => o.freshness === 'stale' || o.freshness === 'unknown').length,
+    staleOffers: fresh.filter(o => o.freshness === 'stale').length,
+    unknownOffers: fresh.filter(o => o.freshness === 'unknown').length,
     sources: dataset.sources.map(s => ({
       id: s.id,
       name: s.name,

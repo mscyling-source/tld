@@ -82,6 +82,10 @@ jobs:
           npm run sync:prices 2>&1 | tee sync-prices-output.log
           echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
+      # `always()` — the log and the report are most valuable exactly when the
+      # sync or the dataset verification failed, so they must be uploaded even
+      # then. A missing file only warns, so a failure before the sync writes
+      # anything does not turn into a second, confusing error.
       - name: Upload sync log and report
         if: always()
         uses: actions/upload-artifact@v4
@@ -91,6 +95,7 @@ jobs:
             sync-prices-output.log
             data/price-sync-report.json
             data/price-sync-report.md
+          if-no-files-found: warn
           retention-days: 30
 
       # A sync that "succeeded" but leaves an implausible dataset must fail
@@ -160,6 +165,55 @@ jobs:
               ', verified=' + m.counts.verified_offers + ', stale=' + m.counts.stale_offers);
           "
 
+      # A report that disagrees with the dataset it describes is worse than no
+      # report: it would let the run summary claim provenance the published
+      # rows do not have. Recount from prices.json and compare.
+      - name: Verify report matches dataset
+        if: steps.sync.outputs.exit_code == '0'
+        run: |
+          node -e "
+            const fs = require('fs');
+            const d = require('./data/prices.json');
+            const r = require('./data/price-sync-report.json');
+            if (r.schema_version !== d.schema_version) {
+              console.error('Report schema_version ' + r.schema_version + ' != dataset ' + d.schema_version);
+              process.exit(1);
+            }
+            if (r.dataset_generated_at !== d.generated_at) {
+              console.error('Report describes dataset ' + r.dataset_generated_at +
+                ' but data/prices.json is ' + d.generated_at);
+              process.exit(1);
+            }
+            const tiers = ['verified', 'source_snapshot', 'model_derived', 'unverified'];
+            const bands = ['recent', 'aging', 'stale', 'unknown'];
+            const count = (list, key, value) => list.filter(o => o[key] === value).length;
+            if (r.totals.offers !== d.offers.length) {
+              console.error('Report offers ' + r.totals.offers + ' != dataset ' + d.offers.length);
+              process.exit(1);
+            }
+            for (const t of tiers) {
+              const actual = count(d.offers, 'verification_status', t);
+              if (r.totals.by_verification[t] !== actual) {
+                console.error('Report ' + t + ' count ' + r.totals.by_verification[t] + ' != dataset ' + actual);
+                process.exit(1);
+              }
+            }
+            for (const b of bands) {
+              const actual = count(d.offers, 'freshness', b);
+              if (r.totals.by_freshness[b] !== actual) {
+                console.error('Report ' + b + ' count ' + r.totals.by_freshness[b] + ' != dataset ' + actual);
+                process.exit(1);
+              }
+            }
+            if (!fs.existsSync('data/price-sync-report.md')) {
+              console.error('data/price-sync-report.md was not written');
+              process.exit(1);
+            }
+            console.log('Report matches dataset: ' + r.totals.offers + ' offers, ' +
+              r.totals.by_verification.verified + ' verified, ' +
+              r.totals.by_freshness.stale + ' stale.');
+          "
+
       # The report is written by the sync itself (data/price-sync-report.md) so
       # the workflow summary and the artefact can never disagree about how much
       # of the published data we actually stand behind.
@@ -176,16 +230,19 @@ jobs:
         if: steps.sync.outputs.exit_code == '0'
         run: npm test
 
+      # `git status --porcelain` rather than `git diff`: the report files must
+      # be committed when they change even if the price rows did not, and
+      # porcelain also catches a report that is not yet tracked.
       - name: Check for changes
         if: steps.sync.outputs.exit_code == '0'
         id: changes
         run: |
-          if git diff --quiet data/prices.json data/prices-meta.json; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "No pricing data changes."
-          else
+          if [ -n "$(git status --porcelain -- data/prices.json data/prices-meta.json data/price-sync-report.json data/price-sync-report.md)" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "Pricing data changed — will commit."
+            echo "Pricing data or report changed — will commit."
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No pricing data or report changes."
           fi
 
       - name: Commit and push changes

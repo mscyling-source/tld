@@ -17,6 +17,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   calcThreeYear,
   normalizePrice,
@@ -60,7 +62,7 @@ import {
   registrarName,
   registrars,
 } from '../src/config/registrars.js';
-import { readPriceDataset, getOffersForTld, buildComparisonRows } from '../src/lib/pricing.js';
+import { readPriceDataset, getOffersForTld, buildComparisonRows, getPriceStats, refreshOffers } from '../src/lib/pricing.js';
 import type {
   ComparisonRow,
   PriceDataset,
@@ -156,6 +158,129 @@ describe('freshness policy', () => {
   it('qualityFor is a thin alias over the same policy', () => {
     expect(qualityFor('verified', day(0), NOW)).toBe('recent');
     expect(qualityFor('source_snapshot', '2026-05-12T00:00:00Z', NOW)).toBe('stale');
+  });
+});
+
+describe('provenance invariants', () => {
+  /** A stored offer, as the sync would write it. */
+  const stored = (over: Partial<PriceOffer> = {}): PriceOffer => ({
+    tld: 'com',
+    registrar_id: 'porkbun',
+    registrar_name: 'Porkbun',
+    currency: 'USD',
+    register_usd: 11.08,
+    renewal_usd: 11.08,
+    transfer_usd: 11.08,
+    promotional: false,
+    promo_code: null,
+    promo_restrictions: null,
+    promotion_expires_at: null,
+    three_year_usd: 33.24,
+    source_id: 'porkbun',
+    source_name: 'Porkbun pricing API',
+    source_url: 'https://porkbun.com/tld/com',
+    purchase_url: 'https://porkbun.com/tld/com',
+    source_fetched_at: '2026-10-20T12:00:00.000Z',
+    price_observed_at: '2026-10-20T00:00:00.000Z',
+    price_verified_at: '2026-10-20T00:00:00.000Z',
+    verification_status: 'verified',
+    last_checked: '2026-10-20T00:00:00.000Z',
+    freshness: 'recent',
+    quality: 'verified',
+    source_status_stale: false,
+    ...over,
+  });
+
+  it('a fetch timestamp can never stand in for a verification timestamp', () => {
+    // Downloaded this second, but the source's own observation is from May and
+    // nobody verified it. The row is a stale snapshot, not a fresh quote.
+    const justDownloaded = stored({
+      source_fetched_at: NOW.toISOString(),
+      price_verified_at: null,
+      price_observed_at: '2026-05-12T00:00:00Z',
+      verification_status: 'source_snapshot',
+    });
+    expect(effectiveEvidenceDate(justDownloaded)).toBe('2026-05-12T00:00:00Z');
+    expect(effectiveFreshness(justDownloaded, NOW)).toBe('stale');
+  });
+
+  it('a row with no evidence date at all is unknown, however new the download', () => {
+    const noDates = stored({
+      source_fetched_at: NOW.toISOString(),
+      price_verified_at: null,
+      price_observed_at: null,
+      verification_status: 'source_snapshot',
+    });
+    expect(effectiveEvidenceDate(noDates)).toBeNull();
+    expect(effectiveFreshness(noDates, NOW)).toBe('unknown');
+  });
+
+  it('a row cannot claim verified without a usable price_verified_at', () => {
+    // Missing, empty and unparsable dates are all rejected — the adapter has to
+    // show it actually read the registrar, not just that it downloaded a file.
+    for (const bad of [null, '', 'not-a-date'] as const) {
+      const { valid, rejected } = validateOffers(
+        [rawOffer({ verification_status: 'verified', price_verified_at: bad })],
+        KNOWN_TLDS,
+      );
+      expect(valid).toHaveLength(0);
+      expect(rejected[0].reason).toBe('unverifiable');
+    }
+    // The same row is fine once the date is real.
+    const ok = validateOffers(
+      [rawOffer({ verification_status: 'verified', price_verified_at: NOW.toISOString() })],
+      KNOWN_TLDS,
+    );
+    expect(ok.valid).toHaveLength(1);
+  });
+
+  it('snapshot rows stay snapshots even when fetched today', () => {
+    const fetchedToday = stored({
+      source_fetched_at: NOW.toISOString(),
+      price_verified_at: null,
+      price_observed_at: NOW.toISOString(),
+      verification_status: 'source_snapshot',
+    });
+    // Fresh evidence, still a third-party snapshot: never "recently verified".
+    expect(effectiveFreshness(fetchedToday, NOW)).toBe('aging');
+    expect(freshnessFor('source_snapshot', NOW.toISOString(), NOW)).not.toBe('recent');
+    expect(freshnessFor('model_derived', NOW.toISOString(), NOW)).not.toBe('recent');
+  });
+
+  it('unknown evidence dates stay unknown instead of defaulting to fresh', () => {
+    expect(freshnessFor('unverified', NOW.toISOString(), NOW)).toBe('unknown');
+    expect(freshnessFor('verified', null, NOW)).toBe('unknown');
+    expect(freshnessFor('verified', '2026-13-45', NOW)).toBe('unknown');
+    // A date further ahead than the skew allowance is untrusted, not "recent".
+    expect(freshnessFor('verified', day(5), NOW)).toBe('unknown');
+  });
+
+  it('rebuilding can never make a stale price look fresh', () => {
+    const old = stored({
+      price_verified_at: '2026-05-12T00:00:00Z',
+      price_observed_at: '2026-05-12T00:00:00Z',
+      last_checked: '2026-05-12T00:00:00Z',
+      // A stale claim written into the file must not survive a rebuild.
+      freshness: 'recent',
+      quality: 'verified',
+    });
+    const today = refreshOffers([old], NOW)[0];
+    expect(today.freshness).toBe('stale');
+    expect(today.quality).toBe('stale');
+
+    // And it stays stale as the build clock moves forward.
+    const later = refreshOffers([old], new Date('2027-03-01T00:00:00Z'))[0];
+    expect(later.freshness).toBe('stale');
+  });
+
+  it('rebuilding re-derives the compatibility date from evidence, not from the clock', () => {
+    const offer = stored({
+      price_verified_at: '2026-10-20T00:00:00Z',
+      price_observed_at: '2026-10-01T00:00:00Z',
+      last_checked: 'stale-value-written-by-hand',
+    });
+    const refreshed = refreshOffers([offer], NOW)[0];
+    expect(refreshed.last_checked).toBe('2026-10-20T00:00:00Z');
   });
 });
 
@@ -1001,6 +1126,46 @@ describe('committed dataset integration', () => {
     for (const o of offers) {
       expect(['recent', 'aging', 'stale', 'unknown']).toContain(o.freshness);
     }
+  });
+
+  it('publishes totals that agree with the sync report', async () => {
+    // The report is what the run summary and the artefact claim. It must
+    // describe the dataset that ships next to it, or the provenance story the
+    // site tells is wrong. Read the file as written (the build-time store
+    // recomputes freshness, so the stored bands are only visible raw) — this is
+    // the same comparison the workflow performs before publishing.
+    const raw = JSON.parse(
+      readFileSync(resolve(process.cwd(), 'data/prices.json'), 'utf-8'),
+    ) as { generated_at: string; offers: Array<{ verification_status: string; freshness: string }> };
+    const report = JSON.parse(
+      readFileSync(resolve(process.cwd(), 'data/price-sync-report.json'), 'utf-8'),
+    ) as {
+      dataset_generated_at: string;
+      totals: {
+        offers: number;
+        by_verification: Record<string, number>;
+        by_freshness: Record<string, number>;
+      };
+    };
+    const stats = await getPriceStats();
+
+    expect(report.dataset_generated_at).toBe(raw.generated_at);
+    expect(report.totals.offers).toBe(raw.offers.length);
+    expect(stats!.offers).toBe(raw.offers.length);
+
+    const count = (key: 'verification_status' | 'freshness', value: string): number =>
+      raw.offers.filter(o => o[key] === value).length;
+
+    for (const tier of ['verified', 'source_snapshot', 'model_derived', 'unverified'] as const) {
+      expect(report.totals.by_verification[tier]).toBe(count('verification_status', tier));
+    }
+    for (const band of ['recent', 'aging', 'stale', 'unknown'] as const) {
+      expect(report.totals.by_freshness[band]).toBe(count('freshness', band));
+    }
+
+    // The public JSON endpoint exposes the same tier counts as the report.
+    expect(stats!.verifiedOffers).toBe(report.totals.by_verification.verified);
+    expect(stats!.snapshotOffers).toBe(report.totals.by_verification.source_snapshot);
   });
 
   it('builds comparison rows where every priced TLD links onward honestly', async () => {
