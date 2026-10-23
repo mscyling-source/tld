@@ -1,6 +1,6 @@
 {
-  "last_success_at": "2026-10-22T10:29:22.133Z",
-  "last_attempt_at": "2026-10-22T10:29:22.133Z",
+  "last_success_at": "2026-10-23T07:52:41.892Z",
+  "last_attempt_at": "2026-10-23T07:52:41.892Z",
   "status": "ok",
   "last_error": null,
   "counts": {
@@ -30,6 +30,11 @@
     }
   },
   "history": [
+    {
+      "at": "2026-10-23T07:52:41.892Z",
+      "status": "ok",
+      "offers": 3549
+    },
     {
       "at": "2026-10-22T10:29:22.133Z",
       "status": "ok",
