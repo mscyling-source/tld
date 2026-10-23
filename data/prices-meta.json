@@ -1,8 +1,8 @@
 {
-  "last_success_at": "2026-10-23T09:33:53.247Z",
-  "last_attempt_at": "2026-10-23T09:33:53.247Z",
+  "last_success_at": "2026-10-23T10:46:27.474Z",
+  "last_attempt_at": "2026-10-23T10:46:27.474Z",
   "status": "partial",
-  "last_error": "dynadot: HTTP 522 for https://www.dynadot.com/domain/prices",
+  "last_error": "dynadot: Dynadot payload contained no usable prices",
   "counts": {
     "offers": 3549,
     "tlids": 811,
@@ -30,6 +30,12 @@
     }
   },
   "history": [
+    {
+      "at": "2026-10-23T10:46:27.474Z",
+      "status": "partial",
+      "offers": 3549,
+      "note": "dynadot: Dynadot payload contained no usable prices"
+    },
     {
       "at": "2026-10-23T09:33:53.247Z",
       "status": "partial",
