@@ -1,6 +1,6 @@
 {
-  "run_at": "2026-10-23T10:46:27.474Z",
-  "dataset_generated_at": "2026-10-23T10:46:27.474Z",
+  "run_at": "2026-10-23T11:09:35.227Z",
+  "dataset_generated_at": "2026-10-23T11:09:35.227Z",
   "schema_version": 2,
   "totals": {
     "offers": 3549,
@@ -19,7 +19,7 @@
       "unknown": 6
     },
     "oldest_observed_at": "2026-05-12",
-    "newest_observed_at": "2026-10-23T10:46:27.474Z"
+    "newest_observed_at": "2026-10-23T11:09:35.227Z"
   },
   "sources": [
     {
@@ -33,8 +33,8 @@
         "unknown-tld": 367,
         "invalid-price": 5
       },
-      "fetched_at": "2026-10-23T10:46:27.474Z",
-      "oldest_observed_at": "2026-10-23T10:46:27.474Z",
+      "fetched_at": "2026-10-23T11:09:35.227Z",
+      "oldest_observed_at": "2026-10-23T11:09:35.227Z",
       "error": null
     },
     {
@@ -59,8 +59,8 @@
       "rejections": {
         "unknown-tld": 94
       },
-      "fetched_at": "2026-10-23T10:46:27.474Z",
-      "oldest_observed_at": "2026-10-23T10:46:27.474Z",
+      "fetched_at": "2026-10-23T11:09:35.227Z",
+      "oldest_observed_at": "2026-10-23T11:09:35.227Z",
       "error": null
     },
     {
@@ -74,8 +74,8 @@
         "unknown-tld": 16,
         "invalid-price": 1
       },
-      "fetched_at": "2026-10-23T10:46:27.474Z",
-      "oldest_observed_at": "2026-10-23T10:46:27.474Z",
+      "fetched_at": "2026-10-23T11:09:35.227Z",
+      "oldest_observed_at": "2026-10-23T11:09:35.227Z",
       "error": null
     },
     {
@@ -88,8 +88,8 @@
       "rejections": {
         "unknown-tld": 4
       },
-      "fetched_at": "2026-10-23T10:46:27.474Z",
-      "oldest_observed_at": "2026-10-23T10:46:27.474Z",
+      "fetched_at": "2026-10-23T11:09:35.227Z",
+      "oldest_observed_at": "2026-10-23T11:09:35.227Z",
       "error": null
     },
     {
@@ -103,7 +103,7 @@
         "unknown-tld": 14,
         "invalid-price": 2
       },
-      "fetched_at": "2026-10-23T10:46:27.474Z",
+      "fetched_at": "2026-10-23T11:09:35.227Z",
       "oldest_observed_at": "2026-05-12",
       "error": null
     },
@@ -118,7 +118,7 @@
         "unknown-tld": 94,
         "invalid-price": 3
       },
-      "fetched_at": "2026-10-23T10:46:27.474Z",
+      "fetched_at": "2026-10-23T11:09:35.227Z",
       "oldest_observed_at": "2026-08-04",
       "error": null
     },
@@ -133,179 +133,59 @@
         "unknown-tld": 10,
         "invalid-price": 2
       },
-      "fetched_at": "2026-10-23T10:46:27.474Z",
+      "fetched_at": "2026-10-23T11:09:35.227Z",
       "oldest_observed_at": "2026-05-12",
       "error": null
     }
   ],
   "significant_changes": [
     {
-      "tld": "democrat",
-      "registrar_id": "gandi",
-      "field": "register_usd",
-      "previous_usd": 44.1,
-      "current_usd": 8.82,
-      "change_pct": -80
-    },
-    {
-      "tld": "democrat",
-      "registrar_id": "gandi",
-      "field": "renewal_usd",
-      "previous_usd": 87.98,
-      "current_usd": 17.6,
-      "change_pct": -80
-    },
-    {
-      "tld": "democrat",
-      "registrar_id": "gandi",
-      "field": "transfer_usd",
-      "previous_usd": 37.37,
-      "current_usd": 7.47,
-      "change_pct": -80
-    },
-    {
-      "tld": "republican",
-      "registrar_id": "gandi",
-      "field": "renewal_usd",
-      "previous_usd": 87.98,
-      "current_usd": 17.6,
-      "change_pct": -80
-    },
-    {
-      "tld": "republican",
-      "registrar_id": "gandi",
-      "field": "register_usd",
-      "previous_usd": 41.21,
-      "current_usd": 9.58,
-      "change_pct": -76.8
-    },
-    {
-      "tld": "republican",
-      "registrar_id": "gandi",
-      "field": "transfer_usd",
-      "previous_usd": 34.92,
-      "current_usd": 8.12,
-      "change_pct": -76.7
-    },
-    {
-      "tld": "events",
-      "registrar_id": "gandi",
-      "field": "register_usd",
-      "previous_usd": 44.05,
-      "current_usd": 62.93,
-      "change_pct": 42.9
-    },
-    {
-      "tld": "events",
-      "registrar_id": "gandi",
-      "field": "renewal_usd",
-      "previous_usd": 95.98,
-      "current_usd": 137.12,
-      "change_pct": 42.9
-    },
-    {
-      "tld": "events",
-      "registrar_id": "gandi",
-      "field": "transfer_usd",
-      "previous_usd": 37.32,
-      "current_usd": 53.31,
-      "change_pct": 42.8
-    },
-    {
-      "tld": "cruises",
+      "tld": "viajes",
       "registrar_id": "gandi",
       "field": "register_usd",
       "previous_usd": 66.88,
-      "current_usd": 91.67,
-      "change_pct": 37.1
+      "current_usd": 143.38,
+      "change_pct": 114.4
+    },
+    {
+      "tld": "viajes",
+      "registrar_id": "gandi",
+      "field": "transfer_usd",
+      "previous_usd": 56.67,
+      "current_usd": 121.5,
+      "change_pct": 114.4
+    },
+    {
+      "tld": "viajes",
+      "registrar_id": "gandi",
+      "field": "renewal_usd",
+      "previous_usd": 127.98,
+      "current_usd": 274.25,
+      "change_pct": 114.3
+    },
+    {
+      "tld": "cruises",
+      "registrar_id": "gandi",
+      "field": "register_usd",
+      "previous_usd": 91.67,
+      "current_usd": 66.88,
+      "change_pct": -27
     },
     {
       "tld": "cruises",
       "registrar_id": "gandi",
       "field": "transfer_usd",
-      "previous_usd": 56.67,
-      "current_usd": 77.68,
-      "change_pct": 37.1
+      "previous_usd": 77.68,
+      "current_usd": 56.67,
+      "change_pct": -27
     },
     {
-      "tld": "domains",
-      "registrar_id": "gandi",
-      "field": "register_usd",
-      "previous_usd": 47.85,
-      "current_usd": 65.25,
-      "change_pct": 36.4
-    },
-    {
-      "tld": "domains",
+      "tld": "business",
       "registrar_id": "gandi",
       "field": "renewal_usd",
-      "previous_usd": 103.98,
-      "current_usd": 141.8,
-      "change_pct": 36.4
-    },
-    {
-      "tld": "domains",
-      "registrar_id": "gandi",
-      "field": "transfer_usd",
-      "previous_usd": 40.55,
-      "current_usd": 55.3,
-      "change_pct": 36.4
-    },
-    {
-      "tld": "studio",
-      "registrar_id": "gandi",
-      "field": "renewal_usd",
-      "previous_usd": 87.98,
-      "current_usd": 113.53,
-      "change_pct": 29
-    },
-    {
-      "tld": "studio",
-      "registrar_id": "gandi",
-      "field": "transfer_usd",
-      "previous_usd": 32.5,
-      "current_usd": 41.94,
-      "change_pct": 29
-    },
-    {
-      "tld": "hospital",
-      "registrar_id": "gandi",
-      "field": "register_usd",
-      "previous_usd": 72.59,
-      "current_usd": 89.09,
-      "change_pct": 22.7
-    },
-    {
-      "tld": "hospital",
-      "registrar_id": "gandi",
-      "field": "renewal_usd",
-      "previous_usd": 143.98,
-      "current_usd": 176.71,
-      "change_pct": 22.7
-    },
-    {
-      "tld": "hospital",
-      "registrar_id": "gandi",
-      "field": "transfer_usd",
-      "previous_usd": 61.51,
-      "current_usd": 75.49,
-      "change_pct": 22.7
-    },
-    {
-      "tld": "kaufen",
-      "registrar_id": "gandi",
-      "field": "register_usd",
-      "previous_usd": 41.21,
-      "current_usd": 49.85,
-      "change_pct": 21
-    },
-    {
-      "tld": "kaufen",
-      "registrar_id": "gandi",
-      "field": "transfer_usd",
-      "previous_usd": 34.92,
-      "current_usd": 42.24,
-      "change_pct": 21
+      "previous_usd": 39.98,
+      "current_usd": 47.98,
+      "change_pct": 20
     }
   ],
   "degraded_sources": [
