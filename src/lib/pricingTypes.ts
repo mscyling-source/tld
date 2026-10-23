@@ -125,6 +125,24 @@ export interface PriceOffer {
   source_status_stale: boolean;
 }
 
+/**
+ * A cheaper figure that was deliberately kept out of the headline because its
+ * evidence is too old to be presented as a current quote.
+ *
+ * The figure is *disclosed*, not deleted: hiding a cheaper published price
+ * would misrepresent the market just as badly as passing an eight-week-old
+ * number off as today's price. It is carried on the winning `PricePoint` so
+ * the UI can say "cheaper, but stale, here it is" next to the current price.
+ */
+export interface CheaperEvidence {
+  usd: number;
+  registrar_id: string;
+  registrar_name: string;
+  verification_status: VerificationStatus;
+  freshness: PriceFreshness;
+  last_checked: string;
+}
+
 /** A single price figure plus which registrar offers it and how fresh it is. */
 export interface PricePoint {
   usd: number;
@@ -140,6 +158,11 @@ export interface PricePoint {
   promotion_expired: boolean;
   /** Legacy v1 quality flag, derived from `freshness`. */
   quality: 'verified' | 'stale';
+  /**
+   * A strictly cheaper quote whose evidence is stale or undated, excluded from
+   * the ranking but disclosed. Null when the winner really is the cheapest.
+   */
+  cheaper_stale: CheaperEvidence | null;
 }
 
 /** Per-TLD aggregation used by the homepage comparison table. */

@@ -158,7 +158,7 @@ const verificationBadgeClass: Record<string, string> = {
                   ) : (
                     <span class="text-ink-400" title="This source does not publish a registration price">—</span>
                   )}
-                  {cheapestRegister && <span class="ml-1.5 align-middle px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-800 rounded">cheapest</span>}
+                  {cheapestRegister && <span class="ml-1.5 align-middle px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-800 rounded" title="Lowest first-year price among quotes whose evidence is current (≤30 days). A cheaper quote with older evidence is listed in its own row with a stale badge.">cheapest</span>}
                   {showPromo && <span class="ml-1.5 align-middle px-1.5 py-0.5 text-[10px] font-medium bg-sky-100 text-sky-800 rounded" title="Source flags this as a promotional first-year price">promo</span>}
                   {promoExpired && <span class="ml-1.5 align-middle px-1.5 py-0.5 text-[10px] font-medium bg-ink-200 text-ink-700 rounded" title="The published promotion end date has passed">promo ended</span>}
                 </td>
@@ -168,7 +168,7 @@ const verificationBadgeClass: Record<string, string> = {
                   ) : (
                     <span class="text-ink-400" title="This source does not publish a renewal price">—</span>
                   )}
-                  {cheapestRenewal && <span class="ml-1.5 align-middle px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-800 rounded">cheapest</span>}
+                  {cheapestRenewal && <span class="ml-1.5 align-middle px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-800 rounded" title="Lowest renewal price among quotes whose evidence is current (≤30 days). A cheaper quote with older evidence is listed in its own row with a stale badge.">cheapest</span>}
                 </td>
                 <td class="px-3 py-3">
                   {fmt(o.transfer_usd) ?? <span class="text-ink-400" title="This source does not publish a transfer price">—</span>}
@@ -177,7 +177,7 @@ const verificationBadgeClass: Record<string, string> = {
                   {fmt(o.three_year_usd) ? (
                     <>
                       <span class="font-semibold text-ink-900">{fmt(o.three_year_usd)}</span>
-                      {bestValue && <span class="ml-1.5 align-middle px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-800 rounded">best value</span>}
+                      {bestValue && <span class="ml-1.5 align-middle px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-800 rounded" title="Lowest 3-year cost among quotes whose evidence is current (≤30 days).">best value</span>}
                     </>
                   ) : (
                     <span class="text-ink-400" title="Needs both registration and renewal prices">—</span>

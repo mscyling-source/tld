@@ -187,13 +187,39 @@ export function formatDate(iso: string | null | undefined): string | null {
 }
 
 /**
- * Pick the cheapest non-null price for a field across offers.
+ * Evidence that is recent enough to be presented as a current quote.
  *
- * Ranking: lower price first; ties prefer better verification status, then
- * fresher evidence, then registrar name (stable).
+ * `recent` (≤7 days, first-party read) and `aging` (8–30 days, or a snapshot
+ * no older than a week) both qualify. `stale` (>30 days) and `unknown` (no
+ * usable date) do not: an eight-week-old snapshot must never occupy the
+ * "cheapest" slot, or the site would advertise a price the registrar may have
+ * changed long ago.
+ */
+export function isCurrentEvidence(freshness: PriceFreshness): boolean {
+  return freshness === 'recent' || freshness === 'aging';
+}
+
+/**
+ * Pick the cheapest price for a field across offers — but only among figures
+ * whose evidence is still current.
+ *
+ * Ranking: current evidence first (stale/undated quotes never win while any
+ * current alternative exists), then lower price, then better verification
+ * status, then fresher evidence, then registrar name (stable).
+ *
+ * When nothing current is available the cheapest stale quote is returned
+ * anyway — labelled as such by its own badges — because showing an old price
+ * with an honest date beats showing "unavailable" and pretending we have no
+ * data. In that fallback the winner is the cheapest of what exists.
+ *
+ * Whenever a cheaper stale/undated quote lost to a current one, it is carried
+ * on `cheaper_stale` so the UI can disclose it instead of silently hiding a
+ * lower published price.
  */
 export function cheapestPoint(offers: PriceOffer[], field: PriceField, now: Date): PricePoint | null {
-  let best: PricePoint | null = null;
+  let current: PricePoint | null = null;
+  let stale: PricePoint | null = null;
+
   for (const offer of offers) {
     const usd = offer[field];
     if (usd === null || !isFinitePrice(usd)) continue;
@@ -208,10 +234,27 @@ export function cheapestPoint(offers: PriceOffer[], field: PriceField, now: Date
       promotional: offer.promotional === true,
       promotion_expired: isPromotionExpired(offer.promotion_expires_at, now),
       quality: freshnessToQuality(freshness),
+      cheaper_stale: null,
     };
-    if (best === null || isBetterPoint(point, best)) best = point;
+    if (isCurrentEvidence(freshness)) {
+      if (current === null || isBetterPoint(point, current)) current = point;
+    } else if (stale === null || isBetterPoint(point, stale)) {
+      stale = point;
+    }
   }
-  return best;
+
+  if (current === null) return stale;
+  if (stale !== null && stale.usd < current.usd) {
+    current.cheaper_stale = {
+      usd: stale.usd,
+      registrar_id: stale.registrar_id,
+      registrar_name: stale.registrar_name,
+      verification_status: stale.verification_status,
+      freshness: stale.freshness,
+      last_checked: stale.last_checked,
+    };
+  }
+  return current;
 }
 
 function isBetterPoint(a: PricePoint, b: PricePoint): boolean {

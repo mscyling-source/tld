@@ -29,6 +29,7 @@ import {
   freshnessToQuality,
   isPromotionExpired,
   cheapestPoint,
+  isCurrentEvidence,
   sortComparisonRows,
   formatUsd,
   formatDate,
@@ -599,6 +600,20 @@ describe('source parsers', () => {
     expect(oldestObservedAt).toBe('2026-10-21');
   });
 
+  it('keeps registration, renewal and transfer figures in their own columns', () => {
+    const csv = [
+      'registrar_id,registrar_name,tld,first_year_price,renewal_price,transfer_price,currency,last_checked,source_url',
+      'porkbun,Porkbun,com,,12.34,9.87,USD,2026-10-21,https://porkbun.com/tlds',
+    ].join('\n');
+    const { offers } = parseBdr(csv);
+    const row = offers[0];
+    // A missing first-year price stays missing: the renewal figure is never
+    // promoted into the registration column to make the row look complete.
+    expect(row.register_usd).toBeNull();
+    expect(row.renewal_usd).toBe(12.34);
+    expect(row.transfer_usd).toBe(9.87);
+  });
+
   it('maps upstream verification vocabulary conservatively', () => {
     // BDR's "verified" is the publisher's attestation, not our own read.
     expect(mapVerificationStatus('verified')).toBe('source_snapshot');
@@ -790,6 +805,7 @@ describe('cheapestPoint & sorting', () => {
       promotional: false,
       promotion_expired: false,
       quality: 'verified',
+      cheaper_stale: null,
     });
     const rows: ComparisonRow[] = [
       {
@@ -935,12 +951,251 @@ describe('trust policy', () => {
       offer({ registrar_id: 'porkbun', registrar_name: 'Porkbun', register_usd: 11.08 }),
     ]);
     const point = cheapestPoint(offers, 'register_usd', NOW)!;
-    // Cheapest is still cheapest, but it is labelled unverified/unknown.
-    expect(point.usd).toBe(1);
-    expect(point.verification_status).toBe('unverified');
-    expect(point.freshness).toBe('unknown');
+    // The quarantined $1 quote has no usable evidence date, so it must not be
+    // presented as the current cheapest price even though it is cheaper.
+    expect(point.usd).toBe(11.08);
+    expect(point.registrar_id).toBe('porkbun');
+    // The figure is disclosed rather than deleted: it rides along as a cheaper
+    // quote whose evidence is unknown.
+    expect(point.cheaper_stale?.usd).toBe(1);
+    expect(point.cheaper_stale?.registrar_id).toBe('squarespace');
+    expect(point.cheaper_stale?.freshness).toBe('unknown');
     expect(quarantineReason('squarespace')).toContain('placeholder');
     expect(quarantineReason('porkbun')).toBeNull();
+  });
+});
+
+describe('current-evidence ranking', () => {
+  // The clock under which the reported .com row was showing stale figures.
+  const TODAY = new Date('2026-10-23T10:46:27.474Z');
+
+  const offer = (over: Partial<PriceOffer>): PriceOffer => ({
+    tld: 'com',
+    registrar_id: 'x',
+    registrar_name: 'X',
+    currency: 'USD',
+    register_usd: null,
+    renewal_usd: null,
+    transfer_usd: null,
+    promotional: false,
+    promo_code: null,
+    promo_restrictions: null,
+    promotion_expires_at: null,
+    three_year_usd: null,
+    source_id: 'pikkly',
+    source_name: 'Pikkly open data',
+    source_url: 'https://example.com',
+    purchase_url: 'https://example.com',
+    source_fetched_at: '2026-10-23T10:46:27.474Z',
+    price_observed_at: '2026-10-23T10:46:27.474Z',
+    price_verified_at: null,
+    verification_status: 'source_snapshot',
+    last_checked: '2026-10-23T10:46:27.474Z',
+    freshness: 'recent',
+    quality: 'verified',
+    source_status_stale: false,
+    ...over,
+  });
+
+  const verified = (over: Partial<PriceOffer>): PriceOffer =>
+    offer({
+      verification_status: 'verified',
+      price_verified_at: '2026-10-23T10:46:27.474Z',
+      price_observed_at: '2026-10-23T10:46:27.474Z',
+      source_id: 'porkbun',
+      source_name: 'Porkbun API',
+      ...over,
+    });
+
+  const snapshot = (observedAt: string, over: Partial<PriceOffer>): PriceOffer =>
+    offer({
+      verification_status: 'source_snapshot',
+      price_verified_at: null,
+      price_observed_at: observedAt,
+      last_checked: observedAt,
+      ...over,
+    });
+
+  it('counts only recent and aging evidence as current', () => {
+    expect(isCurrentEvidence('recent')).toBe(true);
+    expect(isCurrentEvidence('aging')).toBe(true);
+    expect(isCurrentEvidence('stale')).toBe(false);
+    expect(isCurrentEvidence('unknown')).toBe(false);
+  });
+
+  it('does not let a cheaper stale snapshot outrank a current first-party read', () => {
+    const offers = [
+      snapshot('2026-09-02', {
+        registrar_id: 'spaceship',
+        registrar_name: 'Spaceship',
+        renewal_usd: 10.18,
+      }),
+      verified({ registrar_id: 'dynadot', registrar_name: 'Dynadot', renewal_usd: 10.88 }),
+    ];
+    const point = cheapestPoint(offers, 'renewal_usd', TODAY)!;
+    expect(point.registrar_id).toBe('dynadot');
+    expect(point.usd).toBe(10.88);
+    expect(point.freshness).toBe('recent');
+    // The older, cheaper figure is disclosed rather than dropped.
+    expect(point.cheaper_stale).toEqual({
+      usd: 10.18,
+      registrar_id: 'spaceship',
+      registrar_name: 'Spaceship',
+      verification_status: 'source_snapshot',
+      freshness: 'stale',
+      last_checked: '2026-09-02',
+    });
+  });
+
+  it('still shows a quote when nothing current exists, labelled by its own date', () => {
+    const offers = [
+      snapshot('2026-08-04', {
+        registrar_id: 'cloudflare',
+        registrar_name: 'Cloudflare Registrar',
+        register_usd: 10.46,
+      }),
+      snapshot('2026-08-19', {
+        registrar_id: 'namecheap',
+        registrar_name: 'Namecheap',
+        register_usd: 11.28,
+      }),
+    ];
+    const point = cheapestPoint(offers, 'register_usd', TODAY)!;
+    expect(point.registrar_id).toBe('cloudflare');
+    expect(point.freshness).toBe('stale');
+    expect(point.cheaper_stale).toBeNull();
+  });
+
+  it('reports no stale alternative when the winner is already the cheapest', () => {
+    const offers = [
+      verified({ registrar_id: 'porkbun', registrar_name: 'Porkbun', register_usd: 9 }),
+      verified({ registrar_id: 'dynadot', registrar_name: 'Dynadot', register_usd: 11 }),
+      snapshot('2026-09-02', {
+        registrar_id: 'spaceship',
+        registrar_name: 'Spaceship',
+        register_usd: 12,
+      }),
+    ];
+    const point = cheapestPoint(offers, 'register_usd', TODAY)!;
+    expect(point.usd).toBe(9);
+    expect(point.cheaper_stale).toBeNull();
+  });
+
+  it('never invents a figure for a field no source publishes', () => {
+    const offers = [
+      verified({
+        registrar_id: 'porkbun',
+        registrar_name: 'Porkbun',
+        register_usd: 11.08,
+        renewal_usd: 11.08,
+      }),
+      snapshot('2026-09-02', {
+        registrar_id: 'spaceship',
+        registrar_name: 'Spaceship',
+        register_usd: 9.08,
+      }),
+    ];
+    // A registration price is not a transfer price; absence stays absent.
+    expect(cheapestPoint(offers, 'transfer_usd', TODAY)).toBeNull();
+  });
+
+  it('ranks the reported .com row by current evidence, not by the oldest snapshot', () => {
+    // Shaped from the live dataset as it was reported.
+    const offers = [
+      verified({
+        registrar_id: 'ionos',
+        registrar_name: 'IONOS',
+        register_usd: 1,
+        renewal_usd: 20,
+        transfer_usd: 9.5,
+        promotional: true,
+      }),
+      snapshot('2026-09-02', {
+        registrar_id: 'spaceship',
+        registrar_name: 'Spaceship',
+        register_usd: 9.08,
+        renewal_usd: 10.18,
+        transfer_usd: 9.48,
+      }),
+      snapshot('2026-08-04', {
+        registrar_id: 'cloudflare',
+        registrar_name: 'Cloudflare Registrar',
+        register_usd: 10.46,
+        renewal_usd: 10.46,
+      }),
+      verified({
+        registrar_id: 'dynadot',
+        registrar_name: 'Dynadot',
+        register_usd: 10.88,
+        renewal_usd: 10.88,
+        transfer_usd: 10.88,
+      }),
+      verified({
+        registrar_id: 'gandi',
+        registrar_name: 'Gandi',
+        register_usd: 11,
+        renewal_usd: 38.38,
+        transfer_usd: 11,
+      }),
+      offer({
+        registrar_id: 'squarespace',
+        registrar_name: 'Squarespace Domains',
+        register_usd: 11,
+        renewal_usd: 20,
+        transfer_usd: 11,
+        verification_status: 'unverified',
+        price_observed_at: '2026-05-12',
+        last_checked: '2026-05-12',
+      }),
+      verified({
+        registrar_id: 'porkbun',
+        registrar_name: 'Porkbun',
+        register_usd: 11.08,
+        renewal_usd: 11.08,
+        transfer_usd: 11.08,
+      }),
+      snapshot('2026-08-19', {
+        registrar_id: 'namecheap',
+        registrar_name: 'Namecheap',
+        register_usd: 11.28,
+        renewal_usd: 18.48,
+        transfer_usd: 11.48,
+      }),
+      verified({
+        registrar_id: 'hover',
+        registrar_name: 'Hover',
+        register_usd: 18.99,
+        renewal_usd: 18.99,
+        transfer_usd: 18.99,
+      }),
+      snapshot('2026-10-21', {
+        registrar_id: 'godaddy',
+        registrar_name: 'GoDaddy',
+        register_usd: 22.99,
+        renewal_usd: 22.99,
+      }),
+    ];
+
+    const register = cheapestPoint(offers, 'register_usd', TODAY)!;
+    expect(register.usd).toBe(1);
+    expect(register.registrar_id).toBe('ionos');
+    // Nothing cheaper exists, so there is nothing to disclose.
+    expect(register.cheaper_stale).toBeNull();
+
+    const renewal = cheapestPoint(offers, 'renewal_usd', TODAY)!;
+    // Spaceship's $10.18 snapshot is 51 days old: shown, but not ranked.
+    expect(renewal.usd).toBe(10.88);
+    expect(renewal.registrar_id).toBe('dynadot');
+    expect(renewal.freshness).toBe('recent');
+    expect(renewal.cheaper_stale?.usd).toBe(10.18);
+    expect(renewal.cheaper_stale?.registrar_id).toBe('spaceship');
+    expect(renewal.cheaper_stale?.freshness).toBe('stale');
+
+    const transfer = cheapestPoint(offers, 'transfer_usd', TODAY)!;
+    // IONOS's verified $9.50 wins; the $9.48 snapshot is disclosed beneath it.
+    expect(transfer.registrar_id).toBe('ionos');
+    expect(transfer.cheaper_stale?.usd).toBe(9.48);
+    expect(transfer.cheaper_stale?.registrar_id).toBe('spaceship');
   });
 });
 

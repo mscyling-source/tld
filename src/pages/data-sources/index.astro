@@ -124,6 +124,35 @@ import { siteConfig } from '../../config/site.js';
           </dd>
         </dl>
 
+        <h3>Why some registrars have no first-party price</h3>
+        <p>
+          A registrar appears as <em>Snapshot</em> only when we could not read its own price list.
+          The reasons are concrete, not a lack of effort:
+        </p>
+        <ul>
+          <li>
+            <strong>Cloudflare Registrar</strong> sells at cost and publishes no per-TLD price list
+            at all — there is no page to read, so its figures can only come from a licensed dataset.
+          </li>
+          <li>
+            <strong>Namecheap</strong> and <strong>Spaceship</strong> answer a plain server-side
+            request with HTTP 403 (bot protection). Reading them would mean executing JavaScript or
+            evading the challenge, which this project does not do. Their official APIs require an
+            account, and Namecheap additionally requires an approved funded account.
+          </li>
+          <li>
+            <strong>GoDaddy</strong> publishes no machine-readable price list either; its figures come
+            from the Best Domain Registrars dataset, which is why they are labelled
+            <em>Snapshot</em> even when they are only days old.
+          </li>
+        </ul>
+        <p>
+          Those rows keep their honest date and are never promoted to <em>Verified</em>. They also
+          never win the "cheapest" slot on a comparison table while a current quote exists — when a
+          stale quote is cheaper, the table lists it underneath the ranked price with a ↓ marker, so
+          an older lower price is disclosed rather than hidden.
+        </p>
+
         <h3>Placeholder pricing we refuse to dress up</h3>
         <p>
           Squarespace Domains appears in both open datasets, but Best Domain Registrars marks its

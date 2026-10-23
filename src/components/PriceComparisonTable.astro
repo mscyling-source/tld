@@ -12,7 +12,7 @@
 // price is labelled as such instead of being presented as a current quote.
 import type { ComparisonRow } from '../lib/pricingTypes.js';
 import type { PricePoint } from '../lib/pricingTypes.js';
-import { sortComparisonRows, formatDate } from '../lib/pricingCalc.js';
+import { sortComparisonRows, formatDate, formatUsd } from '../lib/pricingCalc.js';
 import {
   FRESHNESS_LABEL,
   VERIFICATION_EXPLANATION,
@@ -56,6 +56,18 @@ function pointTag(p: PricePoint): string {
 function pointTitle(p: PricePoint): string {
   const kind = p.verification_status === 'verified' ? 'verified' : 'observed';
   return `${VERIFICATION_EXPLANATION[p.verification_status]} ${kind} ${pointDate(p)}.`;
+}
+/**
+ * Disclosure for a cheaper quote that was kept out of the headline because its
+ * evidence is stale or undated. The price is shown, just not ranked — hiding
+ * it would misrepresent the market in the other direction.
+ */
+function staleAltText(p: PricePoint): string | null {
+  if (!p.cheaper_stale) return null;
+  const alt = p.cheaper_stale;
+  const when = formatDate(alt.last_checked);
+  const age = alt.freshness === 'unknown' ? 'no usable date' : `stale ${when ?? 'unknown'}`;
+  return `↓ ${formatUsd(alt.usd)} ${age} — ${alt.registrar_name}`;
 }
 function visitRel(): string {
   return 'noopener';
@@ -150,37 +162,21 @@ function visitRel(): string {
                   </span>
                 )}
               </td>
-              {row.register ? (
-                <td class="px-4 py-3">
-                  <span class="font-semibold text-ink-900" title={pointTitle(row.register)}>${row.register.usd.toFixed(2)}</span>
-                  <span class="block text-xs text-ink-600">{row.register.registrar_name}{pointTag(row.register)}</span>
-                </td>
-              ) : (
-                <td class="px-4 py-3"><span class="text-ink-400">Price unavailable</span></td>
-              )}
-              {row.renewal ? (
-                <td class="px-4 py-3">
-                  <span class="font-semibold text-ink-900" title={pointTitle(row.renewal)}>${row.renewal.usd.toFixed(2)}</span>
-                  <span class="block text-xs text-ink-600">{row.renewal.registrar_name}{pointTag(row.renewal)}</span>
-                </td>
-              ) : (
-                <td class="px-4 py-3"><span class="text-ink-400">Price unavailable</span></td>
-              )}
-              {row.transfer ? (
-                <td class="px-4 py-3">
-                  <span class="font-semibold text-ink-900" title={pointTitle(row.transfer)}>${row.transfer.usd.toFixed(2)}</span>
-                  <span class="block text-xs text-ink-600">{row.transfer.registrar_name}{pointTag(row.transfer)}</span>
-                </td>
-              ) : (
-                <td class="px-4 py-3"><span class="text-ink-400">Price unavailable</span></td>
-              )}
-              {row.three_year ? (
-                <td class="px-4 py-3">
-                  <span class="font-semibold text-ink-900" title={pointTitle(row.three_year)}>${row.three_year.usd.toFixed(2)}</span>
-                  <span class="block text-xs text-ink-600">{row.three_year.registrar_name}{pointTag(row.three_year)}</span>
-                </td>
-              ) : (
-                <td class="px-4 py-3"><span class="text-ink-400">Price unavailable</span></td>
+              {[row.register, row.renewal, row.transfer, row.three_year].map(point =>
+                point ? (
+                  <td class="px-4 py-3">
+                    <span class="font-semibold text-ink-900" title={pointTitle(point)}>${point.usd.toFixed(2)}</span>
+                    <span class="block text-xs text-ink-600">{point.registrar_name}{pointTag(point)}</span>
+                    {point.cheaper_stale && (
+                      <span
+                        class="block text-[10px] text-amber-700"
+                        title="A cheaper price is published, but its evidence is too old to rank as a current quote. Verify it at the registrar before relying on it."
+                      >{staleAltText(point)}</span>
+                    )}
+                  </td>
+                ) : (
+                  <td class="px-4 py-3"><span class="text-ink-400">Price unavailable</span></td>
+                ),
               )}
               <td class="px-4 py-3 text-right">
                 {row.visit_url && (
@@ -211,8 +207,10 @@ function visitRel(): string {
       dataset’s observation date, not necessarily today; <strong>stale</strong> marks evidence older
       than 30 days and should be read as a historical reference, not a current quote;
       <strong>promo</strong> marks a first-year promotional rate that is not the renewal price.
-      Extension detail pages list every offer with its source and evidence date. Source and licence
-      details on the
+      A quote whose evidence is stale or undated never takes the cheapest slot while a current quote
+      exists — when it is cheaper, it is listed underneath the price with a ↓ marker instead of
+      being ranked, so a lower published price is never hidden. Extension detail pages list every
+      offer with its source and evidence date. Source and licence details on the
       <a href="/data-sources/" class="underline hover:text-brand-600">data sources page</a>.
     </p>
   </div>
@@ -298,6 +296,23 @@ function visitRel(): string {
     sub.className = 'block text-xs text-ink-600';
     sub.textContent = point.registrar_name + pointTag(point);
     td.appendChild(sub);
+    if (point.cheaper_stale) {
+      const alt = point.cheaper_stale;
+      const when = fmtDate(alt.last_checked);
+      const note = document.createElement('span');
+      note.className = 'block text-[10px] text-amber-700';
+      note.title =
+        'A cheaper price is published, but its evidence is too old to rank as a current quote. ' +
+        'Verify it at the registrar before relying on it.';
+      note.textContent =
+        '↓ $' +
+        Number(alt.usd).toFixed(2) +
+        ' ' +
+        (alt.freshness === 'unknown' ? 'no usable date' : 'stale ' + when) +
+        ' — ' +
+        alt.registrar_name;
+      td.appendChild(note);
+    }
     return td;
   }
 

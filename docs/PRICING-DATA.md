@@ -88,6 +88,28 @@ Derived at build time from the tier plus the evidence date
 `MAX_FUTURE_SKEW_DAYS = 1`. Freshness is **recomputed on every build** from the
 evidence date, so a rebuild can only make a price look older, never newer.
 
+### 3.4 Ranking: current evidence wins
+
+`cheapestPoint()` (`src/lib/pricingCalc.ts`) splits the candidates before it
+compares prices:
+
+1. **Current pool** — `recent` or `aging`. The cheapest of these is the figure
+   the site presents as the price for that extension.
+2. **Stale pool** — `stale` or `unknown`. It is only used when the current pool
+   is empty; otherwise the cheapest stale figure is attached to the winner as
+   `cheaper_stale` and rendered underneath the price with a `↓` marker.
+
+Both halves matter. Ranking purely by price would let a two-month-old snapshot
+occupy the "cheapest renewal" slot for `.com` — the exact complaint that led to
+this rule: Spaceship's `$10.18` from 2026-09-02 was shown ahead of Dynadot's
+verified `$10.88` from the same morning. Ranking purely by freshness and
+dropping stale rows would hide a genuinely published, genuinely lower price.
+So the stale figure is **disclosed, not deleted**: it keeps its own badges and
+its own evidence date, and the reader can see exactly why it was not ranked.
+
+This is a presentation rule only. No price is altered, no date is invented, and
+a stale row never becomes `verified` to qualify for the ranking.
+
 ## 4. Sources
 
 ### 4.1 First-party reads → `verified`
@@ -130,7 +152,9 @@ fails the workflow's dataset check.
 
 | Source | Why not used |
 |---|---|
-| **name.com / Namecheap / DNSimple APIs** | Require account keys and, for Namecheap, an approved funded account with redistribution restrictions. Adapter-ready when a key exists. |
+| **Namecheap / Spaceship public price pages** | Both answer a plain server-side GET with **HTTP 403** (bot protection). Reading them would need JavaScript execution or challenge evasion, which the access policy above forbids. Their official APIs need account credentials — Namecheap additionally requires an approved, funded account with redistribution restrictions. |
+| **Cloudflare Registrar price list** | Cloudflare sells at cost and publishes **no per-TLD price list**; `cloudflare.com/products/registrar/` carries no figures at all. Pikkly's licensed, normalised copy is the only machine-readable source, which is why Cloudflare rows are `source_snapshot` and can go stale. |
+| **name.com / DNSimple APIs** | Require account keys. Adapter-ready when a key exists. |
 | **Commercial pricing APIs** | Paid; no budget approved. The adapter registry keeps them pluggable. |
 | **Cloudflare community dumps** | Reachable only via Pikkly's licensed, normalised copy — preferred over mirroring a dated GitHub dump. |
 | **Comparison-site scraping** | Violates their terms; the sanctioned machine-readable alternatives above are used instead. |
