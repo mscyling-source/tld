@@ -1,6 +1,6 @@
 {
-  "run_at": "2026-10-23T07:52:41.892Z",
-  "dataset_generated_at": "2026-10-23T07:52:41.892Z",
+  "run_at": "2026-10-23T09:33:53.247Z",
+  "dataset_generated_at": "2026-10-23T09:33:53.247Z",
   "schema_version": 2,
   "totals": {
     "offers": 3549,
@@ -19,7 +19,7 @@
       "unknown": 6
     },
     "oldest_observed_at": "2026-05-12",
-    "newest_observed_at": "2026-10-23T07:52:41.892Z"
+    "newest_observed_at": "2026-10-23T09:33:53.247Z"
   },
   "sources": [
     {
@@ -33,24 +33,21 @@
         "unknown-tld": 367,
         "invalid-price": 5
       },
-      "fetched_at": "2026-10-23T07:52:41.892Z",
-      "oldest_observed_at": "2026-10-23T07:52:41.892Z",
+      "fetched_at": "2026-10-23T09:33:53.247Z",
+      "oldest_observed_at": "2026-10-23T09:33:53.247Z",
       "error": null
     },
     {
       "source_id": "dynadot",
       "source_name": "Dynadot pricing page",
-      "status": "ok",
+      "status": "kept-previous",
       "verification_status": "verified",
       "rows": 621,
-      "rejected": 191,
-      "rejections": {
-        "unknown-tld": 187,
-        "invalid-price": 4
-      },
+      "rejected": 0,
+      "rejections": {},
       "fetched_at": "2026-10-23T07:52:41.892Z",
       "oldest_observed_at": "2026-10-23T07:52:41.892Z",
-      "error": null
+      "error": "HTTP 522 for https://www.dynadot.com/domain/prices"
     },
     {
       "source_id": "gandi",
@@ -62,8 +59,8 @@
       "rejections": {
         "unknown-tld": 94
       },
-      "fetched_at": "2026-10-23T07:52:41.892Z",
-      "oldest_observed_at": "2026-10-23T07:52:41.892Z",
+      "fetched_at": "2026-10-23T09:33:53.247Z",
+      "oldest_observed_at": "2026-10-23T09:33:53.247Z",
       "error": null
     },
     {
@@ -77,8 +74,8 @@
         "unknown-tld": 16,
         "invalid-price": 1
       },
-      "fetched_at": "2026-10-23T07:52:41.892Z",
-      "oldest_observed_at": "2026-10-23T07:52:41.892Z",
+      "fetched_at": "2026-10-23T09:33:53.247Z",
+      "oldest_observed_at": "2026-10-23T09:33:53.247Z",
       "error": null
     },
     {
@@ -91,8 +88,8 @@
       "rejections": {
         "unknown-tld": 4
       },
-      "fetched_at": "2026-10-23T07:52:41.892Z",
-      "oldest_observed_at": "2026-10-23T07:52:41.892Z",
+      "fetched_at": "2026-10-23T09:33:53.247Z",
+      "oldest_observed_at": "2026-10-23T09:33:53.247Z",
       "error": null
     },
     {
@@ -106,7 +103,7 @@
         "unknown-tld": 14,
         "invalid-price": 2
       },
-      "fetched_at": "2026-10-23T07:52:41.892Z",
+      "fetched_at": "2026-10-23T09:33:53.247Z",
       "oldest_observed_at": "2026-05-12",
       "error": null
     },
@@ -121,7 +118,7 @@
         "unknown-tld": 94,
         "invalid-price": 3
       },
-      "fetched_at": "2026-10-23T07:52:41.892Z",
+      "fetched_at": "2026-10-23T09:33:53.247Z",
       "oldest_observed_at": "2026-08-04",
       "error": null
     },
@@ -136,12 +133,55 @@
         "unknown-tld": 10,
         "invalid-price": 2
       },
-      "fetched_at": "2026-10-23T07:52:41.892Z",
+      "fetched_at": "2026-10-23T09:33:53.247Z",
       "oldest_observed_at": "2026-05-12",
       "error": null
     }
   ],
-  "significant_changes": [],
-  "degraded_sources": [],
-  "summary": "3549 offers across 811 TLDs and 10 registrars. 2844 (80%) were read directly from the registrar's own published price list; 699 come from openly licensed dated snapshots; 0 are policy-derived; 6 cannot be dated. 681 offers (19%) are older than 30 days and are shown as stale. Oldest evidence: 2026-05-12."
+  "significant_changes": [
+    {
+      "tld": "futbol",
+      "registrar_id": "gandi",
+      "field": "renewal_usd",
+      "previous_usd": 39.98,
+      "current_usd": 15.38,
+      "change_pct": -61.5
+    },
+    {
+      "tld": "futbol",
+      "registrar_id": "gandi",
+      "field": "register_usd",
+      "previous_usd": 16.5,
+      "current_usd": 9.65,
+      "change_pct": -41.5
+    },
+    {
+      "tld": "futbol",
+      "registrar_id": "gandi",
+      "field": "transfer_usd",
+      "previous_usd": 13.98,
+      "current_usd": 8.18,
+      "change_pct": -41.5
+    },
+    {
+      "tld": "bingo",
+      "registrar_id": "gandi",
+      "field": "transfer_usd",
+      "previous_usd": 57.47,
+      "current_usd": 74.46,
+      "change_pct": 29.6
+    },
+    {
+      "tld": "bingo",
+      "registrar_id": "gandi",
+      "field": "register_usd",
+      "previous_usd": 67.83,
+      "current_usd": 87.87,
+      "change_pct": 29.5
+    }
+  ],
+  "degraded_sources": [
+    "dynadot (kept-previous)"
+  ],
+  "summary": "3549 offers across 811 TLDs and 10 registrars. 2844 (80%) were read directly from the registrar's own published price list; 699 come from openly licensed dated snapshots; 0 are policy-derived; 6 cannot be dated. 681 offers (19%) are older than 30 days and are shown as stale. Oldest evidence: 2026-05-12. Sources not fully refreshed: dynadot (kept-previous)."
 }
