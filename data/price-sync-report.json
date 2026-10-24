@@ -1,6 +1,6 @@
 {
-  "run_at": "2026-10-24T09:06:32.894Z",
-  "dataset_generated_at": "2026-10-24T09:06:32.894Z",
+  "run_at": "2026-10-24T09:22:26.808Z",
+  "dataset_generated_at": "2026-10-24T09:22:26.808Z",
   "schema_version": 2,
   "totals": {
     "offers": 3549,
@@ -19,7 +19,7 @@
       "unknown": 6
     },
     "oldest_observed_at": "2026-05-12",
-    "newest_observed_at": "2026-10-24T09:06:32.894Z"
+    "newest_observed_at": "2026-10-24T09:22:26.808Z"
   },
   "sources": [
     {
@@ -33,8 +33,8 @@
         "unknown-tld": 367,
         "invalid-price": 5
       },
-      "fetched_at": "2026-10-24T09:06:32.894Z",
-      "oldest_observed_at": "2026-10-24T09:06:32.894Z",
+      "fetched_at": "2026-10-24T09:22:26.808Z",
+      "oldest_observed_at": "2026-10-24T09:22:26.808Z",
       "error": null
     },
     {
@@ -48,8 +48,8 @@
         "unknown-tld": 187,
         "invalid-price": 4
       },
-      "fetched_at": "2026-10-24T09:06:32.894Z",
-      "oldest_observed_at": "2026-10-24T09:06:32.894Z",
+      "fetched_at": "2026-10-24T09:22:26.808Z",
+      "oldest_observed_at": "2026-10-24T09:22:26.808Z",
       "error": null
     },
     {
@@ -62,8 +62,8 @@
       "rejections": {
         "unknown-tld": 94
       },
-      "fetched_at": "2026-10-24T09:06:32.894Z",
-      "oldest_observed_at": "2026-10-24T09:06:32.894Z",
+      "fetched_at": "2026-10-24T09:22:26.808Z",
+      "oldest_observed_at": "2026-10-24T09:22:26.808Z",
       "error": null
     },
     {
@@ -77,8 +77,8 @@
         "unknown-tld": 16,
         "invalid-price": 1
       },
-      "fetched_at": "2026-10-24T09:06:32.894Z",
-      "oldest_observed_at": "2026-10-24T09:06:32.894Z",
+      "fetched_at": "2026-10-24T09:22:26.808Z",
+      "oldest_observed_at": "2026-10-24T09:22:26.808Z",
       "error": null
     },
     {
@@ -91,8 +91,8 @@
       "rejections": {
         "unknown-tld": 4
       },
-      "fetched_at": "2026-10-24T09:06:32.894Z",
-      "oldest_observed_at": "2026-10-24T09:06:32.894Z",
+      "fetched_at": "2026-10-24T09:22:26.808Z",
+      "oldest_observed_at": "2026-10-24T09:22:26.808Z",
       "error": null
     },
     {
@@ -106,7 +106,7 @@
         "unknown-tld": 14,
         "invalid-price": 2
       },
-      "fetched_at": "2026-10-24T09:06:32.894Z",
+      "fetched_at": "2026-10-24T09:22:26.808Z",
       "oldest_observed_at": "2026-05-12",
       "error": null
     },
@@ -121,7 +121,7 @@
         "unknown-tld": 94,
         "invalid-price": 3
       },
-      "fetched_at": "2026-10-24T09:06:32.894Z",
+      "fetched_at": "2026-10-24T09:22:26.808Z",
       "oldest_observed_at": "2026-08-04",
       "error": null
     },
@@ -136,85 +136,12 @@
         "unknown-tld": 10,
         "invalid-price": 2
       },
-      "fetched_at": "2026-10-24T09:06:32.894Z",
+      "fetched_at": "2026-10-24T09:22:26.808Z",
       "oldest_observed_at": "2026-05-12",
       "error": null
     }
   ],
-  "significant_changes": [
-    {
-      "tld": "cruises",
-      "registrar_id": "gandi",
-      "field": "register_usd",
-      "previous_usd": 66.88,
-      "current_usd": 91.67,
-      "change_pct": 37.1
-    },
-    {
-      "tld": "cruises",
-      "registrar_id": "gandi",
-      "field": "transfer_usd",
-      "previous_usd": 56.67,
-      "current_usd": 77.68,
-      "change_pct": 37.1
-    },
-    {
-      "tld": "community",
-      "registrar_id": "gandi",
-      "field": "register_usd",
-      "previous_usd": 44.05,
-      "current_usd": 55.38,
-      "change_pct": 25.7
-    },
-    {
-      "tld": "community",
-      "registrar_id": "gandi",
-      "field": "renewal_usd",
-      "previous_usd": 95.98,
-      "current_usd": 120.67,
-      "change_pct": 25.7
-    },
-    {
-      "tld": "community",
-      "registrar_id": "gandi",
-      "field": "transfer_usd",
-      "previous_usd": 37.32,
-      "current_usd": 46.92,
-      "change_pct": 25.7
-    },
-    {
-      "tld": "com",
-      "registrar_id": "gandi",
-      "field": "register_usd",
-      "previous_usd": 11,
-      "current_usd": null,
-      "change_pct": null
-    },
-    {
-      "tld": "com",
-      "registrar_id": "gandi",
-      "field": "transfer_usd",
-      "previous_usd": 11,
-      "current_usd": null,
-      "change_pct": null
-    },
-    {
-      "tld": "ist",
-      "registrar_id": "gandi",
-      "field": "register_usd",
-      "previous_usd": 23.33,
-      "current_usd": null,
-      "change_pct": null
-    },
-    {
-      "tld": "istanbul",
-      "registrar_id": "gandi",
-      "field": "register_usd",
-      "previous_usd": 29.07,
-      "current_usd": null,
-      "change_pct": null
-    }
-  ],
+  "significant_changes": [],
   "degraded_sources": [],
   "summary": "3549 offers across 811 TLDs and 10 registrars. 2844 (80%) were read directly from the registrar's own published price list; 699 come from openly licensed dated snapshots; 0 are policy-derived; 6 cannot be dated. 681 offers (19%) are older than 30 days and are shown as stale. Oldest evidence: 2026-05-12."
 }
