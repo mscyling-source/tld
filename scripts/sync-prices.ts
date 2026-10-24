@@ -32,6 +32,11 @@ import { buildReport, buildMetaCounts, diffPrices, renderMarkdown, type SourceRe
 import { purchaseUrlFor } from '../src/config/registrars.js';
 import { applyTrustPolicy, quarantineReason } from './pricing/trust.js';
 import {
+  buildCoverage,
+  buildSourceLifecycle,
+  newestEvidenceDate,
+} from './pricing/sourceState.js';
+import {
   calcThreeYear,
   effectiveEvidenceDate,
   effectiveFreshness,
@@ -59,10 +64,29 @@ const REPORT_MD_PATH = resolve(DATA_DIR, 'price-sync-report.md');
 /** A source must produce at least this fraction of its previous rows. */
 const SHRINK_RATIO = 0.5;
 
-type SourceOutcome = {
-  info: PriceSourceInfo;
-  offers: RawOffer[];
+/**
+ * What one adapter produced this run.
+ *
+ * Deliberately separated from `PriceSourceInfo`: the published source record
+ * needs `published_rows`, which is only known after the cross-source merge, so
+ * the record is assembled in `main()` rather than here.
+ */
+type SourceRun = {
+  adapter: SourceAdapter;
+  status: PriceSourceInfo['status'];
+  error?: string;
+  /** Rows the adapter returned before validation (0 when it never ran). */
+  attempted: number;
+  /** Rows that passed validation. */
+  parsed: number;
+  rejectedTotal: number;
   rejections: Record<string, number>;
+  /** Rows carried over from the previous dataset because the fetch was unusable. */
+  retainedFromPrevious: number;
+  /** Rows to feed into the merge. */
+  offers: RawOffer[];
+  previousSuccessfulFetchAt: string | null;
+  previousPriceEvidenceAt: string | null;
 };
 
 function log(msg: string): void {
@@ -90,46 +114,40 @@ async function runSource(
   adapter: SourceAdapter,
   knownTlds: Set<string>,
   previousBySource: Map<string, PriceOffer[]>,
-  previousFetchedAt: Map<string, string>,
+  previousSources: Map<string, PriceSourceInfo>,
   now: Date,
-): Promise<SourceOutcome> {
-  const fetchedAt = now.toISOString();
-  const base: PriceSourceInfo = {
-    id: adapter.id,
-    name: adapter.name,
-    url: adapter.url,
-    license: adapter.license,
-    attribution: adapter.attribution,
-    verification_status: adapter.verificationStatus,
-    rows: 0,
-    fetched_at: fetchedAt,
-    oldest_observed_at: null,
-    status: 'ok',
-  };
+): Promise<SourceRun> {
+  const attemptedAt = now.toISOString();
   const previous = previousBySource.get(adapter.id) ?? [];
-  // When we keep previous rows we must NOT claim this run's fetch time for
-  // them — the old rows keep whatever fetch timestamp they were written with.
-  const keptFetchedAt = previousFetchedAt.get(adapter.id) ?? fetchedAt;
+  const previousInfo = previousSources.get(adapter.id);
 
-  const keepPrevious = (status: PriceSourceInfo['status'], error: string, rejections: Record<string, number> = {}): SourceOutcome => {
-    const dates = previous
-      .map(o => effectiveEvidenceDate(o))
-      .filter((d): d is string => typeof d === 'string')
-      .sort();
-    return {
-      info: {
-        ...base,
-        status,
-        rows: previous.length,
-        fetched_at: keptFetchedAt,
-        oldest_observed_at: dates[0] ?? null,
-        error,
-        rejections,
-      },
-      offers: previous,
-      rejections,
-    };
-  };
+  // A previous dataset written before this field existed only has `fetched_at`,
+  // which was already defined as a *successful* fetch time. Fall back to it
+  // rather than inventing a value.
+  const previousSuccessfulFetchAt =
+    previousInfo?.last_successful_fetch_at ?? previousInfo?.fetched_at ?? null;
+  // Same for the evidence date: derive it from the rows themselves when the
+  // previous file predates the per-source field.
+  const previousPriceEvidenceAt =
+    previousInfo?.price_evidence_at ?? newestEvidenceDate(previous);
+
+  const keepPrevious = (
+    status: PriceSourceInfo['status'],
+    error: string,
+    extra: { attempted?: number; parsed?: number; rejectedTotal?: number; rejections?: Record<string, number> } = {},
+  ): SourceRun => ({
+    adapter,
+    status,
+    error,
+    attempted: extra.attempted ?? 0,
+    parsed: extra.parsed ?? 0,
+    rejectedTotal: extra.rejectedTotal ?? 0,
+    rejections: extra.rejections ?? {},
+    retainedFromPrevious: previous.length,
+    offers: previous,
+    previousSuccessfulFetchAt,
+    previousPriceEvidenceAt,
+  });
 
   const missingEnv = missingEnvFor(adapter);
   if (missingEnv.length > 0) {
@@ -148,11 +166,17 @@ async function runSource(
 
   const { valid, rejected } = validateOffers(raw, knownTlds);
   const rejectionCounts = countRejections(rejected);
+  const rejectedTotal = Object.values(rejectionCounts).reduce((a, b) => a + b, 0);
 
   // Empty/garbage results must never overwrite a working dataset.
   if (valid.length === 0) {
     log(`${adapter.id}: 0 valid rows (raw=${raw.length})`);
-    return keepPrevious(previous.length > 0 ? 'kept-previous' : 'failed', 'no valid rows returned', rejectionCounts);
+    return keepPrevious(previous.length > 0 ? 'kept-previous' : 'failed', 'no valid rows returned', {
+      attempted: raw.length,
+      parsed: 0,
+      rejectedTotal,
+      rejections: rejectionCounts,
+    });
   }
 
   // Sudden shrinkage usually means a broken payload — keep known-good data.
@@ -161,7 +185,7 @@ async function runSource(
     return keepPrevious(
       'shrunk-kept-previous',
       `shrink ${previous.length} → ${valid.length} (< ${SHRINK_RATIO * 100}%)`,
-      rejectionCounts,
+      { attempted: raw.length, parsed: valid.length, rejectedTotal, rejections: rejectionCounts },
     );
   }
 
@@ -170,20 +194,21 @@ async function runSource(
     .filter((d): d is string => typeof d === 'string')
     .sort();
 
-  const rejectedTotal = Object.values(rejectionCounts).reduce((a, b) => a + b, 0);
   log(
     `${adapter.id}: ${valid.length} valid rows (${rejectedTotal} rejected: ${JSON.stringify(rejectionCounts)}), ` +
       `oldest observation ${dates[0] ?? 'unknown'}`,
   );
   return {
-    info: {
-      ...base,
-      rows: valid.length,
-      oldest_observed_at: dates[0] ?? null,
-      rejections: rejectionCounts,
-    },
-    offers: valid,
+    adapter,
+    status: 'ok',
+    attempted: raw.length,
+    parsed: valid.length,
+    rejectedTotal,
     rejections: rejectionCounts,
+    retainedFromPrevious: 0,
+    offers: valid,
+    previousSuccessfulFetchAt,
+    previousPriceEvidenceAt,
   };
 }
 
@@ -216,35 +241,49 @@ async function main(): Promise<void> {
   }
 
   const previousBySource = new Map<string, PriceOffer[]>();
-  const previousFetchedAt = new Map<string, string>();
+  const previousSources = new Map<string, PriceSourceInfo>();
   for (const offer of previous?.offers ?? []) {
     const list = previousBySource.get(offer.source_id) ?? [];
     list.push(offer);
     previousBySource.set(offer.source_id, list);
   }
   for (const source of previous?.sources ?? []) {
-    if (source.fetched_at) previousFetchedAt.set(source.id, source.fetched_at);
+    if (source.id) previousSources.set(source.id, source);
   }
 
   log(
     `starting: ${sourceAdapters.length} sources, catalog ${knownTlds.size} TLDs, previous ${previous?.offers.length ?? 0} offers`,
   );
 
-  const outcomes: SourceOutcome[] = [];
+  const runs: SourceRun[] = [];
   for (const adapter of sourceAdapters) {
-    outcomes.push(await runSource(adapter, knownTlds, previousBySource, previousFetchedAt, now));
+    runs.push(await runSource(adapter, knownTlds, previousBySource, previousSources, now));
   }
 
-  const anyRows = outcomes.some(o => o.offers.length > 0);
+  const anyRows = runs.some(o => o.offers.length > 0);
   if (!anyRows) {
     await writeFailureMeta(nowIso, 'all sources failed — data/prices.json untouched');
     log('FATAL: every source failed; dataset left untouched');
     process.exit(1);
   }
 
+  /**
+   * The fetch timestamp written onto each offer. Only a successful fetch may
+   * stamp this run's clock; a fallback keeps the previous success time so a
+   * failed run cannot make old rows look freshly downloaded.
+   */
+  const fetchedAtBySource = new Map<string, string>();
+  for (const run of runs) {
+    const succeeded = run.status === 'ok';
+    fetchedAtBySource.set(
+      run.adapter.id,
+      succeeded ? nowIso : (run.previousSuccessfulFetchAt ?? nowIso),
+    );
+  }
+
   // Resolve purchase links: source-provided → verified registry pattern → homepage.
   const finalizedSourceOffers: RawOffer[] = [];
-  for (const outcome of outcomes) {
+  for (const outcome of runs) {
     for (const offer of outcome.offers) {
       const resolved = offer.purchase_url ?? purchaseUrlFor(offer.registrar_id, offer.tld);
       finalizedSourceOffers.push({ ...offer, purchase_url: resolved || null });
@@ -290,8 +329,7 @@ async function main(): Promise<void> {
       source_name: sourceNameFor(raw.source_id),
       source_url: raw.source_url,
       purchase_url: raw.purchase_url,
-      source_fetched_at:
-        outcomes.find(o => o.info.id === raw.source_id)?.info.fetched_at ?? nowIso,
+      source_fetched_at: fetchedAtBySource.get(raw.source_id) ?? nowIso,
       price_observed_at: raw.price_observed_at,
       price_verified_at: raw.price_verified_at ?? null,
       verification_status: verificationStatus,
@@ -324,39 +362,92 @@ async function main(): Promise<void> {
   // function so the rule is testable (see buildMetaCounts).
   const counts = buildMetaCounts(offers);
 
+  /**
+   * Assemble each source's published record.
+   *
+   * Evidence is measured over the rows this source actually contributes to the
+   * dataset, not over everything the adapter returned: a source whose freshest
+   * rows are all superseded by a better-verified copy is not, in any useful
+   * sense, keeping that registrar current.
+   */
+  const sources: PriceSourceInfo[] = runs.map(run => {
+    const published = offers.filter(o => o.source_id === run.adapter.id);
+    // Fall back to the candidate rows when nothing survived the merge, so a
+    // source that read fine but lost every row still reports its evidence
+    // rather than appearing undated.
+    const evidenceRows = published.length > 0 ? published : run.offers;
+    const lifecycle = buildSourceLifecycle({
+      status: run.status,
+      attempted: run.attempted,
+      parsed: run.parsed,
+      rejectedTotal: run.rejectedTotal,
+      retainedFromPrevious: run.retainedFromPrevious,
+      published: evidenceRows,
+      previousSuccessfulFetchAt: run.previousSuccessfulFetchAt,
+      previousPriceEvidenceAt: run.previousPriceEvidenceAt,
+      attemptedAt: nowIso,
+      now,
+    });
+    return {
+      id: run.adapter.id,
+      name: run.adapter.name,
+      url: run.adapter.url,
+      license: run.adapter.license,
+      attribution: run.adapter.attribution,
+      verification_status: run.adapter.verificationStatus,
+      rows: run.offers.length,
+      status: run.status,
+      error: run.error,
+      rejections: run.rejections,
+      published_rows: published.length,
+      ...lifecycle,
+    };
+  });
+
+  const coverage = buildCoverage(sources, offers, now);
+
   const dataset: PriceDataset = {
     schema_version: 2,
     generated_at: nowIso,
     currency: 'USD',
-    sources: outcomes.map(o => o.info),
+    sources,
     offers,
   };
 
-  const allStatuses = outcomes.map(o => o.info.status);
+  const allStatuses = runs.map(o => o.status);
   const metaStatus: PriceMeta['status'] = allStatuses.every(s => s === 'ok')
     ? 'ok'
-    : outcomes.some(o => o.info.status === 'ok' || o.info.status === 'kept-previous')
+    : runs.some(o => o.status === 'ok' || o.status === 'kept-previous')
       ? 'partial'
       : 'failed';
-  const errors = outcomes
-    .filter(o => o.info.error)
-    .map(o => `${o.info.id}: ${o.info.error}`);
+  const errors = runs
+    .filter(o => o.error)
+    .map(o => `${o.adapter.id}: ${o.error}`);
 
   // Report: what we stand behind, not just what we downloaded.
-  const sourceReports: SourceReport[] = outcomes.map(o => ({
-    source_id: o.info.id,
-    source_name: o.info.name,
-    status: o.info.status,
-    verification_status: o.info.verification_status,
-    rows: o.info.rows,
-    rejected: Object.values(o.info.rejections ?? {}).reduce((a, b) => a + b, 0),
-    rejections: o.info.rejections ?? {},
-    fetched_at: o.info.fetched_at,
-    oldest_observed_at: o.info.oldest_observed_at,
-    error: o.info.error ?? null,
+  const sourceReports: SourceReport[] = sources.map(s => ({
+    source_id: s.id,
+    source_name: s.name,
+    status: s.status,
+    verification_status: s.verification_status,
+    rows: s.rows,
+    attempted: s.attempted,
+    published_rows: s.published_rows,
+    rejected: s.rejected_total,
+    rejections: s.rejections ?? {},
+    fetched_at: s.last_successful_fetch_at,
+    last_attempt_at: s.last_attempt_at,
+    last_successful_fetch_at: s.last_successful_fetch_at,
+    price_evidence_at: s.price_evidence_at,
+    previous_price_evidence_at: s.previous_price_evidence_at,
+    evidence_advanced: s.evidence_advanced,
+    evidence_state: s.evidence_state,
+    retained_from_previous: s.retained_from_previous,
+    oldest_observed_at: s.oldest_observed_at,
+    error: s.error ?? null,
   }));
   const changes = diffPrices(previous, dataset);
-  const report = buildReport({ runAt: nowIso, dataset, sources: sourceReports, changes, now });
+  const report = buildReport({ runAt: nowIso, dataset, sources: sourceReports, changes, now, previous });
 
   const previousMeta = await loadJson<PriceMeta>(PRICES_META_PATH);
   const meta: PriceMeta = {
@@ -364,6 +455,7 @@ async function main(): Promise<void> {
     last_attempt_at: nowIso,
     status: metaStatus,
     last_error: errors.length ? errors.join(' | ') : null,
+    coverage,
     counts,
     history: [
       {
@@ -392,12 +484,17 @@ async function main(): Promise<void> {
       `recent=${counts.recent_offers}, aging=${counts.aging_offers}, stale=${counts.stale_offers}, ` +
       `unknown=${counts.unknown_offers}${supersededNote}), status=${metaStatus}`,
   );
-  for (const o of outcomes) {
+  for (const s of sources) {
+    const moved = s.evidence_advanced ? 'advanced' : 'no new evidence';
     log(
-      `  source ${o.info.id} [${o.info.verification_status}]: ${o.info.status}` +
-        `${o.info.error ? ` (${o.info.error})` : ''} rows=${o.info.rows} oldest=${o.info.oldest_observed_at ?? 'unknown'}`,
+      `  source ${s.id} [${s.verification_status}]: ${s.status}` +
+        `${s.error ? ` (${s.error})` : ''} attempted=${s.attempted} parsed=${s.parsed} ` +
+        `rejected=${s.rejected_total} published=${s.published_rows} ` +
+        `evidence=${s.price_evidence_at ?? 'none'} [${s.evidence_state}, ${moved}] ` +
+        `last_success=${s.last_successful_fetch_at ?? 'never'}`,
     );
   }
+  log(`coverage: ${coverage.complete ? 'complete' : 'incomplete'} — ${coverage.note}`);
   if (changes.length > 0) {
     log(`significant price changes: ${changes.length} (see data/price-sync-report.md)`);
   }
@@ -416,6 +513,14 @@ async function writeFailureMeta(nowIso: string, error: string): Promise<void> {
     last_attempt_at: nowIso,
     status: 'failed',
     last_error: error,
+    coverage: {
+      complete: false,
+      current_sources: [],
+      frozen_sources: [],
+      stale_sources: [],
+      registrars_without_current_evidence: [],
+      note: 'Collection failed; the published dataset was not updated.',
+    },
     counts: previousMeta?.counts ?? {
       offers: 0,
       tlids: 0,

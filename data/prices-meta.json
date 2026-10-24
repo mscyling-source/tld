@@ -1,8 +1,31 @@
 {
-  "last_success_at": "2026-10-24T09:22:26.808Z",
-  "last_attempt_at": "2026-10-24T09:22:26.808Z",
+  "last_success_at": "2026-10-24T12:17:14.859Z",
+  "last_attempt_at": "2026-10-24T12:17:14.859Z",
   "status": "ok",
   "last_error": null,
+  "coverage": {
+    "complete": false,
+    "current_sources": [
+      "bestdomainregistrars",
+      "dynadot",
+      "gandi",
+      "hover",
+      "ionos",
+      "pikkly",
+      "porkbun"
+    ],
+    "frozen_sources": [
+      "opendomaindata"
+    ],
+    "stale_sources": [],
+    "registrars_without_current_evidence": [
+      "cloudflare",
+      "namecheap",
+      "spaceship",
+      "squarespace"
+    ],
+    "note": "1 source downloaded successfully but carries no evidence newer than 30 days (opendomaindata); no current quote exists for cloudflare, namecheap, spaceship, squarespace — their figures are historical snapshots."
+  },
   "counts": {
     "offers": 3549,
     "tlids": 811,
@@ -30,6 +53,16 @@
     }
   },
   "history": [
+    {
+      "at": "2026-10-24T12:17:14.859Z",
+      "status": "ok",
+      "offers": 3549
+    },
+    {
+      "at": "2026-10-24T12:07:13.045Z",
+      "status": "ok",
+      "offers": 3549
+    },
     {
       "at": "2026-10-24T09:22:26.808Z",
       "status": "ok",

@@ -188,8 +188,88 @@ jobs:
               console.error('prices-meta.json verified_offers=' + m.counts.verified_offers + ' but dataset has ' + verifiedRows);
               process.exit(1);
             }
+
+            // ---- per-source lifecycle invariants ----
+            //
+            // These are what stop a *successful download* from being reported
+            // as a *price update*. Every source must declare when it was
+            // attempted, when it last succeeded, and what the newest evidence
+            // behind its published rows actually is.
+            const states = new Set(['current', 'aging', 'frozen', 'none']);
+            const bySource = new Map();
+            for (const s of d.sources || []) {
+              if (typeof s.id !== 'string' || !s.id) {
+                console.error('Source record without an id');
+                process.exit(1);
+              }
+              if (typeof s.last_attempt_at !== 'string' || Number.isNaN(Date.parse(s.last_attempt_at))) {
+                console.error('Source ' + s.id + ' has no usable last_attempt_at');
+                process.exit(1);
+              }
+              if (!states.has(s.evidence_state)) {
+                console.error('Source ' + s.id + ' has an invalid evidence_state: ' + s.evidence_state);
+                process.exit(1);
+              }
+              if (typeof s.published_rows !== 'number' || typeof s.attempted !== 'number') {
+                console.error('Source ' + s.id + ' is missing attempt/published counters');
+                process.exit(1);
+              }
+              if (s.status === 'ok' && !s.last_successful_fetch_at) {
+                console.error('Source ' + s.id + ' reports status=ok but no successful fetch time');
+                process.exit(1);
+              }
+              if (s.status === 'ok' && s.attempted === 0) {
+                console.error('Source ' + s.id + ' reports status=ok but attempted 0 rows');
+                process.exit(1);
+              }
+              bySource.set(s.id, s);
+            }
+
+            // A price cannot be evidenced later than the read that produced it.
+            // If it were, a fetch timestamp would be masquerading as evidence.
+            for (const o of d.offers) {
+              const source = bySource.get(o.source_id);
+              if (!source) {
+                console.error('Offer ' + o.registrar_id + '/' + o.tld + ' names an unknown source ' + o.source_id);
+                process.exit(1);
+              }
+              const evidence = o.price_verified_at || o.price_observed_at;
+              if (!evidence) continue;
+              const readAt = source.last_successful_fetch_at || source.last_attempt_at;
+              if (!readAt) continue;
+              // One day of tolerance covers date-only upstream fields.
+              if (Date.parse(evidence) > Date.parse(readAt) + 86_400_000) {
+                console.error(
+                  'Offer ' + o.registrar_id + '/' + o.tld + ' claims evidence ' + evidence +
+                    ' which is later than its source was last read (' + readAt + ')',
+                );
+                process.exit(1);
+              }
+            }
+
+            // The coverage verdict must agree with the per-source states, so a
+            // run cannot claim complete coverage while a source is frozen.
+            if (!m.coverage || typeof m.coverage.complete !== 'boolean') {
+              console.error('prices-meta.json has no coverage verdict');
+              process.exit(1);
+            }
+            const frozen = (d.sources || []).filter(s => s.evidence_state === 'frozen').map(s => s.id).sort();
+            const claimedFrozen = (m.coverage.frozen_sources || []).slice().sort();
+            if (frozen.join(',') !== claimedFrozen.join(',')) {
+              console.error(
+                'Coverage frozen_sources [' + claimedFrozen.join(',') + '] != dataset [' + frozen.join(',') + ']',
+              );
+              process.exit(1);
+            }
+            if (frozen.length > 0 && m.coverage.complete) {
+              console.error('Coverage claims complete while ' + frozen.length + ' source(s) are frozen');
+              process.exit(1);
+            }
+
             console.log('Price dataset OK: ' + d.offers.length + ' offers, status=' + m.status +
-              ', verified=' + m.counts.verified_offers + ', stale=' + m.counts.stale_offers);
+              ', verified=' + m.counts.verified_offers + ', stale=' + m.counts.stale_offers +
+              ', coverage=' + (m.coverage.complete ? 'complete' : 'incomplete') +
+              (frozen.length ? ' (frozen: ' + frozen.join(',') + ')' : ''));
           "
 
       # A report that disagrees with the dataset it describes is worse than no
@@ -236,9 +316,53 @@ jobs:
               console.error('data/price-sync-report.md was not written');
               process.exit(1);
             }
+
+            // The per-registrar view is what a reader trusts, so it must
+            // account for every published offer exactly once.
+            const registrarIds = new Set(d.offers.map(o => o.registrar_id));
+            if (!Array.isArray(r.registrars_detail) || r.registrars_detail.length !== registrarIds.size) {
+              console.error('Report registrar breakdown covers ' +
+                (r.registrars_detail || []).length + ' registrars, dataset has ' + registrarIds.size);
+              process.exit(1);
+            }
+            const detailTotal = r.registrars_detail.reduce((sum, x) => sum + x.offers, 0);
+            if (detailTotal !== d.offers.length) {
+              console.error('Report registrar breakdown accounts for ' + detailTotal +
+                ' offers, dataset has ' + d.offers.length);
+              process.exit(1);
+            }
+            if (!r.coverage || typeof r.coverage.complete !== 'boolean') {
+              console.error('Report has no coverage verdict');
+              process.exit(1);
+            }
+            const frozenIds = (d.sources || [])
+              .filter(s => s.evidence_state === 'frozen')
+              .map(s => s.id)
+              .sort()
+              .join(',');
+            if ((r.frozen_sources || []).slice().sort().join(',') !== frozenIds) {
+              console.error('Report frozen_sources [' + (r.frozen_sources || []).join(',') +
+                '] != dataset [' + frozenIds + ']');
+              process.exit(1);
+            }
+
+            // A sudden collapse in the offer count is a data-integrity event,
+            // not a market event: fail loudly rather than publish a gutted
+            // catalogue under a green check.
+            const previous = r.totals.previous_offers;
+            if (typeof previous === 'number' && previous > 0) {
+              const dropPct = ((previous - d.offers.length) / previous) * 100;
+              if (dropPct > 20) {
+                console.error('Offer count fell ' + dropPct.toFixed(1) + '% (' + previous + ' → ' +
+                  d.offers.length + '), above the 20% integrity threshold');
+                process.exit(1);
+              }
+            }
+
             console.log('Report matches dataset: ' + r.totals.offers + ' offers, ' +
               r.totals.by_verification.verified + ' verified, ' +
-              r.totals.by_freshness.stale + ' stale.');
+              r.totals.by_freshness.stale + ' stale, coverage=' +
+              (r.coverage.complete ? 'complete' : 'incomplete') + '.');
           "
 
       # The report is written by the sync itself (data/price-sync-report.md) so
@@ -252,6 +376,34 @@ jobs:
           else
             echo "::warning::data/price-sync-report.md was not written by the sync"
           fi
+
+      # Annotations are the only part of a run most reviewers ever see. A frozen
+      # upstream is not a workflow failure — it is somebody else's data going
+      # quiet — but it must never be mistaken for a successful price refresh.
+      - name: Annotate sources that delivered no new evidence
+        if: steps.sync.outputs.exit_code == '0'
+        run: |
+          node -e "
+            const r = require('./data/price-sync-report.json');
+            for (const s of r.sources) {
+              if (s.evidence_state === 'frozen') {
+                console.log('::warning title=Frozen upstream snapshot::' + s.source_id +
+                  ' was downloaded successfully but its newest price evidence is ' +
+                  (s.price_evidence_at || 'unknown') + ' with ' + s.published_rows +
+                  ' published rows. Those prices are historical snapshots, not current quotes.');
+              }
+              if (s.status !== 'ok') {
+                console.log('::warning title=Source not refreshed::' + s.source_id + ' status=' + s.status +
+                  (s.error ? ' (' + s.error + ')' : '') + ' — previous rows retained.');
+              }
+            }
+            for (const id of r.coverage.registrars_without_current_evidence) {
+              console.log('::notice title=No current quote::' + id +
+                ' has no offer with evidence inside the stale threshold.');
+            }
+            console.log('::notice title=Coverage::' + (r.coverage.complete ? 'complete' : 'incomplete') +
+              ' — ' + r.coverage.note);
+          "
 
       - name: Run unit tests
         if: steps.sync.outputs.exit_code == '0'

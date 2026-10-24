@@ -14,7 +14,15 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { ComparisonRow, PriceDataset, PriceMeta, PriceOffer, VerificationStatus } from './pricingTypes.js';
+import type {
+  ComparisonRow,
+  PriceCoverage,
+  PriceDataset,
+  PriceMeta,
+  PriceOffer,
+  SourceEvidenceState,
+  VerificationStatus,
+} from './pricingTypes.js';
 import { cheapestPoint, effectiveFreshness, freshnessToQuality } from './pricingCalc.js';
 import { isFirstPartySource } from '../config/sources.js';
 import { loadAllRecords } from './store.js';
@@ -280,11 +288,24 @@ export interface PriceStats {
     status: string;
     verification_status: string;
     oldest_observed_at: string | null;
+    /** When the adapter last returned rows we adopted (null when never). */
+    last_successful_fetch_at: string | null;
+    /** Newest price-evidence date among this source's published rows. */
+    price_evidence_at: string | null;
+    /** Whether this run obtained evidence newer than the previous run's. */
+    evidence_advanced: boolean;
+    /** `current` | `aging` | `frozen` | `none`. */
+    evidence_state: SourceEvidenceState;
+    /** Rows from this source that are actually published. */
+    published_rows: number;
+    error: string | null;
   }>;
+  /** Whether the published dataset is backed by current evidence. */
+  coverage: PriceCoverage | null;
 }
 
 export async function getPriceStats(): Promise<PriceStats | null> {
-  const { dataset } = await readPrices();
+  const { dataset, meta } = await readPrices();
   if (!dataset) return null;
   const now = new Date();
   const fresh = refreshOffers(dataset.offers, now);
@@ -298,6 +319,7 @@ export async function getPriceStats(): Promise<PriceStats | null> {
     snapshotOffers: fresh.filter(o => o.verification_status === 'source_snapshot').length,
     staleOffers: fresh.filter(o => o.freshness === 'stale').length,
     unknownOffers: fresh.filter(o => o.freshness === 'unknown').length,
+    coverage: meta?.coverage ?? null,
     sources: dataset.sources.map(s => ({
       id: s.id,
       name: s.name,
@@ -307,6 +329,14 @@ export async function getPriceStats(): Promise<PriceStats | null> {
       status: s.status,
       verification_status: s.verification_status ?? 'source_snapshot',
       oldest_observed_at: s.oldest_observed_at ?? null,
+      last_successful_fetch_at: s.last_successful_fetch_at ?? s.fetched_at ?? null,
+      price_evidence_at: s.price_evidence_at ?? null,
+      evidence_advanced: s.evidence_advanced ?? false,
+      // A dataset written before this field existed cannot claim a state, so
+      // fall back to "unknown evidence" rather than guessing "current".
+      evidence_state: s.evidence_state ?? 'none',
+      published_rows: s.published_rows ?? s.rows ?? 0,
+      error: s.error ?? null,
     })),
   };
 }

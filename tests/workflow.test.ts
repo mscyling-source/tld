@@ -395,6 +395,7 @@ function fixtureOffer(
     // The compatibility alias must always be the evidence date, never a fetch
     // date — the workflow's dataset check enforces exactly this.
     last_checked: verifiedAt ?? observedAt ?? '',
+    source_id: 'porkbun',
     source_status_stale: freshness === 'stale',
   };
 }
@@ -425,6 +426,38 @@ function fixtureOffers(count = 520): any[] {
   return offers;
 }
 
+/**
+ * A source record that satisfies every lifecycle invariant the workflow
+ * checks: an attempt time, a successful fetch time for status=ok, a newest
+ * evidence date, an evidence state, and attempt/published counters.
+ */
+function fixtureSource(over: Record<string, unknown> & { id: string }) {
+  return {
+    name: over.id,
+    url: `https://example.test/${over.id}`,
+    license: 'first-party',
+    attribution: null,
+    verification_status: 'verified',
+    rows: 0,
+    published_rows: 0,
+    attempted: 0,
+    parsed: 0,
+    rejected_total: 0,
+    rejections: {},
+    retained_from_previous: 0,
+    status: 'ok',
+    fetched_at: FIXTURE_GENERATED_AT,
+    last_attempt_at: FIXTURE_GENERATED_AT,
+    last_successful_fetch_at: FIXTURE_GENERATED_AT,
+    price_evidence_at: FIXTURE_GENERATED_AT,
+    previous_price_evidence_at: null,
+    evidence_advanced: true,
+    evidence_state: 'current',
+    oldest_observed_at: FIXTURE_GENERATED_AT,
+    ...over,
+  };
+}
+
 function fixtureDataset(offers: any[] = fixtureOffers()) {
   return {
     schema_version: 2,
@@ -432,13 +465,29 @@ function fixtureDataset(offers: any[] = fixtureOffers()) {
     currency: 'USD',
     offers,
     sources: [
-      { id: 'porkbun', name: 'Porkbun', license: 'first-party', attribution: null },
-      {
+      fixtureSource({
+        id: 'porkbun',
+        rows: offers.length,
+        published_rows: offers.length,
+        attempted: offers.length,
+        parsed: offers.length,
+      }),
+      // A source that failed outright: no rows, no successful fetch, no
+      // evidence. It must still be representable — "no data" is a state, not
+      // an absence of a record.
+      fixtureSource({
         id: 'bdr',
-        name: 'Best Domain Registrars',
         license: 'CC BY 4.0',
         attribution: 'Best Domain Registrars (CC BY 4.0)',
-      },
+        verification_status: 'source_snapshot',
+        status: 'failed',
+        error: 'HTTP 503',
+        last_successful_fetch_at: null,
+        price_evidence_at: null,
+        evidence_advanced: false,
+        evidence_state: 'none',
+        oldest_observed_at: null,
+      }),
     ],
   };
 }
@@ -447,18 +496,68 @@ function fixtureDataset(offers: any[] = fixtureOffers()) {
 function fixtureReport(dataset: any) {
   const count = (key: string, value: string) =>
     dataset.offers.filter((offer: any) => offer[key] === value).length;
+  const registrars = [...new Set(dataset.offers.map((o: any) => o.registrar_id))] as string[];
+  const bands = Object.fromEntries(BANDS.map(band => [band, count('freshness', band)]));
   return {
     run_at: dataset.generated_at,
     dataset_generated_at: dataset.generated_at,
     schema_version: dataset.schema_version,
     totals: {
       offers: dataset.offers.length,
+      tlids: new Set(dataset.offers.map((o: any) => o.tld)).size,
+      registrars: registrars.length,
       by_verification: Object.fromEntries(TIERS.map(tier => [tier, count('verification_status', tier)])),
-      by_freshness: Object.fromEntries(BANDS.map(band => [band, count('freshness', band)])),
+      by_freshness: bands,
+      oldest_observed_at: '2026-05-12T00:00:00.000Z',
+      newest_observed_at: FIXTURE_GENERATED_AT,
+      previous_offers: dataset.offers.length,
+      offer_count_change_pct: 0,
     },
-    sources: [],
+    sources: (dataset.sources ?? []).map((s: any) => ({
+      source_id: s.id,
+      source_name: s.name,
+      status: s.status,
+      verification_status: s.verification_status,
+      rows: s.rows,
+      attempted: s.attempted,
+      published_rows: s.published_rows,
+      rejected: s.rejected_total,
+      rejections: {},
+      fetched_at: s.last_successful_fetch_at,
+      last_attempt_at: s.last_attempt_at,
+      last_successful_fetch_at: s.last_successful_fetch_at,
+      price_evidence_at: s.price_evidence_at,
+      previous_price_evidence_at: s.previous_price_evidence_at,
+      evidence_advanced: s.evidence_advanced,
+      evidence_state: s.evidence_state,
+      retained_from_previous: s.retained_from_previous,
+      oldest_observed_at: s.oldest_observed_at,
+      error: s.error ?? null,
+    })),
+    // The workflow checks that this breakdown accounts for every offer.
+    registrars_detail: registrars.map(id => ({
+      registrar_id: id,
+      registrar_name: id,
+      offers: dataset.offers.filter((o: any) => o.registrar_id === id).length,
+      current: dataset.offers.filter((o: any) => o.registrar_id === id && ['recent', 'aging'].includes(o.freshness)).length,
+      stale: dataset.offers.filter((o: any) => o.registrar_id === id && o.freshness === 'stale').length,
+      unknown: dataset.offers.filter((o: any) => o.registrar_id === id && o.freshness === 'unknown').length,
+      sources: ['porkbun'],
+      newest_evidence_at: FIXTURE_GENERATED_AT,
+      oldest_evidence_at: '2026-05-12T00:00:00.000Z',
+      evidence_state: 'current',
+    })),
+    coverage: {
+      complete: false,
+      current_sources: ['porkbun'],
+      frozen_sources: [],
+      stale_sources: ['bdr'],
+      registrars_without_current_evidence: [],
+      note: 'fixture',
+    },
+    frozen_sources: [],
     significant_changes: [],
-    degraded_sources: [],
+    degraded_sources: ['bdr (failed)'],
     summary: 'fixture',
   };
 }
@@ -470,6 +569,16 @@ function fixtureMeta(dataset: any) {
     generated_at: dataset.generated_at,
     last_success_at: dataset.generated_at,
     status: 'ok',
+    // The dataset check compares this verdict against the per-source states,
+    // so a fixture that omitted it (or disagreed with them) would fail.
+    coverage: {
+      complete: false,
+      current_sources: ['porkbun'],
+      frozen_sources: [],
+      stale_sources: ['bdr'],
+      registrars_without_current_evidence: [],
+      note: 'fixture',
+    },
     counts: {
       offers: dataset.offers.length,
       tlids: dataset.offers.length,
@@ -762,6 +871,124 @@ describe('report/dataset validation — the real node program, run against fixtu
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain('price-sync-report.md was not written');
   });
+
+  // ---- the per-registrar view must account for the whole dataset ----
+
+  it('rejects a registrar breakdown that misses offers', () => {
+    const result = check(dir =>
+      mutateFixture(dir, fixture => {
+        fixture.report.registrars_detail[0].offers -= 1;
+      }),
+    );
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('registrar breakdown accounts for');
+  });
+
+  it('rejects a registrar breakdown that omits a registrar', () => {
+    const result = check(dir =>
+      mutateFixture(dir, fixture => {
+        fixture.report.registrars_detail = [];
+      }),
+    );
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('registrar breakdown covers');
+  });
+
+  it('rejects a report with no coverage verdict', () => {
+    const result = check(dir =>
+      mutateFixture(dir, fixture => {
+        delete fixture.report.coverage;
+      }),
+    );
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('no coverage verdict');
+  });
+
+  it('rejects a frozen_sources list that disagrees with the dataset', () => {
+    const result = check(dir =>
+      mutateFixture(dir, fixture => {
+        fixture.report.frozen_sources = ['porkbun'];
+      }),
+    );
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('Report frozen_sources');
+  });
+
+  it('rejects an offer count that collapsed against the previous run', () => {
+    // A 94% drop is a data-integrity event, not a market event: the pipeline
+    // must fail rather than publish a gutted catalogue under a green check.
+    const result = check(dir =>
+      mutateFixture(dir, fixture => {
+        fixture.report.totals.previous_offers = 10_000;
+        fixture.report.totals.offer_count_change_pct = -94.8;
+      }),
+    );
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('above the 20% integrity threshold');
+  });
+
+  it('tolerates a small decline in offer count', () => {
+    const result = check(dir =>
+      mutateFixture(dir, fixture => {
+        fixture.report.totals.previous_offers = Math.ceil(fixture.dataset.offers.length * 1.05);
+      }),
+    );
+    expect(result.status, result.stderr).toBe(0);
+  });
+});
+
+describe('run annotations — a green run still has to admit a frozen upstream', () => {
+  function annotate(prepare?: (dir: string) => void): RunResult {
+    return runInlineStep(
+      syncStep('Annotate sources that delivered no new evidence'),
+      'Annotate sources that delivered no new evidence',
+      prepare,
+    );
+  }
+
+  it('runs cleanly and always states the coverage verdict', () => {
+    const result = annotate();
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain('::notice title=Coverage::');
+  });
+
+  it('warns for every frozen source and names its evidence date', () => {
+    const result = annotate(dir =>
+      mutateFixture(dir, fixture => {
+        fixture.report.sources[0].evidence_state = 'frozen';
+        fixture.report.sources[0].price_evidence_at = '2026-09-02T00:00:00.000Z';
+        fixture.report.sources[0].published_rows = 262;
+      }),
+    );
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain('::warning title=Frozen upstream snapshot::');
+    expect(result.stdout).toContain('2026-09-02T00:00:00.000Z');
+    expect(result.stdout).toContain('262 published rows');
+  });
+
+  it('warns for a source that did not refresh, with its error', () => {
+    const result = annotate(dir =>
+      mutateFixture(dir, fixture => {
+        fixture.report.sources[1].status = 'kept-previous';
+        fixture.report.sources[1].error = 'HTTP 503';
+      }),
+    );
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain('::warning title=Source not refreshed::');
+    expect(result.stdout).toContain('HTTP 503');
+    expect(result.stdout).toContain('previous rows retained');
+  });
+
+  it('flags each registrar that has no current quote', () => {
+    const result = annotate(dir =>
+      mutateFixture(dir, fixture => {
+        fixture.report.coverage.registrars_without_current_evidence = ['cloudflare', 'spaceship'];
+      }),
+    );
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain('::notice title=No current quote::cloudflare');
+    expect(result.stdout).toContain('::notice title=No current quote::spaceship');
+  });
 });
 
 describe('dataset validation — the real node program, run against fixtures', () => {
@@ -855,6 +1082,99 @@ describe('dataset validation — the real node program, run against fixtures', (
     );
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain('offers, dataset has');
+  });
+
+  // ---- per-source lifecycle: a successful download is not a price update ----
+
+  it('rejects a source with no attempt timestamp', () => {
+    const result = check(dir =>
+      mutateFixture(dir, fixture => {
+        delete fixture.dataset.sources[0].last_attempt_at;
+      }),
+    );
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('no usable last_attempt_at');
+  });
+
+  it('rejects status=ok with no successful fetch time', () => {
+    const result = check(dir =>
+      mutateFixture(dir, fixture => {
+        fixture.dataset.sources[0].last_successful_fetch_at = null;
+      }),
+    );
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('no successful fetch time');
+  });
+
+  it('rejects status=ok when the adapter attempted nothing', () => {
+    const result = check(dir =>
+      mutateFixture(dir, fixture => {
+        fixture.dataset.sources[0].attempted = 0;
+      }),
+    );
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('attempted 0 rows');
+  });
+
+  it('rejects an offer dated later than the read that produced it', () => {
+    // A fetch timestamp masquerading as price evidence: the row claims to have
+    // been observed two months after we last read the source.
+    const result = check(dir =>
+      mutateFixture(dir, fixture => {
+        const offer = fixture.dataset.offers.find(
+          (candidate: any) => candidate.verification_status === 'source_snapshot',
+        );
+        offer.price_observed_at = '2026-12-20T00:00:00.000Z';
+        offer.last_checked = offer.price_observed_at;
+      }),
+    );
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('later than its source was last read');
+  });
+
+  it('rejects an offer that names a source the dataset does not describe', () => {
+    const result = check(dir =>
+      mutateFixture(dir, fixture => {
+        fixture.dataset.offers[0].source_id = 'ghost-source';
+      }),
+    );
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('unknown source');
+  });
+
+  it('rejects a coverage verdict that disagrees with the source states', () => {
+    const result = check(dir =>
+      mutateFixture(dir, fixture => {
+        fixture.dataset.sources[0].evidence_state = 'frozen';
+        // Meta still claims nothing is frozen.
+      }),
+    );
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('Coverage frozen_sources');
+  });
+
+  it('rejects complete coverage while a source is frozen', () => {
+    const result = check(dir =>
+      mutateFixture(dir, fixture => {
+        fixture.dataset.sources[0].evidence_state = 'frozen';
+        fixture.meta.coverage.frozen_sources = [fixture.dataset.sources[0].id];
+        fixture.meta.coverage.complete = true;
+      }),
+    );
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('claims complete while');
+  });
+
+  it('accepts frozen sources as long as coverage admits them', () => {
+    const result = check(dir =>
+      mutateFixture(dir, fixture => {
+        fixture.dataset.sources[0].evidence_state = 'frozen';
+        fixture.meta.coverage.frozen_sources = [fixture.dataset.sources[0].id];
+        fixture.meta.coverage.complete = false;
+      }),
+    );
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain('coverage=incomplete');
   });
 });
 

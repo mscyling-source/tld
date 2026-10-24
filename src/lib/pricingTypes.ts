@@ -200,6 +200,17 @@ export interface ComparisonRow {
   only_snapshots: boolean;
 }
 
+/**
+ * How much current evidence a source is actually delivering, as opposed to
+ * whether the download succeeded.
+ *
+ * The distinction matters more than any other in this file. A source can be
+ * downloaded perfectly every day and still deliver nothing new — that is
+ * exactly what a frozen third-party snapshot looks like, and reporting it as
+ * `ok` is how a green pipeline ends up serving eight-week-old prices.
+ */
+export type SourceEvidenceState = 'current' | 'aging' | 'frozen' | 'none';
+
 /** Source provenance recorded in `data/prices.json`. */
 export interface PriceSourceInfo {
   id: string;
@@ -211,8 +222,13 @@ export interface PriceSourceInfo {
   attribution: string | null;
   /** How this source's figures are obtained (drives offer classification). */
   verification_status: VerificationStatus;
+  /** Rows this source contributes to the published dataset (after merge). */
   rows: number;
-  /** When this source file was downloaded during the run. */
+  /**
+   * @deprecated Compatibility alias for `last_successful_fetch_at`. Kept
+   * because older consumers read it; never write a timestamp here that is not
+   * a *successful* fetch, or a failed run would look like a fresh one.
+   */
   fetched_at: string;
   /** Oldest observation date carried by the source's rows, when known. */
   oldest_observed_at: string | null;
@@ -220,6 +236,47 @@ export interface PriceSourceInfo {
   error?: string;
   /** Rows rejected by validation, grouped by reason. */
   rejections?: Record<string, number>;
+
+  /* ---- per-source lifecycle: three timestamps, never conflated ---- */
+
+  /** When this run tried to read the source. Always this run's clock. */
+  last_attempt_at: string;
+  /**
+   * When the adapter last returned at least one valid row that we adopted.
+   * Null when it has never succeeded. A failed or fallback run does NOT
+   * advance this — otherwise "last successful fetch" would just mean "last
+   * time cron fired".
+   */
+  last_successful_fetch_at: string | null;
+  /**
+   * The newest price-evidence date among this source's published rows.
+   *
+   * This is the field that answers "are these prices current?". For a
+   * first-party read it equals the read time; for a snapshot it is the
+   * upstream dataset's own observation date, which does not move when we
+   * re-download an unchanged file.
+   */
+  price_evidence_at: string | null;
+  /** `price_evidence_at` as recorded by the previous run, for comparison. */
+  previous_price_evidence_at: string | null;
+  /**
+   * True when `price_evidence_at` is strictly newer than the previous run's.
+   * False means we downloaded the source again and got no newer evidence —
+   * the signature of a frozen upstream.
+   */
+  evidence_advanced: boolean;
+  /** Evidence band for the source as a whole (see `SourceEvidenceState`). */
+  evidence_state: SourceEvidenceState;
+  /** Rows carried over from the previous dataset because the fetch failed. */
+  retained_from_previous: number;
+  /** Rows the adapter returned before validation (0 when it never ran). */
+  attempted: number;
+  /** Rows that passed validation. */
+  parsed: number;
+  /** Rows rejected by validation, all reasons. */
+  rejected_total: number;
+  /** Rows from this source that survived the cross-source merge. */
+  published_rows: number;
 }
 
 export interface PriceDataset {
@@ -230,11 +287,40 @@ export interface PriceDataset {
   offers: PriceOffer[];
 }
 
+/** Coverage verdict published in `data/prices-meta.json`. */
+export interface PriceCoverage {
+  /**
+   * True only when every source delivered current evidence, no source fell
+   * back to previous rows, and every registrar has at least one offer whose
+   * evidence is within the stale threshold.
+   */
+  complete: boolean;
+  /** Sources whose newest evidence is within `RECENT_WITHIN_DAYS`. */
+  current_sources: string[];
+  /** Sources that downloaded fine but carry evidence older than the stale threshold. */
+  frozen_sources: string[];
+  /** Sources that failed, were skipped for missing credentials, or fell back. */
+  stale_sources: string[];
+  /** Registrars for which no offer has evidence inside the stale threshold. */
+  registrars_without_current_evidence: string[];
+  /** Human-readable one-line verdict, rendered verbatim in the report. */
+  note: string;
+}
+
 export interface PriceMeta {
   last_success_at: string | null;
   last_attempt_at: string;
   status: 'ok' | 'partial' | 'failed';
   last_error: string | null;
+  /**
+   * Whether the published dataset is actually backed by current evidence.
+   *
+   * `status` answers "did the collection run succeed?"; this answers "is the
+   * data current?". They are different questions and the pipeline used to
+   * report only the first, so a run that re-downloaded four frozen snapshots
+   * looked exactly like a run that refreshed everything.
+   */
+  coverage?: PriceCoverage;
   counts: {
     offers: number;
     tlids: number;

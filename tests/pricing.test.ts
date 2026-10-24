@@ -47,7 +47,7 @@ import { validateOffers, countRejections } from '../scripts/pricing/validate.js'
 import { mergeBatches } from '../scripts/pricing/merge.js';
 import { applyTrustPolicy, quarantineReason } from '../scripts/pricing/trust.js';
 import { migrateDataset } from '../scripts/pricing/migrate.js';
-import { buildReport, buildMetaCounts, diffPrices, renderMarkdown } from '../scripts/pricing/report.js';
+import { buildReport, buildMetaCounts, buildRegistrarReports, diffPrices, renderMarkdown } from '../scripts/pricing/report.js';
 import { parsePorkbun } from '../scripts/pricing/sources/porkbun.js';
 import { parsePikkly } from '../scripts/pricing/sources/pikkly.js';
 import { parseOdd } from '../scripts/pricing/sources/opendomaindata.js';
@@ -63,7 +63,7 @@ import {
   registrarName,
   registrars,
 } from '../src/config/registrars.js';
-import { readPriceDataset, getOffersForTld, buildComparisonRows, getPriceStats, refreshOffers, normalizeOffer } from '../src/lib/pricing.js';
+import { readPriceDataset, readPriceMeta, getOffersForTld, buildComparisonRows, getPriceStats, refreshOffers, normalizeOffer } from '../src/lib/pricing.js';
 import type {
   ComparisonRow,
   PriceDataset,
@@ -71,6 +71,7 @@ import type {
   PricePoint,
   RawOffer,
 } from '../src/lib/pricingTypes.js';
+import type { SourceReport } from '../scripts/pricing/report.js';
 import {
   porkbunSuccess,
   pikklyPayload,
@@ -1213,6 +1214,29 @@ describe('sync report', () => {
     offers,
   });
 
+  /** A fully-populated source report row; individual fields override freely. */
+  const sourceReport = (over: Partial<SourceReport> & { source_id: string }): SourceReport => ({
+    source_name: over.source_id,
+    status: 'ok',
+    verification_status: 'verified',
+    rows: 1,
+    attempted: 1,
+    published_rows: 1,
+    rejected: 0,
+    rejections: {},
+    fetched_at: NOW.toISOString(),
+    last_attempt_at: NOW.toISOString(),
+    last_successful_fetch_at: NOW.toISOString(),
+    price_evidence_at: NOW.toISOString(),
+    previous_price_evidence_at: null,
+    evidence_advanced: true,
+    evidence_state: 'current',
+    retained_from_previous: 0,
+    oldest_observed_at: NOW.toISOString(),
+    error: null,
+    ...over,
+  });
+
   const offer = (over: Partial<PriceOffer>): PriceOffer => ({
     tld: 'com',
     registrar_id: 'porkbun',
@@ -1264,17 +1288,30 @@ describe('sync report', () => {
         }),
       ]),
       sources: [
-        {
-          source_id: 'porkbun', source_name: 'Porkbun', status: 'ok',
-          verification_status: 'verified', rows: 1, rejected: 0, rejections: {},
-          fetched_at: NOW.toISOString(), oldest_observed_at: '2026-10-20T00:00:00.000Z', error: null,
-        },
-        {
-          source_id: 'pikkly', source_name: 'Pikkly', status: 'kept-previous',
-          verification_status: 'source_snapshot', rows: 2, rejected: 4,
-          rejections: { 'unknown-tld': 4 }, fetched_at: null,
-          oldest_observed_at: '2026-05-12T00:00:00Z', error: 'HTTP 503',
-        },
+        sourceReport({
+          source_id: 'porkbun',
+          source_name: 'Porkbun',
+          oldest_observed_at: '2026-10-20T00:00:00.000Z',
+        }),
+        sourceReport({
+          source_id: 'pikkly',
+          source_name: 'Pikkly',
+          status: 'kept-previous',
+          verification_status: 'source_snapshot',
+          rows: 2,
+          attempted: 6,
+          published_rows: 2,
+          rejected: 4,
+          rejections: { 'unknown-tld': 4 },
+          fetched_at: null,
+          last_successful_fetch_at: null,
+          price_evidence_at: '2026-05-12T00:00:00Z',
+          evidence_advanced: false,
+          evidence_state: 'frozen',
+          retained_from_previous: 2,
+          oldest_observed_at: '2026-05-12T00:00:00Z',
+          error: 'HTTP 503',
+        }),
       ],
       changes: [],
       now: NOW,
@@ -1309,6 +1346,108 @@ describe('sync report', () => {
 
     // Nothing to compare against on the first run.
     expect(diffPrices(null, after)).toEqual([]);
+  });
+
+  describe('per-registrar evidence', () => {
+    it('bands each registrar by its own evidence, not by the run date', () => {
+      const reports = buildRegistrarReports(
+        [
+          offer({ registrar_id: 'porkbun', freshness: 'recent', price_verified_at: NOW.toISOString() }),
+          offer({
+            registrar_id: 'cloudflare',
+            tld: 'net',
+            freshness: 'stale',
+            verification_status: 'source_snapshot',
+            price_verified_at: null,
+            price_observed_at: '2026-08-04T00:00:00.000Z',
+          }),
+        ],
+        NOW,
+      );
+      const byId = new Map(reports.map(r => [r.registrar_id, r]));
+      expect(byId.get('porkbun')!.evidence_state).toBe('current');
+      expect(byId.get('porkbun')!.current).toBe(1);
+      // Cloudflare: downloaded today, evidenced 81 days ago.
+      expect(byId.get('cloudflare')!.evidence_state).toBe('frozen');
+      expect(byId.get('cloudflare')!.stale).toBe(1);
+      expect(byId.get('cloudflare')!.newest_evidence_at).toBe('2026-08-04T00:00:00.000Z');
+    });
+
+    it('reports a registrar with only undated rows as having no data', () => {
+      const reports = buildRegistrarReports(
+        [
+          offer({
+            registrar_id: 'squarespace',
+            verification_status: 'unverified',
+            freshness: 'unknown',
+            price_verified_at: null,
+            price_observed_at: null,
+          }),
+        ],
+        NOW,
+      );
+      expect(reports[0].unknown).toBe(1);
+      expect(reports[0].evidence_state).toBe('none');
+    });
+  });
+
+  it('publishes a coverage verdict that names frozen sources', () => {
+    const report = buildReport({
+      runAt: NOW.toISOString(),
+      dataset: dataset([
+        offer({}),
+        offer({
+          tld: 'net',
+          registrar_id: 'spaceship',
+          registrar_name: 'Spaceship',
+          source_id: 'pikkly',
+          verification_status: 'source_snapshot',
+          price_verified_at: null,
+          price_observed_at: '2026-09-02T00:00:00.000Z',
+          freshness: 'stale',
+        }),
+      ]),
+      sources: [
+        sourceReport({ source_id: 'porkbun' }),
+        sourceReport({
+          source_id: 'pikkly',
+          verification_status: 'source_snapshot',
+          price_evidence_at: '2026-09-02T00:00:00.000Z',
+          evidence_state: 'frozen',
+          evidence_advanced: false,
+        }),
+      ],
+      changes: [],
+      now: NOW,
+    });
+
+    expect(report.coverage.complete).toBe(false);
+    expect(report.frozen_sources).toEqual(['pikkly']);
+    // The registrar view is the one a reader acts on.
+    expect(report.coverage.registrars_without_current_evidence).toEqual(['spaceship']);
+    expect(report.registrars_detail.reduce((sum, r) => sum + r.offers, 0)).toBe(2);
+    expect(report.totals.previous_offers).toBeNull();
+    expect(report.totals.offer_count_change_pct).toBeNull();
+
+    const md = renderMarkdown(report);
+    expect(md).toContain('## Registrars');
+    expect(md).toContain('Registrars with no current quote');
+    expect(md).toContain('Sources that downloaded but delivered no new evidence');
+    expect(md).toContain('**Spaceship**');
+  });
+
+  it('measures the offer count against the previous dataset', () => {
+    const previous = dataset([offer({}), offer({ tld: 'net' }), offer({ tld: 'org' }), offer({ tld: 'dev' })]);
+    const report = buildReport({
+      runAt: NOW.toISOString(),
+      dataset: dataset([offer({}), offer({ tld: 'net' }), offer({ tld: 'org' })]),
+      sources: [sourceReport({ source_id: 'porkbun', rows: 3, published_rows: 3, attempted: 3 })],
+      changes: [],
+      now: NOW,
+      previous,
+    });
+    expect(report.totals.previous_offers).toBe(4);
+    expect(report.totals.offer_count_change_pct).toBe(-25);
   });
 });
 
@@ -1637,5 +1776,65 @@ describe('prices-meta counters — one counter per band', () => {
     expect(counts.by_verification.verified).toBe(2);
     expect(counts.tlids).toBe(1);
     expect(counts.registrars).toBe(2);
+  });
+});
+
+describe('committed dataset — per-source lifecycle integrity', () => {
+  // These run against the file actually committed to the repository, so a
+  // future sync that regresses the provenance rules fails the build rather
+  // than shipping quietly.
+  it('gives every source an attempt time, a success time and an evidence state', async () => {
+    const dataset = await readPriceDataset();
+    expect(dataset!.sources.length).toBeGreaterThan(0);
+    for (const source of dataset!.sources) {
+      expect(typeof source.last_attempt_at, `${source.id} last_attempt_at`).toBe('string');
+      expect(Number.isNaN(Date.parse(source.last_attempt_at))).toBe(false);
+      expect(['current', 'aging', 'frozen', 'none']).toContain(source.evidence_state);
+      expect(typeof source.published_rows).toBe('number');
+      expect(typeof source.attempted).toBe('number');
+      // A source that reports success must have a real success timestamp.
+      if (source.status === 'ok') {
+        expect(source.last_successful_fetch_at, `${source.id} success time`).not.toBeNull();
+      }
+    }
+  });
+
+  it('never dates a price later than the read that produced it', async () => {
+    const dataset = await readPriceDataset();
+    const byId = new Map(dataset!.sources.map(s => [s.id, s]));
+    for (const offer of dataset!.offers) {
+      const source = byId.get(offer.source_id);
+      expect(source, `unknown source ${offer.source_id}`).toBeDefined();
+      const evidence = offer.price_verified_at ?? offer.price_observed_at;
+      if (!evidence) continue;
+      const readAt = source!.last_successful_fetch_at ?? source!.last_attempt_at;
+      if (!readAt) continue;
+      // One day of tolerance for date-only upstream fields.
+      expect(Date.parse(evidence)).toBeLessThanOrEqual(Date.parse(readAt) + 86_400_000);
+    }
+  });
+
+  it('publishes a coverage verdict that matches the source states', async () => {
+    const dataset = await readPriceDataset();
+    const meta = await readPriceMeta();
+    expect(meta?.coverage, 'prices-meta.json must carry a coverage verdict').toBeDefined();
+    const frozen = dataset!.sources
+      .filter(s => s.evidence_state === 'frozen')
+      .map(s => s.id)
+      .sort();
+    expect(meta!.coverage!.frozen_sources.slice().sort()).toEqual(frozen);
+    if (frozen.length > 0) expect(meta!.coverage!.complete).toBe(false);
+  });
+
+  it('keeps every source that reports success traceable to published rows', async () => {
+    const dataset = await readPriceDataset();
+    const publishedBySource = new Map<string, number>();
+    for (const offer of dataset!.offers) {
+      publishedBySource.set(offer.source_id, (publishedBySource.get(offer.source_id) ?? 0) + 1);
+    }
+    for (const source of dataset!.sources) {
+      const actual = publishedBySource.get(source.id) ?? 0;
+      expect(source.published_rows, `${source.id} published_rows`).toBe(actual);
+    }
   });
 });

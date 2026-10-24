@@ -3,6 +3,32 @@
 import Layout from '../../components/Layout.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import { siteConfig } from '../../config/site.js';
+import { getPriceStats } from '../../lib/pricing.js';
+
+// Read live: this page's whole job is to say how current the data actually is,
+// so it must not describe the pipeline in the abstract.
+const stats = await getPriceStats();
+
+const utcDay = (value: string | null): string => {
+  if (!value) return '—';
+  const t = Date.parse(value);
+  if (Number.isNaN(t)) return '—';
+  return new Date(t).toISOString().slice(0, 10);
+};
+
+const evidenceStateLabel: Record<string, string> = {
+  current: 'Current',
+  aging: 'Not recent',
+  frozen: 'Frozen upstream',
+  none: 'No dated data',
+};
+
+const daysSince = (value: string | null): number | null => {
+  if (!value) return null;
+  const t = Date.parse(value);
+  if (Number.isNaN(t)) return null;
+  return Math.max(0, Math.round((Date.now() - t) / 86_400_000));
+};
 ---
 
 <Layout
@@ -187,6 +213,71 @@ import { siteConfig } from '../../config/site.js';
           The date shown next to a price is always the evidence date — the verification date for a
           first-party read, otherwise the source's own observation date — never the download date.
         </p>
+
+        <h3>Is the data current right now?</h3>
+        <p>
+          A successful workflow is not the same thing as a refreshed price. Each source therefore
+          reports three separate timestamps — when we last <em>attempted</em> it, when it last
+          <em>succeeded</em>, and the newest <em>price evidence</em> it actually carries — plus
+          whether this run obtained anything newer than the previous one.
+        </p>
+        {stats?.coverage && (
+          <p>
+            <strong>Coverage: {stats.coverage.complete ? 'complete' : 'incomplete'}.</strong>{' '}
+            {stats.coverage.note}
+          </p>
+        )}
+        {stats && (
+          <table>
+            <thead>
+              <tr>
+                <th>Source</th>
+                <th>How read</th>
+                <th>Last successful fetch (UTC)</th>
+                <th>Newest price evidence</th>
+                <th>Oldest price evidence</th>
+                <th>New evidence this run</th>
+                <th>Published rows</th>
+                <th>State</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.sources.map(s => (
+                <tr>
+                  <td>{s.name}</td>
+                  <td>{s.verification_status === 'verified' ? 'First-party' : 'Snapshot'}</td>
+                  <td>{utcDay(s.last_successful_fetch_at)}</td>
+                  <td>
+                    {utcDay(s.price_evidence_at)}
+                    {daysSince(s.price_evidence_at) !== null ? ` (${daysSince(s.price_evidence_at)}d)` : ''}
+                  </td>
+                  <td>{utcDay(s.oldest_observed_at)}</td>
+                  <td>{s.evidence_advanced ? 'Yes' : 'No'}</td>
+                  <td>{s.published_rows}</td>
+                  <td>{evidenceStateLabel[s.evidence_state] ?? s.evidence_state}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {stats && stats.sources.some(s => s.evidence_state === 'frozen') && (
+          <p>
+            <strong>Frozen upstream snapshots.</strong> A source can be downloaded perfectly every
+            day and still contain nothing new: its own observation dates do not move. The sources
+            marked <em>Frozen upstream</em> above are exactly that — the fetch succeeds, the file is
+            re-downloaded, and the prices inside it are unchanged because the publisher has not
+            re-read the registrar. Those rows are labelled <em>Stale</em> everywhere on the site and
+            can never take a “cheapest” slot.
+          </p>
+        )}
+        {stats?.coverage && stats.coverage.registrars_without_current_evidence.length > 0 && (
+          <p>
+            <strong>No current quote.</strong> For{' '}
+            {stats.coverage.registrars_without_current_evidence.join(', ')} every published figure is
+            older than the stale threshold, so their prices are shown as historical references and
+            are excluded from cheapest-price ranking.
+          </p>
+        )}
 
         <h3>Verification and freshness are two different things</h3>
         <table>
