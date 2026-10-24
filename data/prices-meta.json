@@ -1,8 +1,8 @@
 {
-  "last_success_at": "2026-10-23T11:09:35.227Z",
-  "last_attempt_at": "2026-10-23T11:09:35.227Z",
-  "status": "partial",
-  "last_error": "dynadot: Dynadot payload contained no usable prices",
+  "last_success_at": "2026-10-24T09:06:32.894Z",
+  "last_attempt_at": "2026-10-24T09:06:32.894Z",
+  "status": "ok",
+  "last_error": null,
   "counts": {
     "offers": 3549,
     "tlids": 811,
@@ -30,6 +30,11 @@
     }
   },
   "history": [
+    {
+      "at": "2026-10-24T09:06:32.894Z",
+      "status": "ok",
+      "offers": 3549
+    },
     {
       "at": "2026-10-23T11:09:35.227Z",
       "status": "partial",

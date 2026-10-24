@@ -1,6 +1,6 @@
 {
-  "run_at": "2026-10-23T11:09:35.227Z",
-  "dataset_generated_at": "2026-10-23T11:09:35.227Z",
+  "run_at": "2026-10-24T09:06:32.894Z",
+  "dataset_generated_at": "2026-10-24T09:06:32.894Z",
   "schema_version": 2,
   "totals": {
     "offers": 3549,
@@ -19,7 +19,7 @@
       "unknown": 6
     },
     "oldest_observed_at": "2026-05-12",
-    "newest_observed_at": "2026-10-23T11:09:35.227Z"
+    "newest_observed_at": "2026-10-24T09:06:32.894Z"
   },
   "sources": [
     {
@@ -33,21 +33,24 @@
         "unknown-tld": 367,
         "invalid-price": 5
       },
-      "fetched_at": "2026-10-23T11:09:35.227Z",
-      "oldest_observed_at": "2026-10-23T11:09:35.227Z",
+      "fetched_at": "2026-10-24T09:06:32.894Z",
+      "oldest_observed_at": "2026-10-24T09:06:32.894Z",
       "error": null
     },
     {
       "source_id": "dynadot",
       "source_name": "Dynadot pricing page",
-      "status": "kept-previous",
+      "status": "ok",
       "verification_status": "verified",
       "rows": 621,
-      "rejected": 0,
-      "rejections": {},
-      "fetched_at": "2026-10-23T07:52:41.892Z",
-      "oldest_observed_at": "2026-10-23T07:52:41.892Z",
-      "error": "Dynadot payload contained no usable prices"
+      "rejected": 191,
+      "rejections": {
+        "unknown-tld": 187,
+        "invalid-price": 4
+      },
+      "fetched_at": "2026-10-24T09:06:32.894Z",
+      "oldest_observed_at": "2026-10-24T09:06:32.894Z",
+      "error": null
     },
     {
       "source_id": "gandi",
@@ -59,8 +62,8 @@
       "rejections": {
         "unknown-tld": 94
       },
-      "fetched_at": "2026-10-23T11:09:35.227Z",
-      "oldest_observed_at": "2026-10-23T11:09:35.227Z",
+      "fetched_at": "2026-10-24T09:06:32.894Z",
+      "oldest_observed_at": "2026-10-24T09:06:32.894Z",
       "error": null
     },
     {
@@ -74,8 +77,8 @@
         "unknown-tld": 16,
         "invalid-price": 1
       },
-      "fetched_at": "2026-10-23T11:09:35.227Z",
-      "oldest_observed_at": "2026-10-23T11:09:35.227Z",
+      "fetched_at": "2026-10-24T09:06:32.894Z",
+      "oldest_observed_at": "2026-10-24T09:06:32.894Z",
       "error": null
     },
     {
@@ -88,8 +91,8 @@
       "rejections": {
         "unknown-tld": 4
       },
-      "fetched_at": "2026-10-23T11:09:35.227Z",
-      "oldest_observed_at": "2026-10-23T11:09:35.227Z",
+      "fetched_at": "2026-10-24T09:06:32.894Z",
+      "oldest_observed_at": "2026-10-24T09:06:32.894Z",
       "error": null
     },
     {
@@ -103,7 +106,7 @@
         "unknown-tld": 14,
         "invalid-price": 2
       },
-      "fetched_at": "2026-10-23T11:09:35.227Z",
+      "fetched_at": "2026-10-24T09:06:32.894Z",
       "oldest_observed_at": "2026-05-12",
       "error": null
     },
@@ -118,7 +121,7 @@
         "unknown-tld": 94,
         "invalid-price": 3
       },
-      "fetched_at": "2026-10-23T11:09:35.227Z",
+      "fetched_at": "2026-10-24T09:06:32.894Z",
       "oldest_observed_at": "2026-08-04",
       "error": null
     },
@@ -133,63 +136,85 @@
         "unknown-tld": 10,
         "invalid-price": 2
       },
-      "fetched_at": "2026-10-23T11:09:35.227Z",
+      "fetched_at": "2026-10-24T09:06:32.894Z",
       "oldest_observed_at": "2026-05-12",
       "error": null
     }
   ],
   "significant_changes": [
     {
-      "tld": "viajes",
+      "tld": "cruises",
       "registrar_id": "gandi",
       "field": "register_usd",
       "previous_usd": 66.88,
-      "current_usd": 143.38,
-      "change_pct": 114.4
+      "current_usd": 91.67,
+      "change_pct": 37.1
     },
     {
-      "tld": "viajes",
+      "tld": "cruises",
       "registrar_id": "gandi",
       "field": "transfer_usd",
       "previous_usd": 56.67,
-      "current_usd": 121.5,
-      "change_pct": 114.4
+      "current_usd": 77.68,
+      "change_pct": 37.1
     },
     {
-      "tld": "viajes",
-      "registrar_id": "gandi",
-      "field": "renewal_usd",
-      "previous_usd": 127.98,
-      "current_usd": 274.25,
-      "change_pct": 114.3
-    },
-    {
-      "tld": "cruises",
+      "tld": "community",
       "registrar_id": "gandi",
       "field": "register_usd",
-      "previous_usd": 91.67,
-      "current_usd": 66.88,
-      "change_pct": -27
+      "previous_usd": 44.05,
+      "current_usd": 55.38,
+      "change_pct": 25.7
     },
     {
-      "tld": "cruises",
-      "registrar_id": "gandi",
-      "field": "transfer_usd",
-      "previous_usd": 77.68,
-      "current_usd": 56.67,
-      "change_pct": -27
-    },
-    {
-      "tld": "business",
+      "tld": "community",
       "registrar_id": "gandi",
       "field": "renewal_usd",
-      "previous_usd": 39.98,
-      "current_usd": 47.98,
-      "change_pct": 20
+      "previous_usd": 95.98,
+      "current_usd": 120.67,
+      "change_pct": 25.7
+    },
+    {
+      "tld": "community",
+      "registrar_id": "gandi",
+      "field": "transfer_usd",
+      "previous_usd": 37.32,
+      "current_usd": 46.92,
+      "change_pct": 25.7
+    },
+    {
+      "tld": "com",
+      "registrar_id": "gandi",
+      "field": "register_usd",
+      "previous_usd": 11,
+      "current_usd": null,
+      "change_pct": null
+    },
+    {
+      "tld": "com",
+      "registrar_id": "gandi",
+      "field": "transfer_usd",
+      "previous_usd": 11,
+      "current_usd": null,
+      "change_pct": null
+    },
+    {
+      "tld": "ist",
+      "registrar_id": "gandi",
+      "field": "register_usd",
+      "previous_usd": 23.33,
+      "current_usd": null,
+      "change_pct": null
+    },
+    {
+      "tld": "istanbul",
+      "registrar_id": "gandi",
+      "field": "register_usd",
+      "previous_usd": 29.07,
+      "current_usd": null,
+      "change_pct": null
     }
   ],
-  "degraded_sources": [
-    "dynadot (kept-previous)"
-  ],
-  "summary": "3549 offers across 811 TLDs and 10 registrars. 2844 (80%) were read directly from the registrar's own published price list; 699 come from openly licensed dated snapshots; 0 are policy-derived; 6 cannot be dated. 681 offers (19%) are older than 30 days and are shown as stale. Oldest evidence: 2026-05-12. Sources not fully refreshed: dynadot (kept-previous)."
+  "degraded_sources": [],
+  "summary": "3549 offers across 811 TLDs and 10 registrars. 2844 (80%) were read directly from the registrar's own published price list; 699 come from openly licensed dated snapshots; 0 are policy-derived; 6 cannot be dated. 681 offers (19%) are older than 30 days and are shown as stale. Oldest evidence: 2026-05-12."
 }
