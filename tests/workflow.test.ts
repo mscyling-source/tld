@@ -464,6 +464,8 @@ function fixtureReport(dataset: any) {
 }
 
 function fixtureMeta(dataset: any) {
+  const count = (key: string, value: string) =>
+    dataset.offers.filter((offer: any) => offer[key] === value).length;
   return {
     generated_at: dataset.generated_at,
     last_success_at: dataset.generated_at,
@@ -472,6 +474,18 @@ function fixtureMeta(dataset: any) {
       offers: dataset.offers.length,
       tlids: dataset.offers.length,
       registrars: 1,
+      // One counter per band, matching what the sync writes. The workflow
+      // checks these against the dataset, so a fixture that omitted them (or
+      // folded `unknown` into `stale`) would make the check vacuous.
+      verified_offers: count('verification_status', 'verified'),
+      recent_offers: count('freshness', 'recent'),
+      aging_offers: count('freshness', 'aging'),
+      stale_offers: count('freshness', 'stale'),
+      unknown_offers: count('freshness', 'unknown'),
+      by_source: {},
+      by_verification: Object.fromEntries(
+        TIERS.map(tier => [tier, count('verification_status', tier)]),
+      ),
     },
   };
 }
@@ -808,6 +822,39 @@ describe('dataset validation — the real node program, run against fixtures', (
     );
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain('does not match the offer provenance');
+  });
+
+  it('rejects prices-meta counts that fold unknown offers into stale', () => {
+    const result = check(dir =>
+      mutateFixture(dir, fixture => {
+        // The exact bug this check exists to catch: `stale + unknown` published
+        // under the `stale_offers` key made prices-meta.json disagree with both
+        // the dataset and the sync report.
+        fixture.meta.counts.stale_offers += fixture.meta.counts.unknown_offers;
+      }),
+    );
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('stale_offers');
+  });
+
+  it('rejects a verified_offers count that disagrees with the dataset', () => {
+    const result = check(dir =>
+      mutateFixture(dir, fixture => {
+        fixture.meta.counts.verified_offers += 1;
+      }),
+    );
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('verified_offers');
+  });
+
+  it('rejects a meta offer count that disagrees with the dataset', () => {
+    const result = check(dir =>
+      mutateFixture(dir, fixture => {
+        fixture.meta.counts.offers -= 1;
+      }),
+    );
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('offers, dataset has');
   });
 });
 

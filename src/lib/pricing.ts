@@ -32,8 +32,11 @@ let cache: { dataset: PriceDataset | null; meta: PriceMeta | null } | null = nul
  * treated as `source_snapshot` with that date as the observation date, which
  * is exactly what v1 documented ("the most conservative timestamp the source
  * exposes") — never as verified, because a v1 row cannot prove we read it.
+ *
+ * Exported so the trust rules below can be unit-tested directly rather than
+ * only through a build.
  */
-function normalizeOffer(raw: Record<string, unknown>): PriceOffer | null {
+export function normalizeOffer(raw: Record<string, unknown>): PriceOffer | null {
   if (!raw || typeof raw !== 'object') return null;
   const tld = typeof raw.tld === 'string' ? raw.tld : null;
   const registrarId = typeof raw.registrar_id === 'string' ? raw.registrar_id : null;
@@ -50,23 +53,40 @@ function normalizeOffer(raw: Record<string, unknown>): PriceOffer | null {
   const verifiedAt = iso(raw.price_verified_at);
   const declared = raw.verification_status;
   const sourceId = typeof raw.source_id === 'string' ? raw.source_id : 'unknown';
-  // A v1 row declares no tier. Classify it by the source that produced it:
-  // first-party reads may be `verified`, everything else is a snapshot. A
-  // declared tier always wins, because the adapter is the authority on how it
-  // obtained the figure.
-  const inferred: VerificationStatus = isFirstPartySource(sourceId)
-    ? // A first-party read is only "verified" if it carries a date to back it.
-      observedAt
-      ? 'verified'
-      : 'unverified'
-    : 'source_snapshot';
-  const verificationStatus: VerificationStatus =
+  const firstParty = isFirstPartySource(sourceId);
+  const declaredTier: VerificationStatus | null =
     declared === 'verified' || declared === 'source_snapshot' || declared === 'model_derived' || declared === 'unverified'
       ? declared
-      : inferred;
+      : null;
+
+  /**
+   * A row may only be published as `verified` when BOTH hold:
+   *   1. the producing source is one *we* read first-party, and
+   *   2. a verification date backs the claim.
+   *
+   * Otherwise it is downgraded to `source_snapshot`, never promoted. This is
+   * the build-time twin of the validation rule: a third-party dataset that
+   * labels its own rows "verified" must not be republished as our first-party
+   * read, and a row that merely *claims* verification without a date must not
+   * borrow its observation date to look verified. Both mistakes are how a
+   * download timestamp starts masquerading as a verification.
+   */
+  let verificationStatus: VerificationStatus;
+  if (declaredTier === 'verified') {
+    verificationStatus = firstParty && verifiedAt ? 'verified' : 'source_snapshot';
+  } else if (declaredTier) {
+    verificationStatus = declaredTier;
+  } else {
+    // v1 rows carry no tier: classify them by the source that produced them.
+    // A first-party read with a date is `verified`; without one it is
+    // `unverified` rather than dated "now".
+    verificationStatus = firstParty ? (observedAt ? 'verified' : 'unverified') : 'source_snapshot';
+  }
   // A snapshot can never carry a verification date, whatever the file says.
+  // `observedAt` is only ever used here for a first-party row whose own
+  // observation date is the read date (v1 compatibility).
   const effectiveVerifiedAt =
-    verificationStatus === 'verified' ? (verifiedAt ?? observedAt) : null;
+    verificationStatus === 'verified' && firstParty ? (verifiedAt ?? observedAt) : null;
 
   return {
     tld,
@@ -96,7 +116,7 @@ function normalizeOffer(raw: Record<string, unknown>): PriceOffer | null {
   };
 }
 
-function normalizeDataset(raw: unknown): PriceDataset | null {
+export function normalizeDataset(raw: unknown): PriceDataset | null {
   if (!raw || typeof raw !== 'object') return null;
   const record = raw as Record<string, unknown>;
   const offersRaw = Array.isArray(record.offers) ? record.offers : [];

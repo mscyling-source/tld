@@ -100,9 +100,12 @@ import { siteConfig } from '../../config/site.js';
             per-registrar price table plus a verification taxonomy that distinguishes figures the
             publisher verified, figures confirmed against a pricing model, and placeholder samples.
             We reuse that taxonomy rather than flattening it: rows marked as samples (currently
-            Squarespace) are dropped, and model-confirmed rows are published as <em>Modelled</em>
-            rather than as quotes. Rows the publisher verified stay <em>Snapshot</em> here, because
-            that attestation is theirs — not a read we performed. Attribution:
+            Squarespace) are dropped, and model-confirmed rows are classified <em>Modelled</em> —
+            but they only win when no better-evidenced copy exists for the same registrar and
+            extension. Cloudflare, for example, is currently covered by a dated snapshot that
+            outranks the model row, so no <em>Modelled</em> rows are published today. Rows the
+            publisher verified stay <em>Snapshot</em> here, because that attestation is theirs — not
+            a read we performed. Attribution:
             <em>"Price data by Best Domain Registrars"</em>.
           </dd>
 
@@ -131,14 +134,17 @@ import { siteConfig } from '../../config/site.js';
         </p>
         <ul>
           <li>
-            <strong>Cloudflare Registrar</strong> sells at cost and publishes no per-TLD price list
-            at all — there is no page to read, so its figures can only come from a licensed dataset.
+            <strong>Cloudflare Registrar</strong> sells at cost and publishes no static per-TLD
+            price list. Its prices only appear through an interactive search tool rendered in the
+            browser, and the JSON endpoint that feeds that tool answers a plain server-side request
+            with an HTTP 403 bot challenge. There is therefore no page we may legally read, so its
+            figures can only come from a licensed dataset.
           </li>
           <li>
             <strong>Namecheap</strong> and <strong>Spaceship</strong> answer a plain server-side
             request with HTTP 403 (bot protection). Reading them would mean executing JavaScript or
             evading the challenge, which this project does not do. Their official APIs require an
-            account, and Namecheap additionally requires an approved funded account.
+            account: Namecheap's additionally needs an API key bound to an allow-listed IP.
           </li>
           <li>
             <strong>GoDaddy</strong> publishes no machine-readable price list either; its figures come

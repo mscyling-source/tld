@@ -235,6 +235,7 @@ export function cheapestPoint(offers: PriceOffer[], field: PriceField, now: Date
       promotion_expired: isPromotionExpired(offer.promotion_expires_at, now),
       quality: freshnessToQuality(freshness),
       cheaper_stale: null,
+      no_current_evidence: false,
     };
     if (isCurrentEvidence(freshness)) {
       if (current === null || isBetterPoint(point, current)) current = point;
@@ -243,7 +244,10 @@ export function cheapestPoint(offers: PriceOffer[], field: PriceField, now: Date
     }
   }
 
-  if (current === null) return stale;
+  // Nothing current exists: return the best stale/undated quote, but flag it so
+  // the UI states that current data is insufficient rather than calling it the
+  // cheapest current price.
+  if (current === null) return stale === null ? null : { ...stale, no_current_evidence: true };
   if (stale !== null && stale.usd < current.usd) {
     current.cheaper_stale = {
       usd: stale.usd,

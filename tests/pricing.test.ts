@@ -47,7 +47,7 @@ import { validateOffers, countRejections } from '../scripts/pricing/validate.js'
 import { mergeBatches } from '../scripts/pricing/merge.js';
 import { applyTrustPolicy, quarantineReason } from '../scripts/pricing/trust.js';
 import { migrateDataset } from '../scripts/pricing/migrate.js';
-import { buildReport, diffPrices, renderMarkdown } from '../scripts/pricing/report.js';
+import { buildReport, buildMetaCounts, diffPrices, renderMarkdown } from '../scripts/pricing/report.js';
 import { parsePorkbun } from '../scripts/pricing/sources/porkbun.js';
 import { parsePikkly } from '../scripts/pricing/sources/pikkly.js';
 import { parseOdd } from '../scripts/pricing/sources/opendomaindata.js';
@@ -63,7 +63,7 @@ import {
   registrarName,
   registrars,
 } from '../src/config/registrars.js';
-import { readPriceDataset, getOffersForTld, buildComparisonRows, getPriceStats, refreshOffers } from '../src/lib/pricing.js';
+import { readPriceDataset, getOffersForTld, buildComparisonRows, getPriceStats, refreshOffers, normalizeOffer } from '../src/lib/pricing.js';
 import type {
   ComparisonRow,
   PriceDataset,
@@ -806,6 +806,7 @@ describe('cheapestPoint & sorting', () => {
       promotion_expired: false,
       quality: 'verified',
       cheaper_stale: null,
+      no_current_evidence: false,
     });
     const rows: ComparisonRow[] = [
       {
@@ -1036,6 +1037,7 @@ describe('current-evidence ranking', () => {
     expect(point.registrar_id).toBe('dynadot');
     expect(point.usd).toBe(10.88);
     expect(point.freshness).toBe('recent');
+    expect(point.no_current_evidence).toBe(false);
     // The older, cheaper figure is disclosed rather than dropped.
     expect(point.cheaper_stale).toEqual({
       usd: 10.18,
@@ -1064,6 +1066,9 @@ describe('current-evidence ranking', () => {
     expect(point.registrar_id).toBe('cloudflare');
     expect(point.freshness).toBe('stale');
     expect(point.cheaper_stale).toBeNull();
+    // …but it must be flagged as a fallback, so the UI can say that current
+    // data is insufficient instead of presenting it as today's best price.
+    expect(point.no_current_evidence).toBe(true);
   });
 
   it('reports no stale alternative when the winner is already the cheapest', () => {
@@ -1445,5 +1450,192 @@ describe('committed dataset integration', () => {
       // `only_snapshots` must agree with the offers behind the row.
       if (row.only_snapshots) expect(row.verified_offers).toBe(0);
     }
+  });
+});
+
+describe('build-time trust normalisation', () => {
+  // The dataset on disk is read and normalised on every build. That pass is a
+  // second line of defence: whatever a file claims, it must not be able to
+  // promote a snapshot to a first-party verification.
+  const row = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
+    tld: 'com',
+    registrar_id: 'namecheap',
+    registrar_name: 'Namecheap',
+    currency: 'USD',
+    register_usd: 11.28,
+    renewal_usd: 18.48,
+    transfer_usd: 11.48,
+    promotional: false,
+    promo_code: null,
+    promo_restrictions: null,
+    promotion_expires_at: null,
+    three_year_usd: 48.24,
+    source_id: 'opendomaindata',
+    source_name: 'Open Domain Data',
+    source_url: 'https://www.opendomaindata.org/datasets/tld-pricing',
+    purchase_url: null,
+    source_fetched_at: '2026-10-24T09:06:32.894Z',
+    price_observed_at: '2026-08-19T00:00:00.000Z',
+    price_verified_at: null,
+    verification_status: 'source_snapshot',
+    last_checked: '2026-08-19T00:00:00.000Z',
+    freshness: 'stale',
+    quality: 'stale',
+    source_status_stale: false,
+    ...over,
+  });
+
+  it('downgrades a third-party row that claims to be verified', () => {
+    const offer = normalizeOffer(
+      row({ verification_status: 'verified', price_verified_at: null }),
+    )!;
+    expect(offer.verification_status).toBe('source_snapshot');
+    expect(offer.price_verified_at).toBeNull();
+    // The evidence date is still the source's own observation date.
+    expect(offer.last_checked).toBe('2026-08-19T00:00:00.000Z');
+  });
+
+  it('does not let a first-party row borrow its observation date as a verification', () => {
+    const offer = normalizeOffer(
+      row({
+        source_id: 'porkbun',
+        source_name: 'Porkbun API',
+        verification_status: 'verified',
+        price_verified_at: null,
+        price_observed_at: '2026-10-24T09:00:00.000Z',
+        last_checked: '2026-10-24T09:00:00.000Z',
+      }),
+    )!;
+    expect(offer.verification_status).toBe('source_snapshot');
+    expect(offer.price_verified_at).toBeNull();
+  });
+
+  it('keeps a first-party row that carries a real verification date', () => {
+    const offer = normalizeOffer(
+      row({
+        source_id: 'porkbun',
+        source_name: 'Porkbun API',
+        verification_status: 'verified',
+        price_verified_at: '2026-10-24T09:00:00.000Z',
+        price_observed_at: '2026-10-24T09:00:00.000Z',
+        last_checked: '2026-10-24T09:00:00.000Z',
+      }),
+    )!;
+    expect(offer.verification_status).toBe('verified');
+    expect(offer.price_verified_at).toBe('2026-10-24T09:00:00.000Z');
+  });
+
+  it('classifies a tier-less v1 first-party row as verified from its own date', () => {
+    const raw = row({
+      source_id: 'porkbun',
+      source_name: 'Porkbun API',
+      last_checked: '2026-06-01T00:00:00.000Z',
+    });
+    delete raw.verification_status;
+    delete raw.price_observed_at;
+    const offer = normalizeOffer(raw)!;
+    expect(offer.verification_status).toBe('verified');
+    expect(offer.price_verified_at).toBe('2026-06-01T00:00:00.000Z');
+  });
+
+  it('classifies a tier-less v1 third-party row as a snapshot', () => {
+    const raw = row({ last_checked: '2026-06-01T00:00:00.000Z' });
+    delete raw.verification_status;
+    delete raw.price_observed_at;
+    const offer = normalizeOffer(raw)!;
+    expect(offer.verification_status).toBe('source_snapshot');
+    expect(offer.price_verified_at).toBeNull();
+  });
+
+  it('never fills one price field from another', () => {
+    const offer = normalizeOffer(row({ register_usd: null, transfer_usd: null }))!;
+    expect(offer.register_usd).toBeNull();
+    expect(offer.transfer_usd).toBeNull();
+    expect(offer.renewal_usd).toBe(18.48);
+  });
+});
+
+describe('Open Domain Data — upstream attestation is not our verification', () => {
+  const payload = (record: Record<string, unknown>) => ({
+    dataset: 'tld_pricing',
+    currency: 'USD',
+    records: [
+      {
+        registrar_id: 'namecheap',
+        tld: 'com',
+        register_usd: 11.28,
+        renew_usd: 18.48,
+        transfer_usd: 11.48,
+        last_checked: '2026-08-19',
+        ...record,
+      },
+    ],
+  });
+
+  it('keeps a record the publisher calls "verified" at snapshot tier', () => {
+    const { offers } = parseOdd(payload({ verification_status: 'verified' }) as any);
+    expect(offers).toHaveLength(1);
+    expect(offers[0].verification_status).toBe('source_snapshot');
+    // We did not read it, so there is no verification date to claim.
+    expect(offers[0].price_verified_at).toBeNull();
+    expect(offers[0].price_observed_at).toBe('2026-08-19');
+  });
+
+  it('treats a record with no usable date as unverified rather than dating it now', () => {
+    const { offers } = parseOdd(payload({ last_checked: '' }) as any);
+    expect(offers[0].verification_status).toBe('unverified');
+    expect(offers[0].price_observed_at).toBeNull();
+  });
+
+  it('leaves a missing field null instead of copying another field into it', () => {
+    const { offers } = parseOdd(
+      payload({ register_usd: null, transfer_usd: null }) as any,
+    );
+    expect(offers[0].register_usd).toBeNull();
+    expect(offers[0].transfer_usd).toBeNull();
+    expect(offers[0].renewal_usd).toBe(18.48);
+  });
+});
+
+describe('prices-meta counters — one counter per band', () => {
+  const meta = (freshness: string, registrar: string, status = 'source_snapshot') =>
+    ({
+      tld: 'com',
+      registrar_id: registrar,
+      freshness,
+      verification_status: status,
+      source_id: 'pikkly',
+    }) as unknown as PriceOffer;
+
+  it('counts the stale band alone and never folds unknown into it', () => {
+    const counts = buildMetaCounts([
+      meta('stale', 'spaceship'),
+      meta('stale', 'cloudflare'),
+      meta('unknown', 'squarespace', 'unverified'),
+      meta('recent', 'porkbun', 'verified'),
+    ]);
+    // The bug this guards: `stale + unknown` published under `stale_offers`
+    // made prices-meta.json disagree with prices.json and the sync report.
+    expect(counts.stale_offers).toBe(2);
+    expect(counts.unknown_offers).toBe(1);
+    expect(counts.recent_offers).toBe(1);
+    expect(counts.aging_offers).toBe(0);
+    expect(counts.offers).toBe(4);
+    // Every band counter sums to the offer count exactly once.
+    expect(
+      counts.recent_offers + counts.aging_offers + counts.stale_offers + counts.unknown_offers,
+    ).toBe(counts.offers);
+  });
+
+  it('counts verified offers from the tier, not from the freshness band', () => {
+    const counts = buildMetaCounts([
+      meta('recent', 'porkbun', 'verified'),
+      meta('stale', 'porkbun', 'verified'),
+      meta('stale', 'cloudflare'),
+    ]);
+    expect(counts.verified_offers).toBe(2);
+    expect(counts.by_verification.verified).toBe(2);
+    expect(counts.tlids).toBe(1);
+    expect(counts.registrars).toBe(2);
   });
 });

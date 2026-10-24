@@ -34,6 +34,26 @@ const offers = await getOffersForTld(normalized);
 // IANA-derived sentence otherwise.
 const metaDescription = note?.summary ?? record.description;
 const canonicalUrl = new URL(`/tld/${normalized}/`, Astro.site).toString();
+
+// Structured data mirrors the breadcrumb the page actually renders, so the
+// trail a search engine shows matches what a visitor can click.
+const siteOrigin = new URL('/', Astro.site).toString();
+const typeLabel = record.normalized_type?.replace(/-/g, ' ') ?? 'TLD';
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: siteOrigin },
+    { '@type': 'ListItem', position: 2, name: 'All TLDs', item: new URL('/tlds/', Astro.site).toString() },
+    {
+      '@type': 'ListItem',
+      position: 3,
+      name: typeLabel,
+      item: new URL(categoryUrlForType(record.normalized_type), Astro.site).toString(),
+    },
+    { '@type': 'ListItem', position: 4, name: record.suffix },
+  ],
+};
 ---
 
 <Layout
@@ -41,6 +61,7 @@ const canonicalUrl = new URL(`/tld/${normalized}/`, Astro.site).toString();
   description={metaDescription}
   canonical={canonicalUrl}
   ogImage="/og-tld.png"
+  jsonLd={jsonLd}
 >
   <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
     <Breadcrumb items={[

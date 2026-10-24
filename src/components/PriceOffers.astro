@@ -65,6 +65,14 @@ const cheapestIsCurrent = (point: typeof minRegister): boolean =>
   point.freshness !== 'unknown';
 
 const anyVerified = fresh.some(o => o.verification_status === 'verified');
+// Fields where every published quote is older than the stale threshold (or
+// undated): the table can still show the figures, but it must say that current
+// evidence is missing instead of letting an old number stand in for a quote.
+const noCurrentEvidence = [
+  minRegister?.no_current_evidence ? 'registration' : null,
+  minRenewal?.no_current_evidence ? 'renewal' : null,
+  minThreeYear?.no_current_evidence ? '3-year cost' : null,
+].filter((f): f is string => f !== null);
 const anyAffiliate = fresh.some(o => hasAffiliate(o.registrar_id));
 const fmt = (v: number | null) => (v === null ? null : formatUsd(v));
 
@@ -112,9 +120,21 @@ const verificationBadgeClass: Record<string, string> = {
       </p>
     )}
 
+    {noCurrentEvidence.length > 0 && (
+      <p class="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-900">
+        <strong>No current {noCurrentEvidence.join(' or ')} quote.</strong>
+        Every figure we hold for that field is more than 30 days old or undated, so the values
+        shown are historical references rather than today’s price. That is a gap in our data,
+        not a claim that the figure is current. Confirm at the registrar before buying.
+      </p>
+    )}
+
+    <p class="mb-2 text-xs text-ink-500 sm:hidden">
+      Swipe the table sideways to see transfer, 3-year and evidence columns.
+    </p>
+
     <div class="overflow-x-auto">
-      <table class="min-w-[720px] w-full text-sm">
-        <thead class="bg-ink-50 text-left">
+      <table class="min-w-[720px] w-full text-sm">        <thead class="bg-ink-50 text-left">
           <tr>
             <th scope="col" class="px-3 py-2.5 font-semibold text-ink-700">Registrar</th>
             <th scope="col" class="px-3 py-2.5 font-semibold text-ink-700">Register<span class="block text-xs font-normal text-ink-500">first year</span></th>

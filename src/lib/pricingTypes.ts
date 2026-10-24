@@ -163,6 +163,12 @@ export interface PricePoint {
    * the ranking but disclosed. Null when the winner really is the cheapest.
    */
   cheaper_stale: CheaperEvidence | null;
+  /**
+   * True when no current quote exists for this field at all and this point is
+   * the best stale/undated fallback. Callers must then say that current data is
+   * insufficient instead of presenting the figure as today's best price.
+   */
+  no_current_evidence: boolean;
 }
 
 /** Per-TLD aggregation used by the homepage comparison table. */
@@ -236,10 +242,12 @@ export interface PriceMeta {
     /** Offers read from a registrar's own published source (any age). */
     verified_offers: number;
     /**
-     * Offers that are stale **or** have no usable date (`stale + unknown`).
-     * Note this differs from `price-sync-report.json` →
-     * `totals.by_freshness.stale`, which counts the `stale` band alone; the
-     * report also breaks `unknown` out separately.
+     * Offers in the `stale` band alone (evidence older than
+     * `STALE_AFTER_DAYS`). Deliberately NOT `stale + unknown`: `unknown` has
+     * its own counter, and folding it in here made this file disagree with
+     * both `price-sync-report.json` → `totals.by_freshness.stale` and the
+     * site's own `PriceStats.staleOffers`. Every counter in this object names
+     * exactly one band.
      */
     stale_offers: number;
     recent_offers: number;

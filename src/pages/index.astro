@@ -32,9 +32,56 @@ const pricedTlds = new Set(priceRows.map(r => r.tld));
 const unpricedTlds = allRecords
   .map(r => r.ascii_name)
   .filter(name => !pricedTlds.has(name));
+
+// Structured data. The Dataset block describes the price file this page is
+// built from and carries that file's own generation date — never the build
+// time — so search engines see the same evidence date a reader does.
+const siteOrigin = new URL('/', Astro.site).toString();
+const jsonLd: Array<Record<string, unknown>> = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: siteConfig.name,
+    url: siteOrigin,
+    description: siteConfig.description,
+  },
+];
+if (priceStats) {
+  jsonLd.push({
+    '@context': 'https://schema.org',
+    '@type': 'Dataset',
+    name: 'Registrar domain price dataset',
+    description:
+      `Registration, renewal and transfer prices for ${priceStats.tlids} top-level domains ` +
+      `from ${priceStats.registrars} registrars, with per-offer provenance and evidence dates. ` +
+      `${priceStats.verifiedOffers} figures were read from a registrar's own published price list; ` +
+      `${priceStats.snapshotOffers} come from openly licensed dated datasets.`,
+    url: new URL('/prices-index.json', Astro.site).toString(),
+    ...(priceStats.generatedAt ? { dateModified: priceStats.generatedAt } : {}),
+    creator: { '@type': 'Organization', name: siteConfig.name, url: siteOrigin },
+    license: new URL('/data-sources/', Astro.site).toString(),
+    isAccessibleForFree: true,
+    distribution: [
+      {
+        '@type': 'DataDownload',
+        contentUrl: new URL('/prices-index.json', Astro.site).toString(),
+        encodingFormat: 'application/json',
+      },
+    ],
+    variableMeasured: [
+      'First-year registration price (USD)',
+      'Renewal price per year (USD)',
+      'Transfer price (USD)',
+    ],
+  });
+}
 ---
 
-<Layout title="Domain Price Comparison — Cheapest Registrar for Every TLD" description={siteConfig.description}>
+<Layout
+  title="Domain Price Comparison — Cheapest Registrar for Every TLD"
+  description={siteConfig.description}
+  jsonLd={jsonLd}
+>
   <Hero />
 
   <PriceComparisonTable

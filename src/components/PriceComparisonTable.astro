@@ -51,6 +51,9 @@ function pointTag(p: PricePoint): string {
   if (p.freshness === 'stale') parts.push('stale');
   else if (p.freshness === 'aging') parts.push(FRESHNESS_LABEL.aging.toLowerCase());
   else if (p.freshness === 'unknown') parts.push('unverified');
+  // No current quote exists for this field at all: say so, rather than letting
+  // an old figure read as today's best price.
+  if (p.no_current_evidence) parts.push('no current quote');
   return parts.length ? ` · ${parts.join(' · ')}` : '';
 }
 function pointTitle(p: PricePoint): string {
@@ -138,6 +141,10 @@ function visitRel(): string {
       Showing {initial.length} of {rows.length} priced extensions
     </p>
 
+    <p class="mb-2 text-xs text-ink-500 sm:hidden">
+      Swipe the table sideways to see renewal, transfer and 3-year prices.
+    </p>
+
     <div class="overflow-x-auto border border-ink-200 rounded-xl">
       <table class="min-w-[760px] w-full text-sm">
         <thead class="bg-ink-50 text-left">
@@ -209,8 +216,11 @@ function visitRel(): string {
       <strong>promo</strong> marks a first-year promotional rate that is not the renewal price.
       A quote whose evidence is stale or undated never takes the cheapest slot while a current quote
       exists — when it is cheaper, it is listed underneath the price with a ↓ marker instead of
-      being ranked, so a lower published price is never hidden. Extension detail pages list every
-      offer with its source and evidence date. Source and licence details on the
+      being ranked, so a lower published price is never hidden. Where no quote at all is newer than
+      30 days, the cell is marked <strong>no current quote</strong>: that is a statement that current
+      data is insufficient, not a claim that the figure is today’s best price.
+      Extension detail pages list every offer with its source and evidence date. Source and licence
+      details on the
       <a href="/data-sources/" class="underline hover:text-brand-600">data sources page</a>.
     </p>
   </div>
@@ -268,6 +278,7 @@ function visitRel(): string {
     if (point.freshness === 'stale') parts.push('stale');
     else if (point.freshness === 'aging') parts.push('not recent');
     else if (point.freshness === 'unknown') parts.push('unverified');
+    if (point.no_current_evidence) parts.push('no current quote');
     return parts.length ? ' · ' + parts.join(' · ') : '';
   }
 

@@ -11,7 +11,13 @@
  * the rules are unit-testable without touching the network.
  */
 
-import type { PriceDataset, PriceFreshness, VerificationStatus } from '../../src/lib/pricingTypes.js';
+import type {
+  PriceDataset,
+  PriceFreshness,
+  PriceMeta,
+  PriceOffer,
+  VerificationStatus,
+} from '../../src/lib/pricingTypes.js';
 import { effectiveEvidenceDate } from '../../src/lib/pricingCalc.js';
 import {
   FRESHNESS_LABEL,
@@ -67,6 +73,55 @@ export interface PriceSyncReport {
 }
 
 const CHANGE_THRESHOLD_PCT = 20;
+
+/**
+ * Counters published in `data/prices-meta.json`.
+ *
+ * Extracted from the sync so the rule is unit-testable: every counter names
+ * exactly one band. `stale_offers` counts the `stale` band alone — folding
+ * `unknown` into it (as an earlier version did) makes the meta file disagree
+ * with both `data/prices.json` and `price-sync-report.json`, which is a
+ * reporting bug even though no price is wrong.
+ */
+export function buildMetaCounts(offers: PriceOffer[]): PriceMeta['counts'] {
+  const bySource: Record<string, number> = {};
+  const byVerification: Record<VerificationStatus, number> = {
+    verified: 0,
+    source_snapshot: 0,
+    model_derived: 0,
+    unverified: 0,
+  };
+  const tlds = new Set<string>();
+  const registrars = new Set<string>();
+  let recent = 0;
+  let aging = 0;
+  let stale = 0;
+  let unknown = 0;
+
+  for (const offer of offers) {
+    bySource[offer.source_id] = (bySource[offer.source_id] ?? 0) + 1;
+    byVerification[offer.verification_status] = (byVerification[offer.verification_status] ?? 0) + 1;
+    tlds.add(offer.tld);
+    registrars.add(offer.registrar_id);
+    if (offer.freshness === 'recent') recent++;
+    else if (offer.freshness === 'aging') aging++;
+    else if (offer.freshness === 'stale') stale++;
+    else unknown++;
+  }
+
+  return {
+    offers: offers.length,
+    tlids: tlds.size,
+    registrars: registrars.size,
+    verified_offers: byVerification.verified,
+    stale_offers: stale,
+    recent_offers: recent,
+    aging_offers: aging,
+    unknown_offers: unknown,
+    by_source: bySource,
+    by_verification: byVerification,
+  };
+}
 
 /** Compare two datasets and surface figures that moved materially. */
 export function diffPrices(

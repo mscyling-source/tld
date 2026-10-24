@@ -102,14 +102,16 @@ export function parseOdd(payload: OddPayload): { offers: RawOffer[]; skipped: nu
 
     // The record's own date is the observation date. A record with no usable
     // date stays `unverified` — it never inherits the fetch timestamp.
+    //
+    // Note what we deliberately ignore: the record's own `verification_status`.
+    // An upstream `verified` is *the publisher's* attestation that it read the
+    // registrar, not a read we performed. Publishing it as our `verified` tier
+    // would let someone else's claim masquerade as our own first-party
+    // verification — and it would fail validation anyway, because we have no
+    // `price_verified_at` to back it. Every dated record from this source is
+    // therefore `source_snapshot`, carrying its own observation date.
     const observedAt = toIsoDate(row.last_checked);
-    const upstreamStatus = (row.verification_status ?? '').trim().toLowerCase();
-    const declaredVerified = upstreamStatus === 'verified' || upstreamStatus === 'verified_primary';
-    const verificationStatus: VerificationStatus = observedAt
-      ? declaredVerified
-        ? 'verified'
-        : ODD_SOURCE.verificationStatus
-      : 'unverified';
+    const verificationStatus: VerificationStatus = observedAt ? ODD_SOURCE.verificationStatus : 'unverified';
 
     offers.push({
       tld,

@@ -161,6 +161,33 @@ jobs:
                 process.exit(1);
               }
             }
+            // prices-meta.json is published alongside the dataset, so its
+            // counters must agree with the rows they describe — band for band.
+            // `stale_offers` counts the stale band alone; folding `unknown`
+            // into it made this file disagree with both the dataset and the
+            // sync report.
+            if (!m.counts) {
+              console.error('prices-meta.json has no counts object');
+              process.exit(1);
+            }
+            const bands = { recent: 0, aging: 0, stale: 0, unknown: 0 };
+            for (const o of d.offers) bands[o.freshness] = (bands[o.freshness] || 0) + 1;
+            if (m.counts.offers !== d.offers.length) {
+              console.error('prices-meta.json counts ' + m.counts.offers + ' offers, dataset has ' + d.offers.length);
+              process.exit(1);
+            }
+            for (const band of ['recent', 'aging', 'stale', 'unknown']) {
+              const key = band + '_offers';
+              if (m.counts[key] !== bands[band]) {
+                console.error('prices-meta.json ' + key + '=' + m.counts[key] + ' but dataset has ' + bands[band] + ' ' + band + ' offers');
+                process.exit(1);
+              }
+            }
+            const verifiedRows = d.offers.filter(o => o.verification_status === 'verified').length;
+            if (m.counts.verified_offers !== verifiedRows) {
+              console.error('prices-meta.json verified_offers=' + m.counts.verified_offers + ' but dataset has ' + verifiedRows);
+              process.exit(1);
+            }
             console.log('Price dataset OK: ' + d.offers.length + ' offers, status=' + m.status +
               ', verified=' + m.counts.verified_offers + ', stale=' + m.counts.stale_offers);
           "

@@ -28,7 +28,7 @@ import { sourceAdapters, missingEnvFor, type SourceAdapter } from './pricing/sou
 import { validateOffers, countRejections } from './pricing/validate.js';
 import { mergeBatches } from './pricing/merge.js';
 import { migrateDataset } from './pricing/migrate.js';
-import { buildReport, diffPrices, renderMarkdown, type SourceReport } from './pricing/report.js';
+import { buildReport, buildMetaCounts, diffPrices, renderMarkdown, type SourceReport } from './pricing/report.js';
 import { purchaseUrlFor } from '../src/config/registrars.js';
 import { applyTrustPolicy, quarantineReason } from './pricing/trust.js';
 import {
@@ -320,32 +320,9 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const bySource: Record<string, number> = {};
-  const tldsSeen = new Set<string>();
-  const registrarsSeen = new Set<string>();
-  const byVerification: Record<VerificationStatus, number> = {
-    verified: 0,
-    source_snapshot: 0,
-    model_derived: 0,
-    unverified: 0,
-  };
-  let recent = 0;
-  let aging = 0;
-  let stale = 0;
-  let unknown = 0;
-  for (const offer of offers) {
-    bySource[offer.source_id] = (bySource[offer.source_id] ?? 0) + 1;
-    byVerification[offer.verification_status] = (byVerification[offer.verification_status] ?? 0) + 1;
-    tldsSeen.add(offer.tld);
-    registrarsSeen.add(offer.registrar_id);
-    if (offer.freshness === 'recent') recent++;
-    else if (offer.freshness === 'aging') aging++;
-    else if (offer.freshness === 'stale') stale++;
-    else unknown++;
-  }
-  // "verified_offers" counts first-party reads specifically; freshness is
-  // reported separately by recent/aging/stale/unknown.
-  const verified = byVerification.verified;
+  // Counters for prices-meta.json — one counter per band, built by a pure
+  // function so the rule is testable (see buildMetaCounts).
+  const counts = buildMetaCounts(offers);
 
   const dataset: PriceDataset = {
     schema_version: 2,
@@ -387,18 +364,7 @@ async function main(): Promise<void> {
     last_attempt_at: nowIso,
     status: metaStatus,
     last_error: errors.length ? errors.join(' | ') : null,
-    counts: {
-      offers: offers.length,
-      tlids: tldsSeen.size,
-      registrars: registrarsSeen.size,
-      verified_offers: verified,
-      stale_offers: stale + unknown,
-      recent_offers: recent,
-      aging_offers: aging,
-      unknown_offers: unknown,
-      by_source: bySource,
-      by_verification: byVerification,
-    },
+    counts,
     history: [
       {
         at: nowIso,
@@ -420,10 +386,11 @@ async function main(): Promise<void> {
       ? `, ${merge.superseded} superseded (${merge.upgradedByVerification} by better verification)`
       : '';
   log(
-    `done: ${offers.length} offers across ${tldsSeen.size} TLDs and ${registrarsSeen.size} registrars ` +
-      `(verified=${byVerification.verified}, snapshot=${byVerification.source_snapshot}, ` +
-      `model=${byVerification.model_derived}, unverified=${byVerification.unverified}; ` +
-      `recent=${recent}, aging=${aging}, stale=${stale}, unknown=${unknown}${supersededNote}), status=${metaStatus}`,
+    `done: ${offers.length} offers across ${counts.tlids} TLDs and ${counts.registrars} registrars ` +
+      `(verified=${counts.by_verification.verified}, snapshot=${counts.by_verification.source_snapshot}, ` +
+      `model=${counts.by_verification.model_derived}, unverified=${counts.by_verification.unverified}; ` +
+      `recent=${counts.recent_offers}, aging=${counts.aging_offers}, stale=${counts.stale_offers}, ` +
+      `unknown=${counts.unknown_offers}${supersededNote}), status=${metaStatus}`,
   );
   for (const o of outcomes) {
     log(

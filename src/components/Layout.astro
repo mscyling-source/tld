@@ -9,12 +9,21 @@ interface Props {
   canonical?: string;
   noindex?: boolean;
   ogImage?: string;
+  /**
+   * schema.org structured data for this page (one object or a list).
+   *
+   * Emitted as `application/ld+json`. Callers are responsible for only
+   * describing facts the page actually shows — a `Dataset` block must carry
+   * the real dataset date, never a build time.
+   */
+  jsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
 }
 
-const { title, description, canonical, noindex, ogImage } = Astro.props;
+const { title, description, canonical, noindex, ogImage, jsonLd } = Astro.props;
 const url = new URL(Astro.url.pathname, Astro.site);
 const fullCanonical = canonical ? new URL(canonical, Astro.site).toString() : url.toString();
 const fullOgImage = ogImage ? new URL(ogImage, Astro.site).toString() : new URL('/og-default.png', Astro.site).toString();
+const jsonLdBlocks = jsonLd === undefined ? [] : Array.isArray(jsonLd) ? jsonLd : [jsonLd];
 ---
 
 <!doctype html>
@@ -44,6 +53,14 @@ const fullOgImage = ogImage ? new URL(ogImage, Astro.site).toString() : new URL(
   <meta name="twitter:image" content={fullOgImage} />
 
   <link rel="sitemap" href="/sitemap-index.xml" />
+
+  {jsonLdBlocks.map(block => (
+    <script
+      type="application/ld+json"
+      is:inline
+      set:html={JSON.stringify(block).replace(/</g, '\\u003c')}
+    />
+  ))}
 </head>
 <body class="min-h-screen flex flex-col">
   <a href="#main-content" class="skip-link">Skip to main content</a>
