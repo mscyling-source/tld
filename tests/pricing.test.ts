@@ -55,7 +55,14 @@ import { parseBdr, mapVerificationStatus } from '../scripts/pricing/sources/best
 import { parseHover } from '../scripts/pricing/sources/hover.js';
 import { parseGandiPage } from '../scripts/pricing/sources/gandi.js';
 import { parseIonos } from '../scripts/pricing/sources/ionos.js';
-import { decodeDevalue, findTldCatalogue, parseDynadot } from '../scripts/pricing/sources/dynadot.js';
+import {
+  DYNADOT_USD_COOKIE,
+  decodeDevalue,
+  fetchDynadot,
+  findTldCatalogue,
+  parseDynadot,
+  rowCurrency,
+} from '../scripts/pricing/sources/dynadot.js';
 import {
   purchaseUrlFor,
   outboundRel,
@@ -717,6 +724,109 @@ describe('source parsers', () => {
     expect(com.promotional).toBe(true); // struck original price is higher
     expect(com.verification_status).toBe('verified');
     expect(com.price_verified_at).toBe(NOW.toISOString());
+  });
+
+  // Dynadot moved from a Nuxt 2 payload to a Nuxt 4 one, where the root is
+  // wrapped (`["ShallowReactive", 1]`) and every figure carries a currency
+  // symbol. Both regressions cost real freshness, so both are pinned here.
+  describe('Dynadot Nuxt 4 payload and display currency', () => {
+    const nuxt4Payload = (currency: 'USD' | 'EUR'): unknown[] => {
+      const rows = Array.from({ length: 51 }, (_, i) => ({
+        name: `.tld${i}`,
+        reg_price: `${currency === 'USD' ? '$' : '€'}9.96`,
+        renew_price: `${currency === 'USD' ? '$' : '€'}13.23`,
+        tr_price: `${currency === 'USD' ? '$' : '€'}13.23`,
+        google_data: { currency },
+      }));
+      rows[0] = {
+        name: '.com',
+        reg_price: `${currency === 'USD' ? '$' : '€'}10.88`,
+        renew_price: `${currency === 'USD' ? '$' : '€'}10.88`,
+        tr_price: `${currency === 'USD' ? '$' : '€'}10.88`,
+        google_data: { currency },
+      } as (typeof rows)[number];
+      // flat[0] wraps the root the way Nuxt 4 does; flat[1] is the root object.
+      return [['ShallowReactive', 1], { data: 2 }, { page: 3 }, { current_tlds: 4 }, rows];
+    };
+
+    const htmlFor = (payload: unknown[]): string =>
+      `<html><body><script id="__NUXT_DATA__" type="application/json">${JSON.stringify(payload)}</script></body></html>`;
+
+    it('unwraps ShallowReactive wrappers and still finds the catalogue', () => {
+      const decoded = decodeDevalue(nuxt4Payload('USD'));
+      expect(findTldCatalogue(decoded)).toHaveLength(51);
+      const offers = parseDynadot(htmlFor(nuxt4Payload('USD')), NOW.toISOString());
+      const com = offers.find(o => o.tld === 'com')!;
+      expect(com.register_usd).toBe(10.88);
+      expect(com.renewal_usd).toBe(10.88);
+      expect(com.transfer_usd).toBe(10.88);
+      expect(offers).toHaveLength(51);
+    });
+
+    it('reads the currency from the printed symbol when no field declares it', () => {
+      expect(rowCurrency({ reg_price: '$10.88' })).toBe('USD');
+      expect(rowCurrency({ reg_price: '€9.96' })).toBe('EUR');
+      expect(rowCurrency({ reg_price: 'C$10.88' })).toBe('CAD'); // longest symbol first
+      expect(rowCurrency({ reg_price: 10.88 })).toBe(null); // a bare number proves nothing
+      expect(rowCurrency({})).toBe(null);
+    });
+
+    it('trusts the declared currency over the symbol', () => {
+      expect(rowCurrency({ reg_price: '$10.88', google_data: { currency: 'EUR' } })).toBe('EUR');
+    });
+
+    it('refuses to publish a non-USD payload instead of relabelling it', () => {
+      expect(() => parseDynadot(htmlFor(nuxt4Payload('EUR')), NOW.toISOString())).toThrow(
+        /no usable USD prices \(currencies present: EUR×51\)/,
+      );
+    });
+
+    it('drops the rows of a mixed-currency payload rather than converting them', () => {
+      const rows = Array.from({ length: 51 }, (_, i) => ({
+        name: `.tld${i}`,
+        reg_price: i % 2 === 0 ? '$9.96' : '€9.96',
+        google_data: { currency: i % 2 === 0 ? 'USD' : 'EUR' },
+      }));
+      rows[0] = { name: '.com', reg_price: '$10.88', google_data: { currency: 'USD' } } as (typeof rows)[number];
+      const payload = [['ShallowReactive', 1], { data: 2 }, { page: 3 }, { current_tlds: 4 }, rows];
+      const offers = parseDynadot(htmlFor(payload), NOW.toISOString());
+      expect(offers).toHaveLength(26); // only the USD rows survive
+      expect(offers.every(o => o.currency === 'USD')).toBe(true);
+      expect(offers.find(o => o.tld === 'com')?.register_usd).toBe(10.88);
+    });
+
+    it('asks the site for USD through its own display-currency cookie', async () => {
+      const calls: Array<{ url: string; headers: Record<string, string> }> = [];
+      const realFetch = globalThis.fetch;
+      globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+        calls.push({
+          url: String(input),
+          headers: (init?.headers ?? {}) as Record<string, string>,
+        });
+        return new Response(htmlFor(nuxt4Payload('USD')), { status: 200 });
+      }) as typeof fetch;
+      try {
+        const offers = await fetchDynadot(NOW);
+        expect(calls).toHaveLength(1);
+        expect(calls[0].url).toBe('https://www.dynadot.com/domain/prices');
+        expect(calls[0].headers.cookie).toBe(DYNADOT_USD_COOKIE);
+        expect(DYNADOT_USD_COOKIE).toBe('glbl_curr=USD');
+        expect(offers.length).toBeGreaterThan(0);
+      } finally {
+        globalThis.fetch = realFetch;
+      }
+    });
+
+    it('propagates a non-USD response as a fetch failure so old rows are kept', async () => {
+      const realFetch = globalThis.fetch;
+      globalThis.fetch = (async () =>
+        new Response(htmlFor(nuxt4Payload('EUR')), { status: 200 })) as typeof fetch;
+      try {
+        await expect(fetchDynadot(NOW)).rejects.toThrow(/no usable USD prices/);
+      } finally {
+        globalThis.fetch = realFetch;
+      }
+    });
   });
 });
 

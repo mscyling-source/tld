@@ -92,19 +92,30 @@ export function decodeEntities(value: string): string {
     .replace(/&amp;/g, '&');
 }
 
+/**
+ * A descriptive UA with a contact URL is what polite automated access looks
+ * like; we do not attempt to disguise the request.
+ */
+export const POLITE_USER_AGENT =
+  'TLD-Directory-PriceSync/2.0 (https://tld-directory.pages.dev/; automated registrar price sync)';
+
+export interface FetchTextOptions {
+  timeoutMs?: number;
+  /** Extra request headers (e.g. a cookie that selects a display currency). */
+  headers?: Record<string, string>;
+}
+
 /** Fetch text with a browser-like UA, timeout and redirect following. */
-export async function fetchText(url: string, timeoutMs = 30_000): Promise<string> {
+export async function fetchText(url: string, options: FetchTextOptions = {}): Promise<string> {
   const res = await fetch(url, {
     redirect: 'follow',
     headers: {
-      // A descriptive UA with a contact URL is what polite automated access
-      // looks like; we do not attempt to disguise the request.
-      'user-agent':
-        'TLD-Directory-PriceSync/2.0 (https://tld-directory.pages.dev/; automated registrar price sync)',
+      'user-agent': POLITE_USER_AGENT,
       accept: 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8',
       'accept-language': 'en-US,en;q=0.9',
+      ...options.headers,
     },
-    signal: AbortSignal.timeout(timeoutMs),
+    signal: AbortSignal.timeout(options.timeoutMs ?? 30_000),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
   return res.text();
@@ -115,8 +126,7 @@ export async function fetchJson<T>(url: string, timeoutMs = 30_000): Promise<T> 
   const res = await fetch(url, {
     redirect: 'follow',
     headers: {
-      'user-agent':
-        'TLD-Directory-PriceSync/2.0 (https://tld-directory.pages.dev/; automated registrar price sync)',
+      'user-agent': POLITE_USER_AGENT,
       accept: 'application/json',
     },
     signal: AbortSignal.timeout(timeoutMs),

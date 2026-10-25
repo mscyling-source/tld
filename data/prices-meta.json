@@ -1,8 +1,8 @@
 {
-  "last_success_at": "2026-10-24T12:22:35.287Z",
-  "last_attempt_at": "2026-10-24T12:22:35.287Z",
-  "status": "ok",
-  "last_error": null,
+  "last_success_at": "2026-10-25T02:56:19.882Z",
+  "last_attempt_at": "2026-10-25T02:56:19.882Z",
+  "status": "partial",
+  "last_error": "namecheap: missing env: NAMECHEAP_API_USER, NAMECHEAP_API_KEY, NAMECHEAP_USERNAME",
   "coverage": {
     "complete": false,
     "current_sources": [
@@ -17,42 +17,56 @@
     "frozen_sources": [
       "opendomaindata"
     ],
-    "stale_sources": [],
+    "stale_sources": [
+      "namecheap"
+    ],
     "registrars_without_current_evidence": [
       "cloudflare",
       "namecheap",
       "spaceship",
       "squarespace"
     ],
-    "note": "1 source downloaded successfully but carries no evidence newer than 30 days (opendomaindata); no current quote exists for cloudflare, namecheap, spaceship, squarespace — their figures are historical snapshots."
+    "note": "1 source downloaded successfully but carries no evidence newer than 30 days (opendomaindata); 1 source did not deliver usable data (namecheap); no current quote exists for cloudflare, namecheap, spaceship, squarespace — their figures are historical snapshots."
   },
   "counts": {
     "offers": 3549,
     "tlids": 811,
     "registrars": 10,
-    "verified_offers": 2844,
+    "verified_offers": 2845,
     "stale_offers": 681,
-    "recent_offers": 2844,
-    "aging_offers": 18,
+    "recent_offers": 2845,
+    "aging_offers": 17,
     "unknown_offers": 6,
     "by_source": {
-      "dynadot": 621,
+      "dynadot": 622,
       "gandi": 759,
       "ionos": 427,
       "porkbun": 540,
-      "pikkly": 399,
+      "pikkly": 398,
       "hover": 497,
       "bestdomainregistrars": 268,
       "opendomaindata": 38
     },
     "by_verification": {
-      "verified": 2844,
-      "source_snapshot": 699,
+      "verified": 2845,
+      "source_snapshot": 698,
       "model_derived": 0,
       "unverified": 6
     }
   },
   "history": [
+    {
+      "at": "2026-10-25T02:56:19.882Z",
+      "status": "partial",
+      "offers": 3549,
+      "note": "namecheap: missing env: NAMECHEAP_API_USER, NAMECHEAP_API_KEY, NAMECHEAP_USERNAME"
+    },
+    {
+      "at": "2026-10-25T02:55:07.357Z",
+      "status": "partial",
+      "offers": 3549,
+      "note": "dynadot: fetch failed | namecheap: missing env: NAMECHEAP_API_USER, NAMECHEAP_API_KEY, NAMECHEAP_USERNAME"
+    },
     {
       "at": "2026-10-24T12:22:35.287Z",
       "status": "ok",

@@ -227,9 +227,10 @@ export interface PriceSourceInfo {
   /**
    * @deprecated Compatibility alias for `last_successful_fetch_at`. Kept
    * because older consumers read it; never write a timestamp here that is not
-   * a *successful* fetch, or a failed run would look like a fresh one.
+   * a *successful* fetch, or a failed run would look like a fresh one. Null
+   * when the source has never succeeded — an attempt time is not a success.
    */
-  fetched_at: string;
+  fetched_at: string | null;
   /** Oldest observation date carried by the source's rows, when known. */
   oldest_observed_at: string | null;
   status: 'ok' | 'kept-previous' | 'failed' | 'shrunk-kept-previous';

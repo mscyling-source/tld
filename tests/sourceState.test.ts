@@ -20,6 +20,7 @@ import {
   evidenceAdvanced,
   buildSourceLifecycle,
   buildCoverage,
+  previousSuccessfulFetchFrom,
 } from '../scripts/pricing/sourceState.js';
 import type { PriceOffer } from '../src/lib/pricingTypes.js';
 import { RECENT_WITHIN_DAYS, STALE_AFTER_DAYS } from '../src/config/freshness.js';
@@ -170,6 +171,21 @@ describe('source lifecycle', () => {
     expect(failed.evidence_advanced).toBe(false);
   });
 
+  it('never lets an attempt time masquerade as a successful fetch', () => {
+    // The alias is read back by the next run as `previousSuccessfulFetchAt`,
+    // so a non-null value here would permanently mark an unconfigured source
+    // as having succeeded once.
+    const failed = buildSourceLifecycle({
+      ...base,
+      status: 'failed',
+      published: [],
+      previousSuccessfulFetchAt: null,
+      previousPriceEvidenceAt: null,
+    });
+    expect(failed.fetched_at).toBeNull();
+    expect(failed.last_attempt_at).toBe(NOW.toISOString());
+  });
+
   it('carries the retained-row count so a fallback is visible', () => {
     const kept = buildSourceLifecycle({
       ...base,
@@ -260,5 +276,50 @@ describe('coverage verdict', () => {
     expect(coverage.stale_sources).toEqual(['porkbun']);
     expect(coverage.frozen_sources).toEqual([]);
     expect(coverage.complete).toBe(false);
+  });
+});
+
+describe('previousSuccessfulFetchFrom', () => {
+  /** Build a record with ONLY the keys given, so a missing key stays missing. */
+  const record = (over: {
+    last_successful_fetch_at?: string | null;
+    fetched_at?: string | null;
+  }) => over as Parameters<typeof previousSuccessfulFetchFrom>[0];
+
+  it('prefers the explicit lifecycle field', () => {
+    expect(
+      previousSuccessfulFetchFrom(
+        record({
+          last_successful_fetch_at: '2026-10-24T00:00:00.000Z',
+          fetched_at: '2020-01-01T00:00:00.000Z',
+        }),
+      ),
+    ).toBe('2026-10-24T00:00:00.000Z');
+  });
+
+  it('falls back to fetched_at for a dataset written before the field existed', () => {
+    // A legacy record has no lifecycle key at all, so its absence means "not
+    // recorded", not "never succeeded".
+    expect(previousSuccessfulFetchFrom(record({ fetched_at: '2026-10-20T00:00:00.000Z' }))).toBe(
+      '2026-10-20T00:00:00.000Z',
+    );
+  });
+
+  it('keeps a modern record honest: an explicit null means it never succeeded', () => {
+    // This is the regression that let an unconfigured source inherit its own
+    // attempt time as a successful fetch on the following run.
+    expect(
+      previousSuccessfulFetchFrom(
+        record({ last_successful_fetch_at: null, fetched_at: '2026-10-25T02:17:22.449Z' }),
+      ),
+    ).toBeNull();
+  });
+
+  it('returns null for an unknown source', () => {
+    expect(previousSuccessfulFetchFrom(undefined)).toBeNull();
+  });
+
+  it('returns null when a modern record has neither field', () => {
+    expect(previousSuccessfulFetchFrom(record({}))).toBeNull();
   });
 });

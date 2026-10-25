@@ -137,6 +137,16 @@ than 30 days. Re-downloading the same frozen snapshot produces
 `evidence_advanced: false` forever. That is a property of the upstream
 publisher, not of our code, and the only honest response is to say so.
 
+**A source that never succeeded must stay unsuccessful.** The deprecated
+compatibility alias `fetched_at` is written as `last_successful_fetch_at`, and is
+**`null`** when a source has never returned adopted rows. Writing the attempt
+time there instead would let the *next* run read it back as a successful fetch,
+so a permanently-unconfigured source (Namecheap without credentials, say) would
+end up looking like it once worked. `previousSuccessfulFetchFrom` therefore
+distinguishes *absent* (a dataset written before the field existed → fall back
+to `fetched_at`) from *explicitly null* (a modern dataset saying "never
+succeeded" → keep null). Both cases are pinned by tests.
+
 `data/prices-meta.json` carries a matching `coverage` verdict:
 
 ```jsonc
@@ -159,13 +169,15 @@ the collection run succeeded.
 
 ### 4.1 First-party reads → `verified`
 
-All five are read live on every run. Each writes `price_verified_at` = the run
+Five are read live on every run with no credentials. A sixth, Namecheap, is
+first-party but credential-gated and is skipped — not faked — until the
+environment is configured (§14.1). Each writes `price_verified_at` = the run
 clock and `price_observed_at` = the same instant.
 
 | Source | Endpoint | Access notes |
 |---|---|---|
 | **Porkbun** | `api.porkbun.com/api/json/v3/pricing/get` | Official public API, keyless, documented as not requiring auth. |
-| **Dynadot** | `dynadot.com/domain/prices` | Server-rendered Nuxt `__NUXT_DATA__` payload, decoded from devalue. A struck `original_reg_price` above the current price marks a promotion. |
+| **Dynadot** | `dynadot.com/domain/prices` | Server-rendered Nuxt `__NUXT_DATA__` payload, decoded from devalue. A struck `original_reg_price` above the current price marks a promotion. See "Dynadot: Nuxt 4 migration and display currency" below. |
 | **Gandi** | `gandi.net/en-US/domain/tld?prefix=<a–z>` | 27 server-rendered HTML tables, 1 s delay between requests. A `Promo $X $Y` cell is read as current = `$Y`. |
 | **Hover** | `hover.com/domain-pricing` | `data-props` JSON on the page; array shape `[availabilityFlag, register, renewal, transfer, …]`. |
 | **IONOS** | `ionos.com/domains/domain-name-prices` | Next.js `__NEXT_DATA__`; columns `welcomeOffer` (year 1), `specialOffer` (existing customer), `regularRenewalFee`, `domainTransfer`. The bundle price is never used. |
@@ -181,6 +193,32 @@ renewal rate). `promotion_expires_at` is filled **only** from an explicit end
 date the source publishes — never inferred. An expired promotion is rendered as
 `Promotion ended` and is excluded from the "cheapest" badge.
 
+**Dynadot: Nuxt 4 migration and display currency.** On 2026-10-25 Dynadot
+moved from a Nuxt 2 payload to a Nuxt 4 one, which broke the adapter in two
+independent ways. Both are now covered by tests against a real captured
+response.
+
+1. *Payload shape.* The root is no longer a bare object; it is wrapped
+   (`[["ShallowReactive", 1], {...}]`), and so are nested values
+   (`["Ref", 7]`, `["EmptyRef"]`). `decodeDevalue` unwraps a fixed allow-list
+   of Vue/devalue tags. An unknown tag is treated as ordinary data rather than
+   silently unwrapped, so a real array that merely starts with a capitalised
+   string cannot be mistaken for a wrapper.
+2. *Currency.* The page renders in the visitor's selected currency, and with no
+   preference the server picks one by geography — the same URL serves `$10.88`
+   to one network and `€9.96` to another. The adapter sends the site's own
+   `glbl_curr=USD` cookie (the cookie the page itself sets when a visitor picks
+   US Dollar) and then **verifies** the payload really is priced in USD before
+   publishing anything, using the row's declared `google_data.currency` and
+   falling back to the printed symbol. A non-USD payload throws with the
+   currencies it found (`currencies present: EUR×820`) and the source keeps its
+   previous rows. A EUR figure is never converted, and never relabelled.
+
+Verified against the live page on 2026-10-25: with the cookie the adapter
+extracts 816 rows and `com` reads `10.88 / 10.88 / 10.88` — identical to the
+USD figures the previous dataset held, confirming the cookie selects a currency
+rather than changing the price.
+
 ### 4.2 Openly licensed datasets → `source_snapshot`
 
 | Source | Licence | Cadence / notes |
@@ -195,39 +233,79 @@ fails the workflow's dataset check.
 
 ### 4.3 Evaluated and rejected
 
-Measured again on **2026-10-24** with a descriptive user agent and no
-challenge-solving. Every status below is an observed HTTP result, not an
-assumption carried over from an earlier note.
+Re-measured on **2026-10-25** with a descriptive user agent and no
+challenge-solving. Every HTTP status below is an observed result from that day,
+not an assumption carried over from an earlier note; the API conclusions are
+quoted from the providers' own documentation, also re-read on 2026-10-25.
 
-| Source | Observed | Why not used |
+| Source | Observed 2026-10-25 | Why not used |
 |---|---|---|
-| **Spaceship** | `GET /pricing/` → **403** (Cloudflare "Just a moment…" interstitial) | Bot challenge. Reading it would need JavaScript execution or challenge evasion, which the access policy forbids. No public price API. |
-| **Namecheap** | `GET /domains/domain-pricing/` → **403**; API docs → **403** | Same interstitial. The documented XML API (`namecheap.users.getPricing`) needs `ApiUser` + `ApiKey` + the calling IP allow-listed on the account. Blocked on credentials, not on code. |
-| **GoDaddy** | `GET /tlds/com-domain` → **403**, `robots.txt` → **403** | Same interstitial. The public API needs a key/secret pair; no documented per-TLD price endpoint exists. |
-| **Cloudflare Registrar** | `domains.cloudflare.com/api/tlds` → **403**; marketing page carries no figures | Sells at cost and publishes no per-TLD price list. Pikkly's licensed, normalised copy is the only machine-readable source, which is why Cloudflare rows are `source_snapshot` and can go stale. |
-| **Squarespace Domains** | `squarespace.com/domain-pricing` → **404**; `domains.squarespace.com` → 200 but is a search page with no price table | No published list. Upstream marks its rows `sample`, so they are quarantined as `unverified`. |
+| **Spaceship** | `GET /pricing/` → **403**, `GET /domain-pricing/` → **403** (Cloudflare "Just a moment…" interstitial) | Bot challenge. Reading it would need JavaScript execution or challenge evasion, which the access policy forbids. The official API has no price catalogue — see below. |
+| **Namecheap** | `GET /domains/domain-pricing/` → **403**; API docs → **403** | Same interstitial on the website. The documented XML API *is* usable and is implemented — see §14. |
+| **GoDaddy** | `GET /tlds/com-domain` → **403**, `robots.txt` → **403** | Same interstitial on the website. The official API cannot supply a catalogue — see below. |
+| **Cloudflare Registrar** | `domains.cloudflare.com/api/tlds` → **403**; marketing page carries no figures | Sells at cost and publishes no per-TLD price list, and the Registrar API has no price endpoint — see below. |
+| **Squarespace Domains** | `squarespace.com/domain-pricing` → 301 → `www.squarespace.com/domain-pricing` → **404** (356 KB 404 page, no challenge, no figures); `domains.squarespace.com/domain-pricing` → **404** | No published list anywhere. Upstream marks its rows `sample`, so they are quarantined as `unverified`. |
 | **name.com / DNSimple APIs** | — | Require account keys. Adapter-ready when a key exists. |
 | **Commercial pricing APIs** | — | Paid; no budget approved. The adapter registry keeps them pluggable. |
-| **Cloudflare community dumps** | — | Reachable only via Pikkly's licensed, normalised copy — preferred over mirroring a dated GitHub dump. |
+| **Cloudflare community dumps** | Repo last pushed **2026-08-04** | Reachable only via Pikkly's licensed, normalised copy — preferred over mirroring a dated GitHub dump. The upstream tracker has not been updated since. |
 | **Comparison-site scraping** | — | Violates their terms; the sanctioned machine-readable alternatives above are used instead. |
 | **Per-domain quote scraping** | — | Rejected by policy: anti-bot circumvention, ToS risk, and it produces a price for a *name*, not a published list price. |
 
-**What the frozen sources actually cost us.** On 2026-10-24 the five
+**What the three official APIs actually offer** (documentation re-read
+2026-10-25; quoted verbatim):
+
+- **Spaceship** (`docs.spaceship.dev`) exposes domain management, availability
+  and settings endpoints only. There is no TLD price catalogue. The only price
+  fields anywhere are `premiumPricing[].{operation,price,currency}` inside an
+  availability response, and the documented example shows only
+  `"operation": "register"` — nothing guarantees a renewal or transfer figure.
+  Rate limits are 30 requests / 30 s for availability checks. **Conclusion: a
+  per-domain availability quote is not a published TLD price, so no adapter is
+  built.**
+- **GoDaddy** Domains v3 (`developer.godaddy.com/doc/endpoint/domains`) is a
+  quote-execute model: discover → quote → register → poll. The docs state
+  *"Prices are indicative; locked pricing is only established at quote time"*
+  and, under Conventions, *"Availability and suggestions return indicative
+  prices; quotes lock the price."* There is no TLD catalogue endpoint; renewals
+  and transfers are not even in v3. Rate limit 60 req/min per credential.
+  **Conclusion: an indicative per-domain quote is not a catalogue price, so no
+  adapter is built.**
+- **Cloudflare Registrar** (`developers.cloudflare.com/api/resources/registrar/`)
+  returns pricing only per queried domain: `domain-search` / `domain-check`
+  give `pricing.{currency, registration_cost, renewal_cost}`, and
+  `domain-transfer-check` gives `pricing.{currency, transfer_cost,
+  renewal_cost}`. The `extensions` endpoint returns `ExtensionListResponse`
+  with `metadata` and the registration/transfer **schemas** — no price fields.
+  Every endpoint is scoped to `{account_id}` and needs a token with Registrar
+  permissions plus a billing profile. **Conclusion: no catalogue endpoint; a
+  per-domain quote would need 811 queries against an account-scoped API.**
+
+**Alternative lawful sources for Cloudflare and Squarespace** (checked
+2026-10-25, including actual record dates rather than file mtimes):
+
+| Provider | Candidate source | Rows | Newest evidence | Verdict |
+|---|---|---|---|---|
+| Cloudflare | Pikkly (CC BY 4.0), traced to the `CF-Registrar-Tracker` community dump | 387 | 2026-08-04 | Best available, but the upstream repo's last push is 2026-08-04 — the tracker itself has stopped. |
+| Cloudflare | Open Domain Data (CC BY 4.0), dataset `last_checked` 2026-08-19 | 7 | 2026-06-01 | Fewer rows and older than Pikkly. |
+| Squarespace | Open Domain Data | 6 | 2026-05-12 | Marked `sample` by the publisher; already quarantined as `unverified`. |
+| Squarespace | — | — | — | No lawful machine-readable source exists. |
+
+**What the frozen sources actually cost us.** On 2026-10-25 the
 third-party-only registrars carried these evidence dates, none of which our
 pipeline can advance:
 
-| Registrar | Published rows | Newest evidence | Age at 2026-10-24 | Upstream that owns the date |
+| Registrar | Published rows | Newest evidence | Age at 2026-10-25 | Upstream that owns the date |
 |---|---|---|---|---|
-| Cloudflare Registrar | 387 | 2026-08-04 | 81 days | Pikkly (community dump date) |
-| Namecheap | 32 | 2026-08-19 | 66 days | Open Domain Data (monthly) |
-| Spaceship | 262 | 2026-09-02 | 52 days | Best Domain Registrars |
-| GoDaddy | 6 | 2026-10-21 | 3 days | Best Domain Registrars |
+| Cloudflare Registrar | 387 | 2026-08-04 | 82 days | Pikkly (community dump date) |
+| Namecheap | 32 | 2026-08-19 | 67 days | Open Domain Data (monthly) |
+| Spaceship | 262 | 2026-09-02 | 53 days | Best Domain Registrars |
+| GoDaddy | 6 | 2026-10-21 | 4 days | Best Domain Registrars |
 | Squarespace Domains | 6 | 2026-05-12 (undated) | — | Open Domain Data (placeholder) |
 
 These are shown as **Stale**/**Unverified**, excluded from cheapest-price
 ranking, and listed under "Registrars with no current quote" in every run
-summary. No first-party adapter is shipped for them because none could be
-validated against a live response — see §14.
+summary. Namecheap is the only one of them with a lawful, implemented path to
+current prices — see §14.
 
 ## 5. Merge: how conflicts are resolved
 
@@ -339,6 +417,10 @@ changes.
     a collapse is an integrity event, not a market event.
 11. The report's per-registrar breakdown must account for every published offer
     exactly once.
+12. `fetched_at` (the deprecated alias) is `null` for a source that has never
+    succeeded, so the next run cannot read an attempt time back as a successful
+    fetch. A legacy dataset that predates the lifecycle fields still falls back
+    to `fetched_at`, because there it meant a *successful* fetch.
 
 ## 10. Three-year cost
 
@@ -355,11 +437,13 @@ the 3-year column, which is driven by standard renewal prices.
 ```
 scripts/pricing/
   http.ts                     # dependency-free fetch/CSV/HTML helpers, shared UA
+  xml.ts                      # strict sax-based XML reader (Namecheap's xml.response)
   sources/porkbun.ts          # one file per provider: pure parse* + fetch*
   sources/dynadot.ts          # (parse* is fixture-testable, fetch* does I/O)
   sources/gandi.ts
   sources/hover.ts
   sources/ionos.ts
+  sources/namecheap.ts        # credential-gated; skipped (not faked) without env
   sources/bestdomainregistrars.ts
   sources/pikkly.ts
   sources/opendomaindata.ts
@@ -370,6 +454,7 @@ scripts/pricing/
   migrate.ts                  # v1 → v2, idempotent
   report.ts                   # JSON + Markdown monitoring report
 scripts/sync-prices.ts        # orchestration, guards, atomic writes, meta, report
+scripts/probe-source.ts       # live credential probe: validate a gated source in one command
 ```
 
 `SourceAdapter` = `{ id, name, url, license, attribution, priority,
@@ -398,20 +483,26 @@ real agreement; rankings never read that field.
 
 `.github/workflows/sync-prices.yml` runs daily (04:45 UTC) and:
 
-1. syncs the sources above (`npm run sync:prices`),
-2. verifies the dataset — schema v2, ≥ 500 offers, CC BY attribution present,
+1. syncs the sources above (`npm run sync:prices`), passing the optional
+   Namecheap secrets through — an unset secret is treated as "not configured",
+   so adding these lines changes nothing for a repository without them,
+2. when a Namecheap key *is* configured, runs `npm run probe:source namecheap`
+   as a non-fatal step that appends its verdict to the run log (this is the
+   fastest way to see whether the credentials and the IP allowlist actually
+   work),
+3. verifies the dataset — schema v2, ≥ 500 offers, CC BY attribution present,
    the provenance invariants (a `verified` row has a `price_verified_at`, a
    non-verified row does not, and `last_checked` equals the evidence date), the
    per-source lifecycle invariants (§3.5: every source has an attempt time, a
    success time for `status: ok`, an `evidence_state`, and no offer dated later
    than the read that produced it), and the coverage verdict,
-3. appends `data/price-sync-report.md` to the run summary and uploads the report
+4. appends `data/price-sync-report.md` to the run summary and uploads the report
    as an artefact,
-4. runs the test suite,
-5. commits `data/prices.json`, `data/prices-meta.json` and the two report files
+5. runs the test suite,
+6. commits `data/prices.json`, `data/prices-meta.json` and the two report files
    to `main` **only when the dataset changed**,
-6. builds with `PUBLIC_SITE_URL=https://tld-directory.pages.dev`,
-7. publishes `dist/` with
+7. builds with `PUBLIC_SITE_URL=https://tld-directory.pages.dev`,
+8. publishes `dist/` with
    `wrangler pages deploy --project-name tld-directory --branch main`,
 8. verifies the live site serves the dataset it just built.
 
@@ -421,31 +512,100 @@ fails, the deploy never runs and the site keeps serving the last successful
 dataset — degraded sources are reported in the report and the run summary, never
 silently dropped. Setup, secrets and recovery recipes: `docs/DEPLOYMENT.md` §3.
 
-## 14. Credential-gated providers — what is required, and why no adapter ships yet
+## 14. Credential-gated providers — what is required, and why some have no adapter
 
-Four of the five stale registrars could in principle be read first-party, but
-only through an authenticated API. **No adapter is shipped for them**, because
-none could be validated against a live response: the documentation endpoints are
-themselves behind the same bot challenge (`namecheap.com/support/api/...` →
-HTTP 403 on 2026-10-24). Shipping an unvalidated parser would mean publishing
-guesses about a paid API's response shape — and, for Namecheap, guessing whether
-`Price` or `YourPrice` is the retail figure would risk publishing a reseller
-rate as a public price. That is exactly the kind of fabrication this pipeline
-exists to prevent.
+Of the five registrars that cannot be read first-party, **Namecheap has a
+complete, implemented adapter**; the other four have been investigated and have
+no lawful path to a current price catalogue. Nothing below is claimed to work
+without a live, validated response.
 
-What each one needs, precisely:
+### 14.1 Namecheap — adapter implemented, awaiting credentials
 
-| Registrar | Credential / action required | Env vars (when implemented) | Notes |
+`scripts/pricing/sources/namecheap.ts` calls the documented
+`namecheap.users.getPricing` XML API (`api.namecheap.com/xml.response`), three
+times — `ActionName=REGISTER`, `RENEW`, `TRANSFER` — and merges the results into
+one offer per TLD.
+
+**Status: implemented but never validated against a live response.** No
+credential exists yet, so there is no evidence the documented schema matches
+what the API returns. That is reported as a blocker, not as a fix.
+
+What the adapter does, precisely:
+
+- Publishes **`Price` only** — the documented "final price (it can be from
+  regular, userprice, special price, promo price, tier price)". It **never**
+  publishes `YourPrice` ("the user's price for the product"), which for a
+  reseller account is the cost, not a retail quote. When `Price` is empty the
+  row is skipped and counted; it is never back-filled from `YourPrice` or
+  `RegularPrice`.
+- Reads only `Duration="1"` + `DurationType="YEAR"`, and only `Currency="USD"`.
+  A missing or non-USD currency skips the row rather than assuming.
+- Fails closed: `Status != "OK"` throws with the documented error number; a
+  missing `UserGetPricingResult` throws; a response with no usable 1-year USD
+  price throws; a catalogue with fewer than 100 registration prices throws
+  rather than replacing a working dataset.
+- On an auth failure the error message carries the egress IPv4, because
+  "which IP do I allowlist?" is the single most common cause of failure here.
+
+**What you need to supply:**
+
+| Requirement | Detail |
+|---|---|
+| `NAMECHEAP_API_USER` | The API user (usually the account username). Enable in Profile → Tools → API Access, and tick the API permission. |
+| `NAMECHEAP_API_KEY` | The key generated on that page. Stored as a GitHub Actions repository secret. |
+| `NAMECHEAP_USERNAME` | The username the command executes for (usually the same as the API user). |
+| A fixed egress IPv4 on the account allowlist | **The hard requirement.** Namecheap rejects any IP that is not allow-listed. |
+| `NAMECHEAP_CLIENT_IP` | Optional. Only needed when the address Namecheap should see is not the machine's own default egress (e.g. a fixed-IP proxy). |
+
+**The GitHub-hosted-runner problem.** The workflow runs on GitHub's hosted
+runners, whose egress addresses come from a rotating Azure pool. Namecheap's
+allowlist is per-IP (or per-range), so a hosted runner cannot be allow-listed
+reliably. Two workable options:
+
+1. **Self-hosted runner** with a static IP — add that one address to the
+   allowlist. Simplest and cheapest if a machine with a stable IP already
+   exists.
+2. **Fixed-IP egress proxy** — set `HTTPS_PROXY`/`HTTP_PROXY` for the sync step
+   (Node's `fetch` honours them via `undici`'s proxy support) and set
+   `NAMECHEAP_CLIENT_IP` to the proxy's address.
+
+Do **not** put a real IP address or a key in the repository; both belong in
+Actions secrets.
+
+**Validating it yourself, in one command.** Once the three secrets exist and the
+allowlist is set:
+
+```bash
+NAMECHEAP_API_USER=… NAMECHEAP_API_KEY=… NAMECHEAP_USERNAME=… \
+  NAMECHEAP_CLIENT_IP=<the allowlisted address> \
+  npm run probe:source namecheap --raw ./tmp/namecheap
+```
+
+`npm run probe:source` runs the production request path, prints the TLD count
+per action with skip reasons, prints sample prices, and dumps the three response
+bodies so the schema can be checked. The API key is redacted from every log
+line. Exit code 0 with `VERDICT: validated` is the evidence needed before the
+source can be called "fixed"; a `#1011150` / `#1017105` error means the calling
+IP is not allow-listed, and the detected address is printed alongside it.
+
+The workflow passes the four secrets through to the sync and, when a key is
+present, runs the probe as a non-fatal step that appends its verdict to the run
+log. A missing secret arrives as an empty string, which `missingEnvFor` treats
+as absent: the source reports `kept-previous`, keeps its previous 32 rows, and
+publishes nothing.
+
+### 14.2 The other four — investigated, and why no adapter ships
+
+| Registrar | Credential / action required | Env vars | Why no adapter |
 |---|---|---|---|
-| **Namecheap** | API access enabled on the account, then the **calling IP allow-listed**. GitHub-hosted runners use rotating egress IPs, so this needs a self-hosted runner or a fixed-IP proxy. | `NAMECHEAP_API_USER`, `NAMECHEAP_API_KEY`, `NAMECHEAP_USERNAME` | `namecheap.users.getPricing`, `ProductType=DOMAIN`, categories `register`/`renew`/`transfer`. Must use the retail `Price` attribute, never `YourPrice`. |
-| **Spaceship** | Reseller API key, if the account has API access. | `SPACESHIP_API_KEY`, `SPACESHIP_API_SECRET` | No public price endpoint; the storefront is challenge-protected. |
-| **GoDaddy** | API key + secret (production, not OTE). | `GODADDY_API_KEY`, `GODADDY_API_SECRET` | No documented per-TLD price endpoint; would need to be confirmed before any adapter is written. |
-| **Cloudflare Registrar** | Not obtainable via API. Registrar API lists *your* domains, not prices. | — | Would require a licensed wholesale-price dataset. |
-| **Squarespace** | None available. | — | No published list; upstream data is placeholder. |
+| **Spaceship** | Reseller API key, if the account has API access. | `SPACESHIP_API_KEY`, `SPACESHIP_API_SECRET` | The API has **no TLD price catalogue**. Prices appear only as `premiumPricing[]` inside a per-domain availability response, and the docs only show `operation: "register"` — nothing guarantees a renewal or transfer figure. A reseller key does not imply access to a public catalogue. |
+| **GoDaddy** | API key + secret (production, not OTE). | `GODADDY_API_KEY`, `GODADDY_API_SECRET` | Domains v3 is quote-execute and the docs state *"Prices are indicative; locked pricing is only established at quote time."* There is no per-TLD catalogue endpoint, and renewals/transfers are not in v3. Treating an availability quote as a published catalogue price is exactly what this pipeline must not do. |
+| **Cloudflare Registrar** | Not obtainable via API. | — | Every Registrar endpoint is account-scoped and returns pricing only per queried domain; `extensions` returns schemas, not prices. No lawful catalogue exists, and the community tracker that Pikkly mirrors has not been updated since 2026-08-04. |
+| **Squarespace Domains** | None available. | — | No published price list (404) and no API. Upstream data is placeholder and already quarantined as `unverified`. |
 
 Once credentials exist, the adapter shape is fixed by
 `SourceAdapter.requiresEnv`: a missing var marks that source `kept-previous`,
-keeps its previous rows, and never blocks the other seven sources. The first run
-with real credentials must be inspected against the run summary before the
-result is trusted — the adapter is only "fixed" once a live response has been
-parsed into usable quotes.
+keeps its previous rows, and never blocks the other sources. The first run with
+real credentials must be inspected against the run summary before the result is
+trusted — a source is only "fixed" once a live response has been parsed into
+usable quotes.

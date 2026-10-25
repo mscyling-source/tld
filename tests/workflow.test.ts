@@ -1274,3 +1274,32 @@ describe('publishing safeguards are retained', () => {
     expect(wf.concurrency['cancel-in-progress']).toBe(false);
   });
 });
+
+describe('credential-gated sources are wired to secrets', () => {
+  const syncStepRun = syncStep('Run price sync');
+
+  it('passes the Namecheap secrets through to the sync', () => {
+    // Without this, adding secrets to the repository would change nothing and
+    // the source would silently stay unconfigured forever.
+    const env = (syncStepRun.env ?? {}) as Record<string, string>;
+    expect(env.NAMECHEAP_API_USER).toBe('${{ secrets.NAMECHEAP_API_USER }}');
+    expect(env.NAMECHEAP_API_KEY).toBe('${{ secrets.NAMECHEAP_API_KEY }}');
+    expect(env.NAMECHEAP_USERNAME).toBe('${{ secrets.NAMECHEAP_USERNAME }}');
+    expect(env.NAMECHEAP_CLIENT_IP).toBe('${{ secrets.NAMECHEAP_CLIENT_IP }}');
+  });
+
+  it('never writes a secret into the workflow body', () => {
+    expect(raw).not.toMatch(/NAMECHEAP_API_KEY:\s*[^\s$]/);
+    expect(raw).not.toMatch(/NAMECHEAP_API_KEY:\s*\${{(?!\s*secrets\.)/);
+  });
+
+  it('probes the live API only when a key is configured, and never fatally', () => {
+    const probe = findStep(syncJob, s => s.name === 'Probe Namecheap credentials');
+    expect(probe).toBeDefined();
+    expect(String(probe.if)).toContain("env.NAMECHEAP_API_KEY != ''");
+    expect(probe['continue-on-error']).toBe(true);
+    expect(String(probe.run)).toContain('probe:source namecheap');
+    // The probe must not be able to touch the published dataset.
+    expect(String(probe.run)).not.toMatch(/sync:prices|data\//);
+  });
+});

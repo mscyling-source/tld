@@ -174,10 +174,35 @@ export function buildSourceLifecycle(input: SourceLifecycleInput): SourceLifecyc
     attempted: input.attempted,
     parsed: input.parsed,
     rejected_total: input.rejectedTotal,
-    // Compatibility alias: only ever a *successful* fetch time.
-    fetched_at: lastSuccessful ?? input.attemptedAt,
+    // Compatibility alias. Null when this source has never succeeded: writing
+    // the attempt time here would let the *next* run read it back as a
+    // successful fetch, which is precisely the fake freshness this field is
+    // supposed to prevent.
+    fetched_at: lastSuccessful,
     oldest_observed_at: oldest,
   };
+}
+
+/**
+ * The last time a source *successfully* fetched, as recorded by the previous
+ * dataset.
+ *
+ * The distinction that matters is *absent* versus *null*:
+ *
+ *   - a dataset written before `last_successful_fetch_at` existed has no such
+ *     property at all, and only carries `fetched_at`, which was already
+ *     defined as a successful fetch time — so it is a legitimate fallback;
+ *   - a dataset written since carries an explicit `null` for a source that has
+ *     never worked, and that null must survive. Reading an attempt time back
+ *     as a success is exactly how a permanently-unconfigured source ends up
+ *     looking like it once worked.
+ */
+export function previousSuccessfulFetchFrom(
+  info: Pick<PriceSourceInfo, 'last_successful_fetch_at' | 'fetched_at'> | undefined,
+): string | null {
+  if (!info) return null;
+  if (info.last_successful_fetch_at !== undefined) return info.last_successful_fetch_at;
+  return info.fetched_at ?? null;
 }
 
 /**

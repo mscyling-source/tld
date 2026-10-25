@@ -29,6 +29,14 @@ const daysSince = (value: string | null): number | null => {
   if (Number.isNaN(t)) return null;
   return Math.max(0, Math.round((Date.now() - t) / 86_400_000));
 };
+
+// Sources that are registered but produced nothing usable this run. Shown by
+// name so a configured-but-not-yet-credentialed source cannot be mistaken for
+// a working one.
+const notUpdated = (stats?.sources ?? []).filter(s => s.status !== 'ok');
+const notUpdatedNote = notUpdated
+  .map(s => `${s.name} — ${s.status}${s.error ? ` (${s.error})` : ''}`)
+  .join('; ');
 ---
 
 <Layout
@@ -245,7 +253,10 @@ const daysSince = (value: string | null): number | null => {
               {stats.sources.map(s => (
                 <tr>
                   <td>{s.name}</td>
-                  <td>{s.verification_status === 'verified' ? 'First-party' : 'Snapshot'}</td>
+                  <td>
+                    {s.verification_status === 'verified' ? 'First-party' : 'Snapshot'}
+                    {s.status === 'ok' ? '' : ` — ${s.status}`}
+                  </td>
                   <td>{utcDay(s.last_successful_fetch_at)}</td>
                   <td>
                     {utcDay(s.price_evidence_at)}
@@ -259,6 +270,13 @@ const daysSince = (value: string | null): number | null => {
               ))}
             </tbody>
           </table>
+        )}
+        {notUpdated.length > 0 && (
+          <p>
+            <strong>Sources that delivered nothing this run.</strong> {notUpdatedNote}. Any rows they
+            previously contributed are kept as-is and are never re-dated, so a failed or
+            not-yet-configured source cannot make old prices look fresh.
+          </p>
         )}
         {stats && stats.sources.some(s => s.evidence_state === 'frozen') && (
           <p>

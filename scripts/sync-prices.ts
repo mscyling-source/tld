@@ -35,6 +35,7 @@ import {
   buildCoverage,
   buildSourceLifecycle,
   newestEvidenceDate,
+  previousSuccessfulFetchFrom,
 } from './pricing/sourceState.js';
 import {
   calcThreeYear,
@@ -109,6 +110,17 @@ async function atomicWrite(path: string, value: unknown): Promise<void> {
   await rename(tmp, path);
 }
 
+/**
+ * The last time this source *successfully* fetched, as recorded by the
+ * previous dataset.
+ *
+ * A dataset written before `last_successful_fetch_at` existed only carries
+ * `fetched_at`, which was already defined as a successful fetch time, so it is
+ * a legitimate fallback. A dataset written since carries `null` for a source
+ * that never worked, and that null must survive — reading an attempt time back
+ * as a success is exactly how a permanently-unconfigured source ends up
+ * looking like it once worked.
+ */
 /** Run one adapter with all guards; never throws. */
 async function runSource(
   adapter: SourceAdapter,
@@ -121,11 +133,7 @@ async function runSource(
   const previous = previousBySource.get(adapter.id) ?? [];
   const previousInfo = previousSources.get(adapter.id);
 
-  // A previous dataset written before this field existed only has `fetched_at`,
-  // which was already defined as a *successful* fetch time. Fall back to it
-  // rather than inventing a value.
-  const previousSuccessfulFetchAt =
-    previousInfo?.last_successful_fetch_at ?? previousInfo?.fetched_at ?? null;
+  const previousSuccessfulFetchAt = previousSuccessfulFetchFrom(previousInfo);
   // Same for the evidence date: derive it from the rows themselves when the
   // previous file predates the per-source field.
   const previousPriceEvidenceAt =

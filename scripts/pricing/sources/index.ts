@@ -16,6 +16,8 @@
  *       gandi        official price list, server-rendered table
  *       hover        official price page, embedded JSON
  *       ionos        official price list, embedded JSON
+ *       namecheap    official API — needs a key and an allowlisted egress IP,
+ *                    so it is skipped (not faked) until those exist
  *   - Third-party snapshots → `source_snapshot`. Downloaded daily, but the
  *     dates inside them are the dataset's own observation dates:
  *       bestdomainregistrars  CC BY 4.0, carries a verification taxonomy
@@ -32,6 +34,11 @@ import { DYNADOT_SOURCE, fetchDynadot } from './dynadot.js';
 import { GANDI_SOURCE, fetchGandi } from './gandi.js';
 import { HOVER_SOURCE, fetchHover } from './hover.js';
 import { IONOS_SOURCE, fetchIonos } from './ionos.js';
+import {
+  NAMECHEAP_REQUIRED_ENV,
+  NAMECHEAP_SOURCE,
+  fetchNamecheap,
+} from './namecheap.js';
 import { BDR_SOURCE, fetchBdr } from './bestdomainregistrars.js';
 import { PIKKLY_SOURCE, fetchPikkly } from './pikkly.js';
 import { ODD_SOURCE, fetchOdd } from './opendomaindata.js';
@@ -74,6 +81,9 @@ export const sourceAdapters: SourceAdapter[] = [
   adapter(GANDI_SOURCE, now => fetchGandi(now)),
   adapter(HOVER_SOURCE, now => fetchHover(now)),
   adapter(IONOS_SOURCE, now => fetchIonos(now)),
+  // Credential-gated: without the env vars this source reports itself as
+  // unconfigured and keeps its previous rows, so adding it cannot break a run.
+  adapter(NAMECHEAP_SOURCE, now => fetchNamecheap(now), NAMECHEAP_REQUIRED_ENV),
   // Openly licensed snapshots.
   adapter(BDR_SOURCE, () => fetchBdr()),
   adapter(PIKKLY_SOURCE, () => fetchPikkly()),

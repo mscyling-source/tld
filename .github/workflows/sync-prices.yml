@@ -78,9 +78,33 @@ jobs:
 
       - name: Run price sync
         id: sync
+        # Optional, credential-gated sources. An unset secret arrives as an
+        # empty string, which `missingEnvFor` treats as absent: the source
+        # reports itself unconfigured, keeps its previous rows and publishes
+        # nothing. Adding these lines therefore cannot change a run that has
+        # no credentials configured.
+        env:
+          NAMECHEAP_API_USER: ${{ secrets.NAMECHEAP_API_USER }}
+          NAMECHEAP_API_KEY: ${{ secrets.NAMECHEAP_API_KEY }}
+          NAMECHEAP_USERNAME: ${{ secrets.NAMECHEAP_USERNAME }}
+          NAMECHEAP_CLIENT_IP: ${{ secrets.NAMECHEAP_CLIENT_IP }}
         run: |
           npm run sync:prices 2>&1 | tee sync-prices-output.log
           echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      # When Namecheap credentials ARE configured, this says whether they
+      # actually work. It is deliberately non-fatal: the sync above already
+      # degrades safely, and the useful output here is a diagnosis ("your IP is
+      # not allowlisted") rather than a red X. It never writes to data/.
+      - name: Probe Namecheap credentials
+        if: always() && env.NAMECHEAP_API_KEY != ''
+        continue-on-error: true
+        env:
+          NAMECHEAP_API_USER: ${{ secrets.NAMECHEAP_API_USER }}
+          NAMECHEAP_API_KEY: ${{ secrets.NAMECHEAP_API_KEY }}
+          NAMECHEAP_USERNAME: ${{ secrets.NAMECHEAP_USERNAME }}
+          NAMECHEAP_CLIENT_IP: ${{ secrets.NAMECHEAP_CLIENT_IP }}
+        run: npm run probe:source namecheap 2>&1 | tee -a sync-prices-output.log
 
       # `always()` — the log and the report are most valuable exactly when the
       # sync or the dataset verification failed, so they must be uploaded even
