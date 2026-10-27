@@ -1,6 +1,6 @@
 {
-  "last_success_at": "2026-10-26T10:30:07.577Z",
-  "last_attempt_at": "2026-10-26T10:30:07.577Z",
+  "last_success_at": "2026-10-27T10:02:12.231Z",
+  "last_attempt_at": "2026-10-27T10:02:12.231Z",
   "status": "partial",
   "last_error": "namecheap: missing env: NAMECHEAP_API_USER, NAMECHEAP_API_KEY, NAMECHEAP_USERNAME",
   "coverage": {
@@ -55,6 +55,12 @@
     }
   },
   "history": [
+    {
+      "at": "2026-10-27T10:02:12.231Z",
+      "status": "partial",
+      "offers": 3549,
+      "note": "namecheap: missing env: NAMECHEAP_API_USER, NAMECHEAP_API_KEY, NAMECHEAP_USERNAME"
+    },
     {
       "at": "2026-10-26T10:30:07.577Z",
       "status": "partial",
