@@ -1,12 +1,11 @@
 {
-  "last_success_at": "2026-10-27T10:02:12.231Z",
-  "last_attempt_at": "2026-10-27T10:02:12.231Z",
+  "last_success_at": "2026-10-28T10:48:32.648Z",
+  "last_attempt_at": "2026-10-28T10:48:32.648Z",
   "status": "partial",
   "last_error": "namecheap: missing env: NAMECHEAP_API_USER, NAMECHEAP_API_KEY, NAMECHEAP_USERNAME",
   "coverage": {
     "complete": false,
     "current_sources": [
-      "bestdomainregistrars",
       "dynadot",
       "gandi",
       "hover",
@@ -18,6 +17,7 @@
       "opendomaindata"
     ],
     "stale_sources": [
+      "bestdomainregistrars",
       "namecheap"
     ],
     "registrars_without_current_evidence": [
@@ -26,7 +26,7 @@
       "spaceship",
       "squarespace"
     ],
-    "note": "1 source downloaded successfully but carries no evidence newer than 30 days (opendomaindata); 1 source did not deliver usable data (namecheap); no current quote exists for cloudflare, namecheap, spaceship, squarespace — their figures are historical snapshots."
+    "note": "1 source downloaded successfully but carries no evidence newer than 30 days (opendomaindata); 2 sources did not deliver usable data (namecheap, bestdomainregistrars); no current quote exists for cloudflare, namecheap, spaceship, squarespace — their figures are historical snapshots."
   },
   "counts": {
     "offers": 3549,
@@ -55,6 +55,12 @@
     }
   },
   "history": [
+    {
+      "at": "2026-10-28T10:48:32.648Z",
+      "status": "partial",
+      "offers": 3549,
+      "note": "namecheap: missing env: NAMECHEAP_API_USER, NAMECHEAP_API_KEY, NAMECHEAP_USERNAME"
+    },
     {
       "at": "2026-10-27T10:02:12.231Z",
       "status": "partial",
