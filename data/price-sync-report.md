@@ -1,8 +1,8 @@
 # Registrar price sync report
 
-- Run: `2026-10-29T11:05:19.341Z`
-- Dataset: `2026-10-29T11:05:19.341Z`
-- Offers: **3550** across **811** TLDs, **10** registrars (previous run: 3549, 0%)
+- Run: `2026-10-30T11:01:16.905Z`
+- Dataset: `2026-10-30T11:01:16.905Z`
+- Offers: **3550** across **811** TLDs, **10** registrars (previous run: 3550, 0%)
 - Verification: Verified 2846 · Snapshot 698 · Modelled 0 · Unverified 6
 - Freshness: Recently verified 2846 · Verification not recent 17 · Stale 681 · Unverified 6
 - Oldest evidence date: `2026-05-12`
@@ -12,28 +12,28 @@
 
 | Source | Tier | Fetch | Attempted | Parsed | Rejected | Published | Retained | Last attempt (UTC) | Last successful fetch (UTC) | Newest evidence | Previous | New evidence? | Evidence state |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| porkbun | Verified | ok | 913 | 541 | 372 | 541 | 0 | 2026-10-29 11:05:19Z | 2026-10-29 11:05:19Z | 2026-10-29 11:05:19Z | 2026-10-28 10:48:32Z | yes | current |
-| dynadot | Verified | ok | 816 | 622 | 194 | 622 | 0 | 2026-10-29 11:05:19Z | 2026-10-29 11:05:19Z | 2026-10-29 11:05:19Z | 2026-10-28 10:48:32Z | yes | current |
-| gandi | Verified | ok | 853 | 759 | 94 | 759 | 0 | 2026-10-29 11:05:19Z | 2026-10-29 11:05:19Z | 2026-10-29 11:05:19Z | 2026-10-28 10:48:32Z | yes | current |
-| hover | Verified | ok | 514 | 497 | 17 | 497 | 0 | 2026-10-29 11:05:19Z | 2026-10-29 11:05:19Z | 2026-10-29 11:05:19Z | 2026-10-28 10:48:32Z | yes | current |
-| ionos | Verified | ok | 431 | 427 | 4 | 427 | 0 | 2026-10-29 11:05:19Z | 2026-10-29 11:05:19Z | 2026-10-29 11:05:19Z | 2026-10-28 10:48:32Z | yes | current |
-| namecheap | Verified | kept-previous | 0 | 0 | 0 | 0 | 0 | 2026-10-29 11:05:19Z | — | — | — | no | no data |
-| bestdomainregistrars | Snapshot | ok | 1393 | 1377 | 16 | 268 | 0 | 2026-10-29 11:05:19Z | 2026-10-29 11:05:19Z | 2026-10-21 | 2026-10-21 | no | aging |
-| pikkly | Snapshot | ok | 3328 | 3231 | 97 | 398 | 0 | 2026-10-29 11:05:19Z | 2026-10-29 11:05:19Z | 2026-10-28 | 2026-10-28 | no | current |
-| opendomaindata | Snapshot | ok | 605 | 593 | 12 | 38 | 0 | 2026-10-29 11:05:19Z | 2026-10-29 11:05:19Z | 2026-08-19 | 2026-08-19 | no | **frozen** |
+| porkbun | Verified | ok | 913 | 541 | 372 | 541 | 0 | 2026-10-30 11:01:16Z | 2026-10-30 11:01:16Z | 2026-10-30 11:01:16Z | 2026-10-29 11:05:19Z | yes | current |
+| dynadot | Verified | ok | 816 | 622 | 194 | 622 | 0 | 2026-10-30 11:01:16Z | 2026-10-30 11:01:16Z | 2026-10-30 11:01:16Z | 2026-10-29 11:05:19Z | yes | current |
+| gandi | Verified | ok | 853 | 759 | 94 | 759 | 0 | 2026-10-30 11:01:16Z | 2026-10-30 11:01:16Z | 2026-10-30 11:01:16Z | 2026-10-29 11:05:19Z | yes | current |
+| hover | Verified | ok | 514 | 497 | 17 | 497 | 0 | 2026-10-30 11:01:16Z | 2026-10-30 11:01:16Z | 2026-10-30 11:01:16Z | 2026-10-29 11:05:19Z | yes | current |
+| ionos | Verified | ok | 431 | 427 | 4 | 427 | 0 | 2026-10-30 11:01:16Z | 2026-10-30 11:01:16Z | 2026-10-30 11:01:16Z | 2026-10-29 11:05:19Z | yes | current |
+| namecheap | Verified | kept-previous | 0 | 0 | 0 | 0 | 0 | 2026-10-30 11:01:16Z | — | — | — | no | no data |
+| bestdomainregistrars | Snapshot | ok | 1393 | 1377 | 16 | 268 | 0 | 2026-10-30 11:01:16Z | 2026-10-30 11:01:16Z | 2026-10-21 | 2026-10-21 | no | aging |
+| pikkly | Snapshot | ok | 3328 | 3231 | 97 | 398 | 0 | 2026-10-30 11:01:16Z | 2026-10-30 11:01:16Z | 2026-10-28 | 2026-10-28 | no | current |
+| opendomaindata | Snapshot | ok | 605 | 593 | 12 | 38 | 0 | 2026-10-30 11:01:16Z | 2026-10-30 11:01:16Z | 2026-08-19 | 2026-08-19 | no | **frozen** |
 
 ## Registrars
 
 | Registrar | Offers | Current | Stale | Undated | Newest evidence | Oldest evidence | Evidence state | Sources |
 |---|---|---|---|---|---|---|---|---|
 | Cloudflare Registrar (`cloudflare`) | 387 | 0 | 387 | 0 | 2026-08-04 | 2026-08-04 | **frozen** | pikkly |
-| Dynadot (`dynadot`) | 626 | 626 | 0 | 0 | 2026-10-29 11:05:19Z | 2026-10-28 | current | dynadot, pikkly |
-| Gandi (`gandi`) | 765 | 765 | 0 | 0 | 2026-10-29 11:05:19Z | 2026-10-28 | current | gandi, pikkly |
+| Dynadot (`dynadot`) | 626 | 626 | 0 | 0 | 2026-10-30 11:01:16Z | 2026-10-28 | current | dynadot, pikkly |
+| Gandi (`gandi`) | 765 | 765 | 0 | 0 | 2026-10-30 11:01:16Z | 2026-10-28 | current | gandi, pikkly |
 | GoDaddy (`godaddy`) | 6 | 6 | 0 | 0 | 2026-10-21 | 2026-10-21 | aging | bestdomainregistrars |
-| Hover (`hover`) | 498 | 498 | 0 | 0 | 2026-10-29 11:05:19Z | 2026-10-28 | current | hover, pikkly |
-| IONOS (`ionos`) | 427 | 427 | 0 | 0 | 2026-10-29 11:05:19Z | 2026-10-29 11:05:19Z | current | ionos |
+| Hover (`hover`) | 498 | 498 | 0 | 0 | 2026-10-30 11:01:16Z | 2026-10-28 | current | hover, pikkly |
+| IONOS (`ionos`) | 427 | 427 | 0 | 0 | 2026-10-30 11:01:16Z | 2026-10-30 11:01:16Z | current | ionos |
 | Namecheap (`namecheap`) | 32 | 0 | 32 | 0 | 2026-08-19 | 2026-08-19 | **frozen** | opendomaindata |
-| Porkbun (`porkbun`) | 541 | 541 | 0 | 0 | 2026-10-29 11:05:19Z | 2026-10-29 11:05:19Z | current | porkbun |
+| Porkbun (`porkbun`) | 541 | 541 | 0 | 0 | 2026-10-30 11:01:16Z | 2026-10-30 11:01:16Z | current | porkbun |
 | Spaceship (`spaceship`) | 262 | 0 | 262 | 0 | 2026-09-02 | 2026-09-02 | **frozen** | bestdomainregistrars |
 | Squarespace Domains (`squarespace`) | 6 | 0 | 0 | 6 | 2026-05-12 | 2026-05-12 | no data | opendomaindata |
 
