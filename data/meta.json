@@ -1,12 +1,12 @@
 {
-  "last_success_at": "2026-10-26T13:25:55.466Z",
-  "last_attempt_at": "2026-10-26T13:25:55.021Z",
+  "last_success_at": "2026-11-02T16:26:08.435Z",
+  "last_attempt_at": "2026-11-02T16:26:08.059Z",
   "status": "success",
   "last_error": null,
   "counts": {
-    "total": 1437,
+    "total": 1436,
     "by_type": {
-      "generic": 1127,
+      "generic": 1126,
       "country-code": 309,
       "special-use": 1
     },
@@ -15,7 +15,9 @@
   },
   "last_changes": {
     "added": [],
-    "removed": []
+    "removed": [
+      ".helsinki"
+    ]
   },
   "history": [
     {
@@ -81,6 +83,14 @@
       "added": 0,
       "removed": 0,
       "note": "IANA version 2026102600"
+    },
+    {
+      "at": "2026-11-02T16:26:08.435Z",
+      "status": "success",
+      "total": 1436,
+      "added": 0,
+      "removed": 1,
+      "note": "IANA version 2026110200"
     }
   ]
 }
