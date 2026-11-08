@@ -1,8 +1,8 @@
 {
-  "last_success_at": "2026-11-07T11:19:15.184Z",
-  "last_attempt_at": "2026-11-07T11:19:15.184Z",
+  "last_success_at": "2026-11-08T11:30:11.348Z",
+  "last_attempt_at": "2026-11-08T11:30:11.348Z",
   "status": "partial",
-  "last_error": "namecheap: missing env: NAMECHEAP_API_USER, NAMECHEAP_API_KEY, NAMECHEAP_USERNAME",
+  "last_error": "dynadot: HTTP 403 for https://www.dynadot.com/domain/prices | namecheap: missing env: NAMECHEAP_API_USER, NAMECHEAP_API_KEY, NAMECHEAP_USERNAME",
   "coverage": {
     "complete": false,
     "current_sources": [
@@ -55,6 +55,12 @@
     }
   },
   "history": [
+    {
+      "at": "2026-11-08T11:30:11.348Z",
+      "status": "partial",
+      "offers": 3550,
+      "note": "dynadot: HTTP 403 for https://www.dynadot.com/domain/prices | namecheap: missing env: NAMECHEAP_API_USER, NAMECHEAP_API_KEY, NAMECHEAP_USERNAME"
+    },
     {
       "at": "2026-11-07T11:19:15.184Z",
       "status": "partial",
