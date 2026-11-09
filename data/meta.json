@@ -1,6 +1,6 @@
 {
-  "last_success_at": "2026-11-02T16:26:08.435Z",
-  "last_attempt_at": "2026-11-02T16:26:08.059Z",
+  "last_success_at": "2026-11-09T16:44:07.949Z",
+  "last_attempt_at": "2026-11-09T16:44:07.626Z",
   "status": "success",
   "last_error": null,
   "counts": {
@@ -15,9 +15,7 @@
   },
   "last_changes": {
     "added": [],
-    "removed": [
-      ".helsinki"
-    ]
+    "removed": []
   },
   "history": [
     {
@@ -91,6 +89,14 @@
       "added": 0,
       "removed": 1,
       "note": "IANA version 2026110200"
+    },
+    {
+      "at": "2026-11-09T16:44:07.949Z",
+      "status": "success",
+      "total": 1436,
+      "added": 0,
+      "removed": 0,
+      "note": "IANA version 2026110900"
     }
   ]
 }
