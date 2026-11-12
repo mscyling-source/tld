@@ -1,6 +1,6 @@
 {
-  "last_success_at": "2026-11-11T12:09:01.625Z",
-  "last_attempt_at": "2026-11-11T12:09:01.625Z",
+  "last_success_at": "2026-11-12T13:14:23.987Z",
+  "last_attempt_at": "2026-11-12T13:14:23.987Z",
   "status": "partial",
   "last_error": "ionos: IONOS price list has no __NEXT_DATA__ payload | namecheap: missing env: NAMECHEAP_API_USER, NAMECHEAP_API_KEY, NAMECHEAP_USERNAME",
   "coverage": {
@@ -29,16 +29,16 @@
     "note": "1 source downloaded successfully but carries no evidence newer than 30 days (opendomaindata); 2 sources did not deliver usable data (namecheap, bestdomainregistrars); no current quote exists for cloudflare, namecheap, spaceship, squarespace — their figures are historical snapshots."
   },
   "counts": {
-    "offers": 3553,
+    "offers": 3554,
     "tlids": 811,
     "registrars": 10,
-    "verified_offers": 2849,
+    "verified_offers": 2850,
     "stale_offers": 681,
-    "recent_offers": 2849,
+    "recent_offers": 2850,
     "aging_offers": 17,
     "unknown_offers": 6,
     "by_source": {
-      "dynadot": 625,
+      "dynadot": 626,
       "gandi": 759,
       "ionos": 427,
       "porkbun": 541,
@@ -48,13 +48,19 @@
       "opendomaindata": 38
     },
     "by_verification": {
-      "verified": 2849,
+      "verified": 2850,
       "source_snapshot": 698,
       "model_derived": 0,
       "unverified": 6
     }
   },
   "history": [
+    {
+      "at": "2026-11-12T13:14:23.987Z",
+      "status": "partial",
+      "offers": 3554,
+      "note": "ionos: IONOS price list has no __NEXT_DATA__ payload | namecheap: missing env: NAMECHEAP_API_USER, NAMECHEAP_API_KEY, NAMECHEAP_USERNAME"
+    },
     {
       "at": "2026-11-11T12:09:01.625Z",
       "status": "partial",
