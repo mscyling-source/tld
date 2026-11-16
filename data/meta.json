@@ -1,6 +1,6 @@
 {
-  "last_success_at": "2026-11-09T16:44:07.949Z",
-  "last_attempt_at": "2026-11-09T16:44:07.626Z",
+  "last_success_at": "2026-11-16T16:15:11.753Z",
+  "last_attempt_at": "2026-11-16T16:15:11.260Z",
   "status": "success",
   "last_error": null,
   "counts": {
@@ -97,6 +97,14 @@
       "added": 0,
       "removed": 0,
       "note": "IANA version 2026110900"
+    },
+    {
+      "at": "2026-11-16T16:15:11.753Z",
+      "status": "success",
+      "total": 1436,
+      "added": 0,
+      "removed": 0,
+      "note": "IANA version 2026111600"
     }
   ]
 }
