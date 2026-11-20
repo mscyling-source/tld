@@ -1,25 +1,25 @@
 {
-  "run_at": "2026-11-19T13:52:58.298Z",
-  "dataset_generated_at": "2026-11-19T13:52:58.298Z",
+  "run_at": "2026-11-20T13:35:31.130Z",
+  "dataset_generated_at": "2026-11-20T13:35:31.130Z",
   "schema_version": 2,
   "totals": {
-    "offers": 3558,
-    "tlids": 811,
+    "offers": 3559,
+    "tlids": 812,
     "registrars": 10,
     "by_verification": {
-      "verified": 2854,
+      "verified": 2855,
       "source_snapshot": 698,
       "model_derived": 0,
       "unverified": 6
     },
     "by_freshness": {
-      "recent": 2427,
-      "aging": 444,
-      "stale": 681,
+      "recent": 2428,
+      "aging": 438,
+      "stale": 687,
       "unknown": 6
     },
     "oldest_observed_at": "2026-05-12",
-    "newest_observed_at": "2026-11-19T13:52:58.298Z",
+    "newest_observed_at": "2026-11-20T13:35:31.130Z",
     "previous_offers": 3558,
     "offer_count_change_pct": 0
   },
@@ -37,15 +37,15 @@
         "unknown-tld": 367,
         "invalid-price": 5
       },
-      "fetched_at": "2026-11-19T13:52:58.298Z",
-      "last_attempt_at": "2026-11-19T13:52:58.298Z",
-      "last_successful_fetch_at": "2026-11-19T13:52:58.298Z",
-      "price_evidence_at": "2026-11-19T13:52:58.298Z",
-      "previous_price_evidence_at": "2026-11-18T13:25:36.713Z",
+      "fetched_at": "2026-11-20T13:35:31.130Z",
+      "last_attempt_at": "2026-11-20T13:35:31.130Z",
+      "last_successful_fetch_at": "2026-11-20T13:35:31.130Z",
+      "price_evidence_at": "2026-11-20T13:35:31.130Z",
+      "previous_price_evidence_at": "2026-11-19T13:52:58.298Z",
       "evidence_advanced": true,
       "evidence_state": "current",
       "retained_from_previous": 0,
-      "oldest_observed_at": "2026-11-19T13:52:58.298Z",
+      "oldest_observed_at": "2026-11-20T13:35:31.130Z",
       "error": null
     },
     {
@@ -53,23 +53,23 @@
       "source_name": "Dynadot pricing page",
       "status": "ok",
       "verification_status": "verified",
-      "rows": 626,
-      "attempted": 820,
-      "published_rows": 626,
+      "rows": 627,
+      "attempted": 821,
+      "published_rows": 627,
       "rejected": 194,
       "rejections": {
         "unknown-tld": 190,
         "invalid-price": 4
       },
-      "fetched_at": "2026-11-19T13:52:58.298Z",
-      "last_attempt_at": "2026-11-19T13:52:58.298Z",
-      "last_successful_fetch_at": "2026-11-19T13:52:58.298Z",
-      "price_evidence_at": "2026-11-19T13:52:58.298Z",
-      "previous_price_evidence_at": "2026-11-18T13:25:36.713Z",
+      "fetched_at": "2026-11-20T13:35:31.130Z",
+      "last_attempt_at": "2026-11-20T13:35:31.130Z",
+      "last_successful_fetch_at": "2026-11-20T13:35:31.130Z",
+      "price_evidence_at": "2026-11-20T13:35:31.130Z",
+      "previous_price_evidence_at": "2026-11-19T13:52:58.298Z",
       "evidence_advanced": true,
       "evidence_state": "current",
       "retained_from_previous": 0,
-      "oldest_observed_at": "2026-11-19T13:52:58.298Z",
+      "oldest_observed_at": "2026-11-20T13:35:31.130Z",
       "error": null
     },
     {
@@ -84,15 +84,15 @@
       "rejections": {
         "unknown-tld": 95
       },
-      "fetched_at": "2026-11-19T13:52:58.298Z",
-      "last_attempt_at": "2026-11-19T13:52:58.298Z",
-      "last_successful_fetch_at": "2026-11-19T13:52:58.298Z",
-      "price_evidence_at": "2026-11-19T13:52:58.298Z",
-      "previous_price_evidence_at": "2026-11-18T13:25:36.713Z",
+      "fetched_at": "2026-11-20T13:35:31.130Z",
+      "last_attempt_at": "2026-11-20T13:35:31.130Z",
+      "last_successful_fetch_at": "2026-11-20T13:35:31.130Z",
+      "price_evidence_at": "2026-11-20T13:35:31.130Z",
+      "previous_price_evidence_at": "2026-11-19T13:52:58.298Z",
       "evidence_advanced": true,
       "evidence_state": "current",
       "retained_from_previous": 0,
-      "oldest_observed_at": "2026-11-19T13:52:58.298Z",
+      "oldest_observed_at": "2026-11-20T13:35:31.130Z",
       "error": null
     },
     {
@@ -108,15 +108,15 @@
         "unknown-tld": 16,
         "invalid-price": 1
       },
-      "fetched_at": "2026-11-19T13:52:58.298Z",
-      "last_attempt_at": "2026-11-19T13:52:58.298Z",
-      "last_successful_fetch_at": "2026-11-19T13:52:58.298Z",
-      "price_evidence_at": "2026-11-19T13:52:58.298Z",
-      "previous_price_evidence_at": "2026-11-18T13:25:36.713Z",
+      "fetched_at": "2026-11-20T13:35:31.130Z",
+      "last_attempt_at": "2026-11-20T13:35:31.130Z",
+      "last_successful_fetch_at": "2026-11-20T13:35:31.130Z",
+      "price_evidence_at": "2026-11-20T13:35:31.130Z",
+      "previous_price_evidence_at": "2026-11-19T13:52:58.298Z",
       "evidence_advanced": true,
       "evidence_state": "current",
       "retained_from_previous": 0,
-      "oldest_observed_at": "2026-11-19T13:52:58.298Z",
+      "oldest_observed_at": "2026-11-20T13:35:31.130Z",
       "error": null
     },
     {
@@ -130,7 +130,7 @@
       "rejected": 0,
       "rejections": {},
       "fetched_at": "2026-11-10T12:58:16.148Z",
-      "last_attempt_at": "2026-11-19T13:52:58.298Z",
+      "last_attempt_at": "2026-11-20T13:35:31.130Z",
       "last_successful_fetch_at": "2026-11-10T12:58:16.148Z",
       "price_evidence_at": "2026-11-10T12:58:16.148Z",
       "previous_price_evidence_at": "2026-11-10T12:58:16.148Z",
@@ -151,7 +151,7 @@
       "rejected": 0,
       "rejections": {},
       "fetched_at": null,
-      "last_attempt_at": "2026-11-19T13:52:58.298Z",
+      "last_attempt_at": "2026-11-20T13:35:31.130Z",
       "last_successful_fetch_at": null,
       "price_evidence_at": null,
       "previous_price_evidence_at": null,
@@ -174,13 +174,13 @@
         "unknown-tld": 14,
         "invalid-price": 2
       },
-      "fetched_at": "2026-11-19T13:52:58.298Z",
-      "last_attempt_at": "2026-11-19T13:52:58.298Z",
-      "last_successful_fetch_at": "2026-11-19T13:52:58.298Z",
+      "fetched_at": "2026-11-20T13:35:31.130Z",
+      "last_attempt_at": "2026-11-20T13:35:31.130Z",
+      "last_successful_fetch_at": "2026-11-20T13:35:31.130Z",
       "price_evidence_at": "2026-10-21",
       "previous_price_evidence_at": "2026-10-21",
       "evidence_advanced": false,
-      "evidence_state": "aging",
+      "evidence_state": "frozen",
       "retained_from_previous": 0,
       "oldest_observed_at": "2026-09-02",
       "error": null
@@ -198,9 +198,9 @@
         "unknown-tld": 94,
         "invalid-price": 3
       },
-      "fetched_at": "2026-11-19T13:52:58.298Z",
-      "last_attempt_at": "2026-11-19T13:52:58.298Z",
-      "last_successful_fetch_at": "2026-11-19T13:52:58.298Z",
+      "fetched_at": "2026-11-20T13:35:31.130Z",
+      "last_attempt_at": "2026-11-20T13:35:31.130Z",
+      "last_successful_fetch_at": "2026-11-20T13:35:31.130Z",
       "price_evidence_at": "2026-11-10",
       "previous_price_evidence_at": "2026-11-10",
       "evidence_advanced": false,
@@ -222,9 +222,9 @@
         "unknown-tld": 10,
         "invalid-price": 2
       },
-      "fetched_at": "2026-11-19T13:52:58.298Z",
-      "last_attempt_at": "2026-11-19T13:52:58.298Z",
-      "last_successful_fetch_at": "2026-11-19T13:52:58.298Z",
+      "fetched_at": "2026-11-20T13:35:31.130Z",
+      "last_attempt_at": "2026-11-20T13:35:31.130Z",
+      "last_successful_fetch_at": "2026-11-20T13:35:31.130Z",
       "price_evidence_at": "2026-08-19",
       "previous_price_evidence_at": "2026-08-19",
       "evidence_advanced": false,
@@ -252,15 +252,15 @@
     {
       "registrar_id": "dynadot",
       "registrar_name": "Dynadot",
-      "offers": 630,
-      "current": 630,
+      "offers": 631,
+      "current": 631,
       "stale": 0,
       "unknown": 0,
       "sources": [
         "dynadot",
         "pikkly"
       ],
-      "newest_evidence_at": "2026-11-19T13:52:58.298Z",
+      "newest_evidence_at": "2026-11-20T13:35:31.130Z",
       "oldest_evidence_at": "2026-11-10",
       "evidence_state": "current"
     },
@@ -275,7 +275,7 @@
         "gandi",
         "pikkly"
       ],
-      "newest_evidence_at": "2026-11-19T13:52:58.298Z",
+      "newest_evidence_at": "2026-11-20T13:35:31.130Z",
       "oldest_evidence_at": "2026-11-10",
       "evidence_state": "current"
     },
@@ -283,15 +283,15 @@
       "registrar_id": "godaddy",
       "registrar_name": "GoDaddy",
       "offers": 6,
-      "current": 6,
-      "stale": 0,
+      "current": 0,
+      "stale": 6,
       "unknown": 0,
       "sources": [
         "bestdomainregistrars"
       ],
       "newest_evidence_at": "2026-10-21",
       "oldest_evidence_at": "2026-10-21",
-      "evidence_state": "aging"
+      "evidence_state": "frozen"
     },
     {
       "registrar_id": "hover",
@@ -304,7 +304,7 @@
         "hover",
         "pikkly"
       ],
-      "newest_evidence_at": "2026-11-19T13:52:58.298Z",
+      "newest_evidence_at": "2026-11-20T13:35:31.130Z",
       "oldest_evidence_at": "2026-11-10",
       "evidence_state": "current"
     },
@@ -346,8 +346,8 @@
       "sources": [
         "porkbun"
       ],
-      "newest_evidence_at": "2026-11-19T13:52:58.298Z",
-      "oldest_evidence_at": "2026-11-19T13:52:58.298Z",
+      "newest_evidence_at": "2026-11-20T13:35:31.130Z",
+      "oldest_evidence_at": "2026-11-20T13:35:31.130Z",
       "evidence_state": "current"
     },
     {
@@ -388,46 +388,168 @@
       "porkbun"
     ],
     "frozen_sources": [
+      "bestdomainregistrars",
       "opendomaindata"
     ],
     "stale_sources": [
-      "bestdomainregistrars",
       "ionos",
       "namecheap",
       "pikkly"
     ],
     "registrars_without_current_evidence": [
       "cloudflare",
+      "godaddy",
       "namecheap",
       "spaceship",
       "squarespace"
     ],
-    "note": "1 source downloaded successfully but carries no evidence newer than 30 days (opendomaindata); 4 sources did not deliver usable data (ionos, namecheap, bestdomainregistrars, pikkly); no current quote exists for cloudflare, namecheap, spaceship, squarespace — their figures are historical snapshots."
+    "note": "2 sources downloaded successfully but carry no evidence newer than 30 days (bestdomainregistrars, opendomaindata); 3 sources did not deliver usable data (ionos, namecheap, pikkly); no current quote exists for cloudflare, godaddy, namecheap, spaceship, squarespace — their figures are historical snapshots."
   },
   "frozen_sources": [
+    "bestdomainregistrars",
     "opendomaindata"
   ],
   "significant_changes": [
     {
-      "tld": "earth",
-      "registrar_id": "porkbun",
+      "tld": "rent",
+      "registrar_id": "dynadot",
       "field": "register_usd",
-      "previous_usd": 15.96,
-      "current_usd": 5.66,
-      "change_pct": -64.5
+      "previous_usd": 10.5,
+      "current_usd": 5,
+      "change_pct": -52.4
+    },
+    {
+      "tld": "pics",
+      "registrar_id": "dynadot",
+      "field": "register_usd",
+      "previous_usd": 2.04,
+      "current_usd": 1.5,
+      "change_pct": -26.5
+    },
+    {
+      "tld": "autos",
+      "registrar_id": "dynadot",
+      "field": "register_usd",
+      "previous_usd": 2.04,
+      "current_usd": 1.54,
+      "change_pct": -24.5
+    },
+    {
+      "tld": "beauty",
+      "registrar_id": "dynadot",
+      "field": "register_usd",
+      "previous_usd": 2.04,
+      "current_usd": 1.54,
+      "change_pct": -24.5
+    },
+    {
+      "tld": "boats",
+      "registrar_id": "dynadot",
+      "field": "register_usd",
+      "previous_usd": 2.04,
+      "current_usd": 1.54,
+      "change_pct": -24.5
+    },
+    {
+      "tld": "hair",
+      "registrar_id": "dynadot",
+      "field": "register_usd",
+      "previous_usd": 2.04,
+      "current_usd": 1.54,
+      "change_pct": -24.5
+    },
+    {
+      "tld": "homes",
+      "registrar_id": "dynadot",
+      "field": "register_usd",
+      "previous_usd": 2.04,
+      "current_usd": 1.54,
+      "change_pct": -24.5
+    },
+    {
+      "tld": "lat",
+      "registrar_id": "dynadot",
+      "field": "register_usd",
+      "previous_usd": 2.04,
+      "current_usd": 1.54,
+      "change_pct": -24.5
+    },
+    {
+      "tld": "lol",
+      "registrar_id": "dynadot",
+      "field": "register_usd",
+      "previous_usd": 2.04,
+      "current_usd": 1.54,
+      "change_pct": -24.5
+    },
+    {
+      "tld": "makeup",
+      "registrar_id": "dynadot",
+      "field": "register_usd",
+      "previous_usd": 2.04,
+      "current_usd": 1.54,
+      "change_pct": -24.5
+    },
+    {
+      "tld": "mom",
+      "registrar_id": "dynadot",
+      "field": "register_usd",
+      "previous_usd": 2.04,
+      "current_usd": 1.54,
+      "change_pct": -24.5
+    },
+    {
+      "tld": "monster",
+      "registrar_id": "dynadot",
+      "field": "register_usd",
+      "previous_usd": 2.04,
+      "current_usd": 1.54,
+      "change_pct": -24.5
+    },
+    {
+      "tld": "motorcycles",
+      "registrar_id": "dynadot",
+      "field": "register_usd",
+      "previous_usd": 2.04,
+      "current_usd": 1.54,
+      "change_pct": -24.5
+    },
+    {
+      "tld": "quest",
+      "registrar_id": "dynadot",
+      "field": "register_usd",
+      "previous_usd": 2.04,
+      "current_usd": 1.54,
+      "change_pct": -24.5
+    },
+    {
+      "tld": "skin",
+      "registrar_id": "dynadot",
+      "field": "register_usd",
+      "previous_usd": 2.04,
+      "current_usd": 1.54,
+      "change_pct": -24.5
+    },
+    {
+      "tld": "yachts",
+      "registrar_id": "dynadot",
+      "field": "register_usd",
+      "previous_usd": 2.04,
+      "current_usd": 1.54,
+      "change_pct": -24.5
     },
     {
       "tld": "xyz",
       "registrar_id": "dynadot",
       "field": "register_usd",
-      "previous_usd": 2,
-      "current_usd": 1.25,
-      "change_pct": -37.5
+      "previous_usd": 1.25,
+      "current_usd": 1.5,
+      "change_pct": 20
     }
   ],
   "degraded_sources": [
     "ionos (kept-previous)",
     "namecheap (kept-previous)"
   ],
-  "summary": "3558 offers across 811 TLDs and 10 registrars. 2854 (80%) were read directly from the registrar's own published price list; 698 come from openly licensed dated snapshots; 0 are policy-derived; 6 cannot be dated. 681 offers (19%) are older than 30 days and are shown as stale. Oldest evidence: 2026-05-12. Coverage: incomplete — 1 source downloaded successfully but carries no evidence newer than 30 days (opendomaindata); 4 sources did not deliver usable data (ionos, namecheap, bestdomainregistrars, pikkly); no current quote exists for cloudflare, namecheap, spaceship, squarespace — their figures are historical snapshots. Sources not fully refreshed: ionos (kept-previous), namecheap (kept-previous)."
+  "summary": "3559 offers across 812 TLDs and 10 registrars. 2855 (80%) were read directly from the registrar's own published price list; 698 come from openly licensed dated snapshots; 0 are policy-derived; 6 cannot be dated. 687 offers (19%) are older than 30 days and are shown as stale. Oldest evidence: 2026-05-12. Coverage: incomplete — 2 sources downloaded successfully but carry no evidence newer than 30 days (bestdomainregistrars, opendomaindata); 3 sources did not deliver usable data (ionos, namecheap, pikkly); no current quote exists for cloudflare, godaddy, namecheap, spaceship, squarespace — their figures are historical snapshots. Sources not fully refreshed: ionos (kept-previous), namecheap (kept-previous)."
 }
