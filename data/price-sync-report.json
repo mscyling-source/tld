@@ -1,6 +1,6 @@
 {
-  "run_at": "2026-11-21T12:59:26.973Z",
-  "dataset_generated_at": "2026-11-21T12:59:26.973Z",
+  "run_at": "2026-11-22T12:51:05.429Z",
+  "dataset_generated_at": "2026-11-22T12:51:05.429Z",
   "schema_version": 2,
   "totals": {
     "offers": 3559,
@@ -19,7 +19,7 @@
       "unknown": 6
     },
     "oldest_observed_at": "2026-05-12",
-    "newest_observed_at": "2026-11-21T12:59:26.973Z",
+    "newest_observed_at": "2026-11-22T12:51:05.429Z",
     "previous_offers": 3559,
     "offer_count_change_pct": 0
   },
@@ -37,15 +37,15 @@
         "unknown-tld": 367,
         "invalid-price": 5
       },
-      "fetched_at": "2026-11-21T12:59:26.973Z",
-      "last_attempt_at": "2026-11-21T12:59:26.973Z",
-      "last_successful_fetch_at": "2026-11-21T12:59:26.973Z",
-      "price_evidence_at": "2026-11-21T12:59:26.973Z",
-      "previous_price_evidence_at": "2026-11-20T13:35:31.130Z",
+      "fetched_at": "2026-11-22T12:51:05.429Z",
+      "last_attempt_at": "2026-11-22T12:51:05.429Z",
+      "last_successful_fetch_at": "2026-11-22T12:51:05.429Z",
+      "price_evidence_at": "2026-11-22T12:51:05.429Z",
+      "previous_price_evidence_at": "2026-11-21T12:59:26.973Z",
       "evidence_advanced": true,
       "evidence_state": "current",
       "retained_from_previous": 0,
-      "oldest_observed_at": "2026-11-21T12:59:26.973Z",
+      "oldest_observed_at": "2026-11-22T12:51:05.429Z",
       "error": null
     },
     {
@@ -61,15 +61,15 @@
         "unknown-tld": 190,
         "invalid-price": 4
       },
-      "fetched_at": "2026-11-21T12:59:26.973Z",
-      "last_attempt_at": "2026-11-21T12:59:26.973Z",
-      "last_successful_fetch_at": "2026-11-21T12:59:26.973Z",
-      "price_evidence_at": "2026-11-21T12:59:26.973Z",
-      "previous_price_evidence_at": "2026-11-20T13:35:31.130Z",
+      "fetched_at": "2026-11-22T12:51:05.429Z",
+      "last_attempt_at": "2026-11-22T12:51:05.429Z",
+      "last_successful_fetch_at": "2026-11-22T12:51:05.429Z",
+      "price_evidence_at": "2026-11-22T12:51:05.429Z",
+      "previous_price_evidence_at": "2026-11-21T12:59:26.973Z",
       "evidence_advanced": true,
       "evidence_state": "current",
       "retained_from_previous": 0,
-      "oldest_observed_at": "2026-11-21T12:59:26.973Z",
+      "oldest_observed_at": "2026-11-22T12:51:05.429Z",
       "error": null
     },
     {
@@ -84,15 +84,15 @@
       "rejections": {
         "unknown-tld": 95
       },
-      "fetched_at": "2026-11-21T12:59:26.973Z",
-      "last_attempt_at": "2026-11-21T12:59:26.973Z",
-      "last_successful_fetch_at": "2026-11-21T12:59:26.973Z",
-      "price_evidence_at": "2026-11-21T12:59:26.973Z",
-      "previous_price_evidence_at": "2026-11-20T13:35:31.130Z",
+      "fetched_at": "2026-11-22T12:51:05.429Z",
+      "last_attempt_at": "2026-11-22T12:51:05.429Z",
+      "last_successful_fetch_at": "2026-11-22T12:51:05.429Z",
+      "price_evidence_at": "2026-11-22T12:51:05.429Z",
+      "previous_price_evidence_at": "2026-11-21T12:59:26.973Z",
       "evidence_advanced": true,
       "evidence_state": "current",
       "retained_from_previous": 0,
-      "oldest_observed_at": "2026-11-21T12:59:26.973Z",
+      "oldest_observed_at": "2026-11-22T12:51:05.429Z",
       "error": null
     },
     {
@@ -108,15 +108,15 @@
         "unknown-tld": 16,
         "invalid-price": 1
       },
-      "fetched_at": "2026-11-21T12:59:26.973Z",
-      "last_attempt_at": "2026-11-21T12:59:26.973Z",
-      "last_successful_fetch_at": "2026-11-21T12:59:26.973Z",
-      "price_evidence_at": "2026-11-21T12:59:26.973Z",
-      "previous_price_evidence_at": "2026-11-20T13:35:31.130Z",
+      "fetched_at": "2026-11-22T12:51:05.429Z",
+      "last_attempt_at": "2026-11-22T12:51:05.429Z",
+      "last_successful_fetch_at": "2026-11-22T12:51:05.429Z",
+      "price_evidence_at": "2026-11-22T12:51:05.429Z",
+      "previous_price_evidence_at": "2026-11-21T12:59:26.973Z",
       "evidence_advanced": true,
       "evidence_state": "current",
       "retained_from_previous": 0,
-      "oldest_observed_at": "2026-11-21T12:59:26.973Z",
+      "oldest_observed_at": "2026-11-22T12:51:05.429Z",
       "error": null
     },
     {
@@ -130,7 +130,7 @@
       "rejected": 0,
       "rejections": {},
       "fetched_at": "2026-11-10T12:58:16.148Z",
-      "last_attempt_at": "2026-11-21T12:59:26.973Z",
+      "last_attempt_at": "2026-11-22T12:51:05.429Z",
       "last_successful_fetch_at": "2026-11-10T12:58:16.148Z",
       "price_evidence_at": "2026-11-10T12:58:16.148Z",
       "previous_price_evidence_at": "2026-11-10T12:58:16.148Z",
@@ -151,7 +151,7 @@
       "rejected": 0,
       "rejections": {},
       "fetched_at": null,
-      "last_attempt_at": "2026-11-21T12:59:26.973Z",
+      "last_attempt_at": "2026-11-22T12:51:05.429Z",
       "last_successful_fetch_at": null,
       "price_evidence_at": null,
       "previous_price_evidence_at": null,
@@ -174,9 +174,9 @@
         "unknown-tld": 14,
         "invalid-price": 2
       },
-      "fetched_at": "2026-11-21T12:59:26.973Z",
-      "last_attempt_at": "2026-11-21T12:59:26.973Z",
-      "last_successful_fetch_at": "2026-11-21T12:59:26.973Z",
+      "fetched_at": "2026-11-22T12:51:05.429Z",
+      "last_attempt_at": "2026-11-22T12:51:05.429Z",
+      "last_successful_fetch_at": "2026-11-22T12:51:05.429Z",
       "price_evidence_at": "2026-10-21",
       "previous_price_evidence_at": "2026-10-21",
       "evidence_advanced": false,
@@ -198,9 +198,9 @@
         "unknown-tld": 94,
         "invalid-price": 3
       },
-      "fetched_at": "2026-11-21T12:59:26.973Z",
-      "last_attempt_at": "2026-11-21T12:59:26.973Z",
-      "last_successful_fetch_at": "2026-11-21T12:59:26.973Z",
+      "fetched_at": "2026-11-22T12:51:05.429Z",
+      "last_attempt_at": "2026-11-22T12:51:05.429Z",
+      "last_successful_fetch_at": "2026-11-22T12:51:05.429Z",
       "price_evidence_at": "2026-11-10",
       "previous_price_evidence_at": "2026-11-10",
       "evidence_advanced": false,
@@ -222,9 +222,9 @@
         "unknown-tld": 10,
         "invalid-price": 2
       },
-      "fetched_at": "2026-11-21T12:59:26.973Z",
-      "last_attempt_at": "2026-11-21T12:59:26.973Z",
-      "last_successful_fetch_at": "2026-11-21T12:59:26.973Z",
+      "fetched_at": "2026-11-22T12:51:05.429Z",
+      "last_attempt_at": "2026-11-22T12:51:05.429Z",
+      "last_successful_fetch_at": "2026-11-22T12:51:05.429Z",
       "price_evidence_at": "2026-08-19",
       "previous_price_evidence_at": "2026-08-19",
       "evidence_advanced": false,
@@ -260,7 +260,7 @@
         "dynadot",
         "pikkly"
       ],
-      "newest_evidence_at": "2026-11-21T12:59:26.973Z",
+      "newest_evidence_at": "2026-11-22T12:51:05.429Z",
       "oldest_evidence_at": "2026-11-10",
       "evidence_state": "current"
     },
@@ -275,7 +275,7 @@
         "gandi",
         "pikkly"
       ],
-      "newest_evidence_at": "2026-11-21T12:59:26.973Z",
+      "newest_evidence_at": "2026-11-22T12:51:05.429Z",
       "oldest_evidence_at": "2026-11-10",
       "evidence_state": "current"
     },
@@ -304,7 +304,7 @@
         "hover",
         "pikkly"
       ],
-      "newest_evidence_at": "2026-11-21T12:59:26.973Z",
+      "newest_evidence_at": "2026-11-22T12:51:05.429Z",
       "oldest_evidence_at": "2026-11-10",
       "evidence_state": "current"
     },
@@ -346,8 +346,8 @@
       "sources": [
         "porkbun"
       ],
-      "newest_evidence_at": "2026-11-21T12:59:26.973Z",
-      "oldest_evidence_at": "2026-11-21T12:59:26.973Z",
+      "newest_evidence_at": "2026-11-22T12:51:05.429Z",
+      "oldest_evidence_at": "2026-11-22T12:51:05.429Z",
       "evidence_state": "current"
     },
     {
@@ -409,16 +409,7 @@
     "bestdomainregistrars",
     "opendomaindata"
   ],
-  "significant_changes": [
-    {
-      "tld": "net",
-      "registrar_id": "dynadot",
-      "field": "register_usd",
-      "previous_usd": 12.52,
-      "current_usd": 7.49,
-      "change_pct": -40.2
-    }
-  ],
+  "significant_changes": [],
   "degraded_sources": [
     "ionos (kept-previous)",
     "namecheap (kept-previous)"
