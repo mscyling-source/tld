@@ -1,18 +1,18 @@
 {
-  "last_success_at": "2026-11-23T15:20:42.753Z",
-  "last_attempt_at": "2026-11-23T15:20:42.753Z",
+  "last_success_at": "2026-11-24T15:15:57.655Z",
+  "last_attempt_at": "2026-11-24T15:15:57.655Z",
   "status": "partial",
   "last_error": "ionos: IONOS price list has no __NEXT_DATA__ payload | namecheap: missing env: NAMECHEAP_API_USER, NAMECHEAP_API_KEY, NAMECHEAP_USERNAME",
   "coverage": {
     "complete": false,
     "current_sources": [
+      "bestdomainregistrars",
       "dynadot",
       "gandi",
       "hover",
       "porkbun"
     ],
     "frozen_sources": [
-      "bestdomainregistrars",
       "opendomaindata"
     ],
     "stale_sources": [
@@ -21,41 +21,43 @@
       "pikkly"
     ],
     "registrars_without_current_evidence": [
-      "cloudflare",
-      "godaddy",
-      "namecheap",
-      "spaceship",
       "squarespace"
     ],
-    "note": "2 sources downloaded successfully but carry no evidence newer than 30 days (bestdomainregistrars, opendomaindata); 3 sources did not deliver usable data (ionos, namecheap, pikkly); no current quote exists for cloudflare, godaddy, namecheap, spaceship, squarespace — their figures are historical snapshots."
+    "note": "1 source downloaded successfully but carries no evidence newer than 30 days (opendomaindata); 3 sources did not deliver usable data (ionos, namecheap, pikkly); no current quote exists for squarespace — their figures are historical snapshots."
   },
   "counts": {
-    "offers": 3558,
+    "offers": 4247,
     "tlids": 811,
     "registrars": 10,
     "verified_offers": 2854,
-    "stale_offers": 687,
+    "stale_offers": 164,
     "recent_offers": 2427,
-    "aging_offers": 438,
-    "unknown_offers": 6,
+    "aging_offers": 1394,
+    "unknown_offers": 262,
     "by_source": {
       "dynadot": 626,
       "gandi": 760,
       "ionos": 427,
       "porkbun": 541,
-      "pikkly": 398,
+      "pikkly": 175,
       "hover": 500,
-      "bestdomainregistrars": 268,
-      "opendomaindata": 38
+      "bestdomainregistrars": 1217,
+      "opendomaindata": 1
     },
     "by_verification": {
       "verified": 2854,
-      "source_snapshot": 698,
+      "source_snapshot": 1131,
       "model_derived": 0,
-      "unverified": 6
+      "unverified": 262
     }
   },
   "history": [
+    {
+      "at": "2026-11-24T15:15:57.655Z",
+      "status": "partial",
+      "offers": 4247,
+      "note": "ionos: IONOS price list has no __NEXT_DATA__ payload | namecheap: missing env: NAMECHEAP_API_USER, NAMECHEAP_API_KEY, NAMECHEAP_USERNAME"
+    },
     {
       "at": "2026-11-23T15:20:42.753Z",
       "status": "partial",

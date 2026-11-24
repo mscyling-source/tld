@@ -1,58 +1,53 @@
 # Registrar price sync report
 
-- Run: `2026-11-23T15:20:42.753Z`
-- Dataset: `2026-11-23T15:20:42.753Z`
-- Offers: **3558** across **811** TLDs, **10** registrars (previous run: 3559, 0%)
-- Verification: Verified 2854 · Snapshot 698 · Modelled 0 · Unverified 6
-- Freshness: Recently verified 2427 · Verification not recent 438 · Stale 687 · Unverified 6
+- Run: `2026-11-24T15:15:57.655Z`
+- Dataset: `2026-11-24T15:15:57.655Z`
+- Offers: **4247** across **811** TLDs, **10** registrars (previous run: 3558, +19.4%)
+- Verification: Verified 2854 · Snapshot 1131 · Modelled 0 · Unverified 262
+- Freshness: Recently verified 2427 · Verification not recent 1394 · Stale 164 · Unverified 262
 - Oldest evidence date: `2026-05-12`
-- Coverage: **incomplete** — 2 sources downloaded successfully but carry no evidence newer than 30 days (bestdomainregistrars, opendomaindata); 3 sources did not deliver usable data (ionos, namecheap, pikkly); no current quote exists for cloudflare, godaddy, namecheap, spaceship, squarespace — their figures are historical snapshots.
+- Coverage: **incomplete** — 1 source downloaded successfully but carries no evidence newer than 30 days (opendomaindata); 3 sources did not deliver usable data (ionos, namecheap, pikkly); no current quote exists for squarespace — their figures are historical snapshots.
 
 ## Sources
 
 | Source | Tier | Fetch | Attempted | Parsed | Rejected | Published | Retained | Last attempt (UTC) | Last successful fetch (UTC) | Newest evidence | Previous | New evidence? | Evidence state |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| porkbun | Verified | ok | 913 | 541 | 372 | 541 | 0 | 2026-11-23 15:20:42Z | 2026-11-23 15:20:42Z | 2026-11-23 15:20:42Z | 2026-11-22 12:51:05Z | yes | current |
-| dynadot | Verified | ok | 820 | 626 | 194 | 626 | 0 | 2026-11-23 15:20:42Z | 2026-11-23 15:20:42Z | 2026-11-23 15:20:42Z | 2026-11-22 12:51:05Z | yes | current |
-| gandi | Verified | ok | 855 | 760 | 95 | 760 | 0 | 2026-11-23 15:20:42Z | 2026-11-23 15:20:42Z | 2026-11-23 15:20:42Z | 2026-11-22 12:51:05Z | yes | current |
-| hover | Verified | ok | 517 | 500 | 17 | 500 | 0 | 2026-11-23 15:20:42Z | 2026-11-23 15:20:42Z | 2026-11-23 15:20:42Z | 2026-11-22 12:51:05Z | yes | current |
-| ionos | Verified | kept-previous | 0 | 427 | 0 | 427 | 427 | 2026-11-23 15:20:42Z | 2026-11-10 12:58:16Z | 2026-11-10 12:58:16Z | 2026-11-10 12:58:16Z | no | aging |
-| namecheap | Verified | kept-previous | 0 | 0 | 0 | 0 | 0 | 2026-11-23 15:20:42Z | — | — | — | no | no data |
-| bestdomainregistrars | Snapshot | ok | 1393 | 1377 | 16 | 268 | 0 | 2026-11-23 15:20:42Z | 2026-11-23 15:20:42Z | 2026-10-21 | 2026-10-21 | no | **frozen** |
-| pikkly | Snapshot | ok | 3329 | 3232 | 97 | 398 | 0 | 2026-11-23 15:20:42Z | 2026-11-23 15:20:42Z | 2026-11-10 | 2026-11-10 | no | aging |
-| opendomaindata | Snapshot | ok | 605 | 593 | 12 | 38 | 0 | 2026-11-23 15:20:42Z | 2026-11-23 15:20:42Z | 2026-08-19 | 2026-08-19 | no | **frozen** |
+| porkbun | Verified | ok | 913 | 541 | 372 | 541 | 0 | 2026-11-24 15:15:57Z | 2026-11-24 15:15:57Z | 2026-11-24 15:15:57Z | 2026-11-23 15:20:42Z | yes | current |
+| dynadot | Verified | ok | 820 | 626 | 194 | 626 | 0 | 2026-11-24 15:15:57Z | 2026-11-24 15:15:57Z | 2026-11-24 15:15:57Z | 2026-11-23 15:20:42Z | yes | current |
+| gandi | Verified | ok | 855 | 760 | 95 | 760 | 0 | 2026-11-24 15:15:57Z | 2026-11-24 15:15:57Z | 2026-11-24 15:15:57Z | 2026-11-23 15:20:42Z | yes | current |
+| hover | Verified | ok | 517 | 500 | 17 | 500 | 0 | 2026-11-24 15:15:57Z | 2026-11-24 15:15:57Z | 2026-11-24 15:15:57Z | 2026-11-23 15:20:42Z | yes | current |
+| ionos | Verified | kept-previous | 0 | 427 | 0 | 427 | 427 | 2026-11-24 15:15:57Z | 2026-11-10 12:58:16Z | 2026-11-10 12:58:16Z | 2026-11-10 12:58:16Z | no | aging |
+| namecheap | Verified | kept-previous | 0 | 0 | 0 | 0 | 0 | 2026-11-24 15:15:57Z | — | — | — | no | no data |
+| bestdomainregistrars | Snapshot | ok | 2627 | 2580 | 47 | 1217 | 0 | 2026-11-24 15:15:57Z | 2026-11-24 15:15:57Z | 2026-11-23 | 2026-10-21 | yes | current |
+| pikkly | Snapshot | ok | 3329 | 3232 | 97 | 175 | 0 | 2026-11-24 15:15:57Z | 2026-11-24 15:15:57Z | 2026-11-10 | 2026-11-10 | no | aging |
+| opendomaindata | Snapshot | ok | 605 | 593 | 12 | 1 | 0 | 2026-11-24 15:15:57Z | 2026-11-24 15:15:57Z | 2026-05-12 | 2026-08-19 | no | **frozen** |
 
 ## Registrars
 
 | Registrar | Offers | Current | Stale | Undated | Newest evidence | Oldest evidence | Evidence state | Sources |
 |---|---|---|---|---|---|---|---|---|
-| Cloudflare Registrar (`cloudflare`) | 387 | 0 | 387 | 0 | 2026-08-04 | 2026-08-04 | **frozen** | pikkly |
-| Dynadot (`dynadot`) | 630 | 630 | 0 | 0 | 2026-11-23 15:20:42Z | 2026-11-10 | current | dynadot, pikkly |
-| Gandi (`gandi`) | 766 | 766 | 0 | 0 | 2026-11-23 15:20:42Z | 2026-11-10 | current | gandi, pikkly |
-| GoDaddy (`godaddy`) | 6 | 0 | 6 | 0 | 2026-10-21 | 2026-10-21 | **frozen** | bestdomainregistrars |
-| Hover (`hover`) | 501 | 501 | 0 | 0 | 2026-11-23 15:20:42Z | 2026-11-10 | current | hover, pikkly |
+| Cloudflare Registrar (`cloudflare`) | 389 | 225 | 164 | 0 | 2026-11-10 | 2026-08-04 | aging | bestdomainregistrars, pikkly |
+| Dynadot (`dynadot`) | 630 | 630 | 0 | 0 | 2026-11-24 15:15:57Z | 2026-11-10 | current | dynadot, pikkly |
+| Gandi (`gandi`) | 766 | 766 | 0 | 0 | 2026-11-24 15:15:57Z | 2026-11-10 | current | gandi, pikkly |
+| GoDaddy (`godaddy`) | 195 | 195 | 0 | 0 | 2026-11-23 | 2026-11-23 | current | bestdomainregistrars |
+| Hover (`hover`) | 501 | 501 | 0 | 0 | 2026-11-24 15:15:57Z | 2026-11-10 | current | hover, pikkly |
 | IONOS (`ionos`) | 427 | 427 | 0 | 0 | 2026-11-10 12:58:16Z | 2026-11-10 12:58:16Z | aging | ionos |
-| Namecheap (`namecheap`) | 32 | 0 | 32 | 0 | 2026-08-19 | 2026-08-19 | **frozen** | opendomaindata |
-| Porkbun (`porkbun`) | 541 | 541 | 0 | 0 | 2026-11-23 15:20:42Z | 2026-11-23 15:20:42Z | current | porkbun |
-| Spaceship (`spaceship`) | 262 | 0 | 262 | 0 | 2026-09-02 | 2026-09-02 | **frozen** | bestdomainregistrars |
-| Squarespace Domains (`squarespace`) | 6 | 0 | 0 | 6 | 2026-05-12 | 2026-05-12 | no data | opendomaindata |
+| Namecheap (`namecheap`) | 274 | 274 | 0 | 0 | 2026-11-23 | 2026-11-23 | current | bestdomainregistrars |
+| Porkbun (`porkbun`) | 541 | 541 | 0 | 0 | 2026-11-24 15:15:57Z | 2026-11-24 15:15:57Z | current | porkbun |
+| Spaceship (`spaceship`) | 262 | 262 | 0 | 0 | 2026-11-09 | 2026-11-09 | aging | bestdomainregistrars |
+| Squarespace Domains (`squarespace`) | 262 | 0 | 0 | 262 | 2026-11-11 | 2026-05-12 | no data | bestdomainregistrars, opendomaindata |
 
 ## Sources that downloaded but delivered no new evidence
 
 These sources were read successfully and their payload was accepted, but nothing inside it is newer than 30 days. The workflow being green does not mean these prices are current.
 
-- **bestdomainregistrars** — newest evidence 2026-10-21, previous 2026-10-21, 268 published rows.
-- **opendomaindata** — newest evidence 2026-08-19, previous 2026-08-19, 38 published rows.
+- **opendomaindata** — newest evidence 2026-05-12, previous 2026-08-19, 1 published rows.
 
 ## Registrars with no current quote
 
 Every published figure for these registrars is older than the stale threshold or undated, so the site shows their prices as historical snapshots and never as the current best price.
 
-- **Cloudflare Registrar** — 387 offers, newest evidence 2026-08-04, sources: pikkly.
-- **GoDaddy** — 6 offers, newest evidence 2026-10-21, sources: bestdomainregistrars.
-- **Namecheap** — 32 offers, newest evidence 2026-08-19, sources: opendomaindata.
-- **Spaceship** — 262 offers, newest evidence 2026-09-02, sources: bestdomainregistrars.
-- **Squarespace Domains** — 6 offers, newest evidence 2026-05-12, sources: opendomaindata.
+- **Squarespace Domains** — 262 offers, newest evidence 2026-11-11, sources: bestdomainregistrars, opendomaindata.
 
 ## Sources needing attention
 
@@ -63,33 +58,49 @@ Every published figure for these registrars is older than the stale threshold or
 
 | Registrar | TLD | Field | Previous | Current | Change |
 |---|---|---|---|---|---|
-| dynadot | .nyc | register | 26.97 | 5.5 | -79.6% |
-| dynadot | .realty | register | 96.52 | 19.99 | -79.3% |
-| dynadot | .biz | register | 6.65 | 1.5 | -77.4% |
-| dynadot | .sucks | register | 213.15 | 53.45 | -74.9% |
-| dynadot | .design | register | 10.92 | 3 | -72.5% |
-| dynadot | .health | register | 10.92 | 3 | -72.5% |
-| dynadot | .bar | register | 2.99 | 0.99 | -66.9% |
-| dynadot | .forum | register | 2.99 | 0.99 | -66.9% |
-| dynadot | .help | register | 2.99 | 0.99 | -66.9% |
-| dynadot | .my | register | 2.99 | 0.99 | -66.9% |
-| dynadot | .property | register | 53.72 | 19.99 | -62.8% |
-| dynadot | .club | register | 4 | 1.5 | -62.5% |
-| dynadot | .diy | register | 4.99 | 1.99 | -60.1% |
-| dynadot | .food | register | 4.99 | 1.99 | -60.1% |
-| dynadot | .lifestyle | register | 4.99 | 1.99 | -60.1% |
-| dynadot | .living | register | 4.99 | 1.99 | -60.1% |
-| dynadot | .click | register | 1.99 | 0.99 | -50.3% |
-| dynadot | .rest | register | 1.99 | 0.99 | -50.3% |
-| dynadot | .love | register | 8.78 | 4.99 | -43.2% |
-| dynadot | .locker | register | 5.57 | 3.5 | -37.2% |
-| porkbun | .locker | register | 5.66 | 3.6 | -36.4% |
-| dynadot | .mx | register | 36.64 | 23.54 | -35.8% |
-| dynadot | .id | register | 19.95 | 14 | -29.8% |
-| dynadot | .io | register | 28.89 | 21.4 | -25.9% |
-| porkbun | .io | register | 28.12 | 20.91 | -25.6% |
-| porkbun | .ca | register | 8.62 | 6.5 | -24.6% |
+| spaceship | .me | register | 1.48 | 8.7 | +487.8% |
+| spaceship | .biz | register | 1.24 | 6.68 | +438.7% |
+| spaceship | .rent | register | 1.18 | 4.55 | +285.6% |
+| spaceship | .co | register | 4.98 | 15.53 | +211.8% |
+| namecheap | .host | renewal | 47.48 | 125.98 | +165.3% |
+| namecheap | .vip | renewal | 10.98 | 24.98 | +127.5% |
+| cloudflare | .co | register | 15 | 30 | +100% |
+| squarespace | .com | transfer | 11 | 22 | +100% |
+| cloudflare | .store | register | 42.2 | 4.99 | -88.2% |
+| cloudflare | .fun | register | 30.2 | 4.99 | -83.5% |
+| cloudflare | .online | register | 27.7 | 4.99 | -82% |
+| cloudflare | .site | register | 27.7 | 4.99 | -82% |
+| cloudflare | .space | register | 25.2 | 4.99 | -80.2% |
+| cloudflare | .tech | register | 49.2 | 9.99 | -79.7% |
+| namecheap | .biz | register | 8.48 | 2.48 | -70.8% |
+| namecheap | .store | renewal | 43.98 | 66.98 | +52.3% |
+| spaceship | .fans | register | 8.46 | 4.18 | -50.6% |
+| namecheap | .club | register | 4.98 | 2.48 | -50.2% |
+| namecheap | .host | register | 9.99 | 4.98 | -50.2% |
+| namecheap | .fun | renewal | 33.48 | 48.98 | +46.3% |
+| spaceship | .events | renewal | 36.43 | 51.95 | +42.6% |
+| cloudflare | .app | register | 14.2 | 8.2 | -42.3% |
+| squarespace | .org | register | 15 | 9 | -40% |
+| spaceship | .ltd | renewal | 25.04 | 34.36 | +37.2% |
+| spaceship | .store | renewal | 32.88 | 20.68 | -37.1% |
+| spaceship | .domains | register | 34.36 | 46.78 | +36.1% |
+| spaceship | .domains | renewal | 34.36 | 46.78 | +36.1% |
+| cloudflare | .io | register | 50 | 32 | -36% |
+| namecheap | .tech | renewal | 58.98 | 78.98 | +33.9% |
+| squarespace | .co | register | 30 | 40 | +33.3% |
+| squarespace | .co | renewal | 30 | 40 | +33.3% |
+| squarespace | .net | transfer | 15 | 20 | +33.3% |
+| squarespace | .org | transfer | 15 | 20 | +33.3% |
+| cloudflare | .dev | register | 12.2 | 8.2 | -32.8% |
+| spaceship | .app | register | 6.41 | 8.48 | +32.3% |
+| spaceship | .dev | register | 6.41 | 8.48 | +32.3% |
+| spaceship | .one | register | 6.41 | 4.34 | -32.3% |
+| namecheap | .app | register | 10.98 | 7.48 | -31.9% |
+| namecheap | .dev | register | 10.98 | 7.48 | -31.9% |
+| spaceship | .garden | register | 1.78 | 1.24 | -30.3% |
+
+_…and 20 more._
 
 ## Summary
 
-3558 offers across 811 TLDs and 10 registrars. 2854 (80%) were read directly from the registrar's own published price list; 698 come from openly licensed dated snapshots; 0 are policy-derived; 6 cannot be dated. 687 offers (19%) are older than 30 days and are shown as stale. Oldest evidence: 2026-05-12. Coverage: incomplete — 2 sources downloaded successfully but carry no evidence newer than 30 days (bestdomainregistrars, opendomaindata); 3 sources did not deliver usable data (ionos, namecheap, pikkly); no current quote exists for cloudflare, godaddy, namecheap, spaceship, squarespace — their figures are historical snapshots. Sources not fully refreshed: ionos (kept-previous), namecheap (kept-previous).
+4247 offers across 811 TLDs and 10 registrars. 2854 (67%) were read directly from the registrar's own published price list; 1131 come from openly licensed dated snapshots; 0 are policy-derived; 262 cannot be dated. 164 offers (4%) are older than 30 days and are shown as stale. Oldest evidence: 2026-05-12. Coverage: incomplete — 1 source downloaded successfully but carries no evidence newer than 30 days (opendomaindata); 3 sources did not deliver usable data (ionos, namecheap, pikkly); no current quote exists for squarespace — their figures are historical snapshots. Sources not fully refreshed: ionos (kept-previous), namecheap (kept-previous).
