@@ -1,6 +1,6 @@
 {
-  "run_at": "2026-11-24T15:15:57.655Z",
-  "dataset_generated_at": "2026-11-24T15:15:57.655Z",
+  "run_at": "2026-11-25T14:55:45.041Z",
+  "dataset_generated_at": "2026-11-25T14:55:45.041Z",
   "schema_version": 2,
   "totals": {
     "offers": 4247,
@@ -19,9 +19,9 @@
       "unknown": 262
     },
     "oldest_observed_at": "2026-05-12",
-    "newest_observed_at": "2026-11-24T15:15:57.655Z",
-    "previous_offers": 3558,
-    "offer_count_change_pct": 19.4
+    "newest_observed_at": "2026-11-25T14:55:45.041Z",
+    "previous_offers": 4247,
+    "offer_count_change_pct": 0
   },
   "sources": [
     {
@@ -30,22 +30,22 @@
       "status": "ok",
       "verification_status": "verified",
       "rows": 541,
-      "attempted": 913,
+      "attempted": 912,
       "published_rows": 541,
-      "rejected": 372,
+      "rejected": 371,
       "rejections": {
-        "unknown-tld": 367,
+        "unknown-tld": 366,
         "invalid-price": 5
       },
-      "fetched_at": "2026-11-24T15:15:57.655Z",
-      "last_attempt_at": "2026-11-24T15:15:57.655Z",
-      "last_successful_fetch_at": "2026-11-24T15:15:57.655Z",
-      "price_evidence_at": "2026-11-24T15:15:57.655Z",
-      "previous_price_evidence_at": "2026-11-23T15:20:42.753Z",
+      "fetched_at": "2026-11-25T14:55:45.041Z",
+      "last_attempt_at": "2026-11-25T14:55:45.041Z",
+      "last_successful_fetch_at": "2026-11-25T14:55:45.041Z",
+      "price_evidence_at": "2026-11-25T14:55:45.041Z",
+      "previous_price_evidence_at": "2026-11-24T15:15:57.655Z",
       "evidence_advanced": true,
       "evidence_state": "current",
       "retained_from_previous": 0,
-      "oldest_observed_at": "2026-11-24T15:15:57.655Z",
+      "oldest_observed_at": "2026-11-25T14:55:45.041Z",
       "error": null
     },
     {
@@ -61,15 +61,15 @@
         "unknown-tld": 190,
         "invalid-price": 4
       },
-      "fetched_at": "2026-11-24T15:15:57.655Z",
-      "last_attempt_at": "2026-11-24T15:15:57.655Z",
-      "last_successful_fetch_at": "2026-11-24T15:15:57.655Z",
-      "price_evidence_at": "2026-11-24T15:15:57.655Z",
-      "previous_price_evidence_at": "2026-11-23T15:20:42.753Z",
+      "fetched_at": "2026-11-25T14:55:45.041Z",
+      "last_attempt_at": "2026-11-25T14:55:45.041Z",
+      "last_successful_fetch_at": "2026-11-25T14:55:45.041Z",
+      "price_evidence_at": "2026-11-25T14:55:45.041Z",
+      "previous_price_evidence_at": "2026-11-24T15:15:57.655Z",
       "evidence_advanced": true,
       "evidence_state": "current",
       "retained_from_previous": 0,
-      "oldest_observed_at": "2026-11-24T15:15:57.655Z",
+      "oldest_observed_at": "2026-11-25T14:55:45.041Z",
       "error": null
     },
     {
@@ -84,15 +84,15 @@
       "rejections": {
         "unknown-tld": 95
       },
-      "fetched_at": "2026-11-24T15:15:57.655Z",
-      "last_attempt_at": "2026-11-24T15:15:57.655Z",
-      "last_successful_fetch_at": "2026-11-24T15:15:57.655Z",
-      "price_evidence_at": "2026-11-24T15:15:57.655Z",
-      "previous_price_evidence_at": "2026-11-23T15:20:42.753Z",
+      "fetched_at": "2026-11-25T14:55:45.041Z",
+      "last_attempt_at": "2026-11-25T14:55:45.041Z",
+      "last_successful_fetch_at": "2026-11-25T14:55:45.041Z",
+      "price_evidence_at": "2026-11-25T14:55:45.041Z",
+      "previous_price_evidence_at": "2026-11-24T15:15:57.655Z",
       "evidence_advanced": true,
       "evidence_state": "current",
       "retained_from_previous": 0,
-      "oldest_observed_at": "2026-11-24T15:15:57.655Z",
+      "oldest_observed_at": "2026-11-25T14:55:45.041Z",
       "error": null
     },
     {
@@ -108,15 +108,15 @@
         "unknown-tld": 16,
         "invalid-price": 1
       },
-      "fetched_at": "2026-11-24T15:15:57.655Z",
-      "last_attempt_at": "2026-11-24T15:15:57.655Z",
-      "last_successful_fetch_at": "2026-11-24T15:15:57.655Z",
-      "price_evidence_at": "2026-11-24T15:15:57.655Z",
-      "previous_price_evidence_at": "2026-11-23T15:20:42.753Z",
+      "fetched_at": "2026-11-25T14:55:45.041Z",
+      "last_attempt_at": "2026-11-25T14:55:45.041Z",
+      "last_successful_fetch_at": "2026-11-25T14:55:45.041Z",
+      "price_evidence_at": "2026-11-25T14:55:45.041Z",
+      "previous_price_evidence_at": "2026-11-24T15:15:57.655Z",
       "evidence_advanced": true,
       "evidence_state": "current",
       "retained_from_previous": 0,
-      "oldest_observed_at": "2026-11-24T15:15:57.655Z",
+      "oldest_observed_at": "2026-11-25T14:55:45.041Z",
       "error": null
     },
     {
@@ -130,7 +130,7 @@
       "rejected": 0,
       "rejections": {},
       "fetched_at": "2026-11-10T12:58:16.148Z",
-      "last_attempt_at": "2026-11-24T15:15:57.655Z",
+      "last_attempt_at": "2026-11-25T14:55:45.041Z",
       "last_successful_fetch_at": "2026-11-10T12:58:16.148Z",
       "price_evidence_at": "2026-11-10T12:58:16.148Z",
       "previous_price_evidence_at": "2026-11-10T12:58:16.148Z",
@@ -151,7 +151,7 @@
       "rejected": 0,
       "rejections": {},
       "fetched_at": null,
-      "last_attempt_at": "2026-11-24T15:15:57.655Z",
+      "last_attempt_at": "2026-11-25T14:55:45.041Z",
       "last_successful_fetch_at": null,
       "price_evidence_at": null,
       "previous_price_evidence_at": null,
@@ -174,12 +174,12 @@
         "unknown-tld": 43,
         "invalid-price": 4
       },
-      "fetched_at": "2026-11-24T15:15:57.655Z",
-      "last_attempt_at": "2026-11-24T15:15:57.655Z",
-      "last_successful_fetch_at": "2026-11-24T15:15:57.655Z",
+      "fetched_at": "2026-11-25T14:55:45.041Z",
+      "last_attempt_at": "2026-11-25T14:55:45.041Z",
+      "last_successful_fetch_at": "2026-11-25T14:55:45.041Z",
       "price_evidence_at": "2026-11-23",
-      "previous_price_evidence_at": "2026-10-21",
-      "evidence_advanced": true,
+      "previous_price_evidence_at": "2026-11-23",
+      "evidence_advanced": false,
       "evidence_state": "current",
       "retained_from_previous": 0,
       "oldest_observed_at": "2026-11-09",
@@ -198,9 +198,9 @@
         "unknown-tld": 94,
         "invalid-price": 3
       },
-      "fetched_at": "2026-11-24T15:15:57.655Z",
-      "last_attempt_at": "2026-11-24T15:15:57.655Z",
-      "last_successful_fetch_at": "2026-11-24T15:15:57.655Z",
+      "fetched_at": "2026-11-25T14:55:45.041Z",
+      "last_attempt_at": "2026-11-25T14:55:45.041Z",
+      "last_successful_fetch_at": "2026-11-25T14:55:45.041Z",
       "price_evidence_at": "2026-11-10",
       "previous_price_evidence_at": "2026-11-10",
       "evidence_advanced": false,
@@ -222,11 +222,11 @@
         "unknown-tld": 10,
         "invalid-price": 2
       },
-      "fetched_at": "2026-11-24T15:15:57.655Z",
-      "last_attempt_at": "2026-11-24T15:15:57.655Z",
-      "last_successful_fetch_at": "2026-11-24T15:15:57.655Z",
+      "fetched_at": "2026-11-25T14:55:45.041Z",
+      "last_attempt_at": "2026-11-25T14:55:45.041Z",
+      "last_successful_fetch_at": "2026-11-25T14:55:45.041Z",
       "price_evidence_at": "2026-05-12",
-      "previous_price_evidence_at": "2026-08-19",
+      "previous_price_evidence_at": "2026-05-12",
       "evidence_advanced": false,
       "evidence_state": "frozen",
       "retained_from_previous": 0,
@@ -261,7 +261,7 @@
         "dynadot",
         "pikkly"
       ],
-      "newest_evidence_at": "2026-11-24T15:15:57.655Z",
+      "newest_evidence_at": "2026-11-25T14:55:45.041Z",
       "oldest_evidence_at": "2026-11-10",
       "evidence_state": "current"
     },
@@ -276,7 +276,7 @@
         "gandi",
         "pikkly"
       ],
-      "newest_evidence_at": "2026-11-24T15:15:57.655Z",
+      "newest_evidence_at": "2026-11-25T14:55:45.041Z",
       "oldest_evidence_at": "2026-11-10",
       "evidence_state": "current"
     },
@@ -305,7 +305,7 @@
         "hover",
         "pikkly"
       ],
-      "newest_evidence_at": "2026-11-24T15:15:57.655Z",
+      "newest_evidence_at": "2026-11-25T14:55:45.041Z",
       "oldest_evidence_at": "2026-11-10",
       "evidence_state": "current"
     },
@@ -347,8 +347,8 @@
       "sources": [
         "porkbun"
       ],
-      "newest_evidence_at": "2026-11-24T15:15:57.655Z",
-      "oldest_evidence_at": "2026-11-24T15:15:57.655Z",
+      "newest_evidence_at": "2026-11-25T14:55:45.041Z",
+      "oldest_evidence_at": "2026-11-25T14:55:45.041Z",
       "evidence_state": "current"
     },
     {
@@ -408,484 +408,28 @@
   ],
   "significant_changes": [
     {
-      "tld": "me",
-      "registrar_id": "spaceship",
-      "field": "register_usd",
-      "previous_usd": 1.48,
-      "current_usd": 8.7,
-      "change_pct": 487.8
-    },
-    {
-      "tld": "biz",
-      "registrar_id": "spaceship",
-      "field": "register_usd",
-      "previous_usd": 1.24,
-      "current_usd": 6.68,
-      "change_pct": 438.7
-    },
-    {
-      "tld": "rent",
-      "registrar_id": "spaceship",
-      "field": "register_usd",
-      "previous_usd": 1.18,
-      "current_usd": 4.55,
-      "change_pct": 285.6
-    },
-    {
-      "tld": "co",
-      "registrar_id": "spaceship",
-      "field": "register_usd",
-      "previous_usd": 4.98,
-      "current_usd": 15.53,
-      "change_pct": 211.8
-    },
-    {
-      "tld": "host",
-      "registrar_id": "namecheap",
-      "field": "renewal_usd",
-      "previous_usd": 47.48,
-      "current_usd": 125.98,
-      "change_pct": 165.3
-    },
-    {
-      "tld": "vip",
-      "registrar_id": "namecheap",
-      "field": "renewal_usd",
-      "previous_usd": 10.98,
-      "current_usd": 24.98,
-      "change_pct": 127.5
-    },
-    {
-      "tld": "co",
-      "registrar_id": "cloudflare",
-      "field": "register_usd",
-      "previous_usd": 15,
-      "current_usd": 30,
-      "change_pct": 100
-    },
-    {
-      "tld": "com",
-      "registrar_id": "squarespace",
-      "field": "transfer_usd",
-      "previous_usd": 11,
-      "current_usd": 22,
-      "change_pct": 100
-    },
-    {
-      "tld": "store",
-      "registrar_id": "cloudflare",
-      "field": "register_usd",
-      "previous_usd": 42.2,
-      "current_usd": 4.99,
-      "change_pct": -88.2
-    },
-    {
-      "tld": "fun",
-      "registrar_id": "cloudflare",
-      "field": "register_usd",
-      "previous_usd": 30.2,
-      "current_usd": 4.99,
-      "change_pct": -83.5
-    },
-    {
-      "tld": "online",
-      "registrar_id": "cloudflare",
-      "field": "register_usd",
-      "previous_usd": 27.7,
-      "current_usd": 4.99,
-      "change_pct": -82
-    },
-    {
-      "tld": "site",
-      "registrar_id": "cloudflare",
-      "field": "register_usd",
-      "previous_usd": 27.7,
-      "current_usd": 4.99,
-      "change_pct": -82
-    },
-    {
-      "tld": "space",
-      "registrar_id": "cloudflare",
-      "field": "register_usd",
-      "previous_usd": 25.2,
-      "current_usd": 4.99,
-      "change_pct": -80.2
-    },
-    {
-      "tld": "tech",
-      "registrar_id": "cloudflare",
-      "field": "register_usd",
-      "previous_usd": 49.2,
-      "current_usd": 9.99,
-      "change_pct": -79.7
-    },
-    {
-      "tld": "biz",
-      "registrar_id": "namecheap",
-      "field": "register_usd",
-      "previous_usd": 8.48,
-      "current_usd": 2.48,
-      "change_pct": -70.8
-    },
-    {
-      "tld": "store",
-      "registrar_id": "namecheap",
-      "field": "renewal_usd",
-      "previous_usd": 43.98,
-      "current_usd": 66.98,
-      "change_pct": 52.3
-    },
-    {
-      "tld": "fans",
-      "registrar_id": "spaceship",
-      "field": "register_usd",
-      "previous_usd": 8.46,
-      "current_usd": 4.18,
-      "change_pct": -50.6
-    },
-    {
-      "tld": "club",
-      "registrar_id": "namecheap",
-      "field": "register_usd",
-      "previous_usd": 4.98,
-      "current_usd": 2.48,
-      "change_pct": -50.2
-    },
-    {
-      "tld": "host",
-      "registrar_id": "namecheap",
-      "field": "register_usd",
-      "previous_usd": 9.99,
-      "current_usd": 4.98,
-      "change_pct": -50.2
-    },
-    {
-      "tld": "fun",
-      "registrar_id": "namecheap",
-      "field": "renewal_usd",
-      "previous_usd": 33.48,
-      "current_usd": 48.98,
-      "change_pct": 46.3
-    },
-    {
-      "tld": "events",
-      "registrar_id": "spaceship",
-      "field": "renewal_usd",
-      "previous_usd": 36.43,
-      "current_usd": 51.95,
-      "change_pct": 42.6
-    },
-    {
-      "tld": "app",
-      "registrar_id": "cloudflare",
-      "field": "register_usd",
-      "previous_usd": 14.2,
-      "current_usd": 8.2,
-      "change_pct": -42.3
-    },
-    {
-      "tld": "org",
-      "registrar_id": "squarespace",
-      "field": "register_usd",
-      "previous_usd": 15,
-      "current_usd": 9,
-      "change_pct": -40
-    },
-    {
-      "tld": "ltd",
-      "registrar_id": "spaceship",
-      "field": "renewal_usd",
-      "previous_usd": 25.04,
-      "current_usd": 34.36,
-      "change_pct": 37.2
-    },
-    {
-      "tld": "store",
-      "registrar_id": "spaceship",
-      "field": "renewal_usd",
-      "previous_usd": 32.88,
-      "current_usd": 20.68,
-      "change_pct": -37.1
-    },
-    {
-      "tld": "domains",
-      "registrar_id": "spaceship",
-      "field": "register_usd",
-      "previous_usd": 34.36,
-      "current_usd": 46.78,
-      "change_pct": 36.1
-    },
-    {
-      "tld": "domains",
-      "registrar_id": "spaceship",
-      "field": "renewal_usd",
-      "previous_usd": 34.36,
-      "current_usd": 46.78,
-      "change_pct": 36.1
-    },
-    {
-      "tld": "io",
-      "registrar_id": "cloudflare",
-      "field": "register_usd",
-      "previous_usd": 50,
-      "current_usd": 32,
-      "change_pct": -36
-    },
-    {
-      "tld": "tech",
-      "registrar_id": "namecheap",
-      "field": "renewal_usd",
-      "previous_usd": 58.98,
-      "current_usd": 78.98,
-      "change_pct": 33.9
-    },
-    {
-      "tld": "co",
-      "registrar_id": "squarespace",
-      "field": "register_usd",
-      "previous_usd": 30,
-      "current_usd": 40,
-      "change_pct": 33.3
-    },
-    {
-      "tld": "co",
-      "registrar_id": "squarespace",
-      "field": "renewal_usd",
-      "previous_usd": 30,
-      "current_usd": 40,
-      "change_pct": 33.3
-    },
-    {
-      "tld": "net",
-      "registrar_id": "squarespace",
-      "field": "transfer_usd",
-      "previous_usd": 15,
-      "current_usd": 20,
-      "change_pct": 33.3
-    },
-    {
-      "tld": "org",
-      "registrar_id": "squarespace",
-      "field": "transfer_usd",
-      "previous_usd": 15,
-      "current_usd": 20,
-      "change_pct": 33.3
-    },
-    {
-      "tld": "dev",
-      "registrar_id": "cloudflare",
-      "field": "register_usd",
-      "previous_usd": 12.2,
-      "current_usd": 8.2,
-      "change_pct": -32.8
-    },
-    {
-      "tld": "app",
-      "registrar_id": "spaceship",
-      "field": "register_usd",
-      "previous_usd": 6.41,
-      "current_usd": 8.48,
-      "change_pct": 32.3
-    },
-    {
-      "tld": "dev",
-      "registrar_id": "spaceship",
-      "field": "register_usd",
-      "previous_usd": 6.41,
-      "current_usd": 8.48,
-      "change_pct": 32.3
-    },
-    {
       "tld": "one",
-      "registrar_id": "spaceship",
+      "registrar_id": "dynadot",
       "field": "register_usd",
-      "previous_usd": 6.41,
-      "current_usd": 4.34,
-      "change_pct": -32.3
+      "previous_usd": 4.5,
+      "current_usd": 2,
+      "change_pct": -55.6
     },
     {
-      "tld": "app",
-      "registrar_id": "namecheap",
+      "tld": "icu",
+      "registrar_id": "dynadot",
       "field": "register_usd",
-      "previous_usd": 10.98,
-      "current_usd": 7.48,
-      "change_pct": -31.9
+      "previous_usd": 2.49,
+      "current_usd": 1.75,
+      "change_pct": -29.7
     },
     {
-      "tld": "dev",
-      "registrar_id": "namecheap",
+      "tld": "bond",
+      "registrar_id": "dynadot",
       "field": "register_usd",
-      "previous_usd": 10.98,
-      "current_usd": 7.48,
-      "change_pct": -31.9
-    },
-    {
-      "tld": "garden",
-      "registrar_id": "spaceship",
-      "field": "register_usd",
-      "previous_usd": 1.78,
-      "current_usd": 1.24,
-      "change_pct": -30.3
-    },
-    {
-      "tld": "tennis",
-      "registrar_id": "spaceship",
-      "field": "register_usd",
-      "previous_usd": 51.95,
-      "current_usd": 67.48,
-      "change_pct": 29.9
-    },
-    {
-      "tld": "tennis",
-      "registrar_id": "spaceship",
-      "field": "renewal_usd",
-      "previous_usd": 51.95,
-      "current_usd": 67.48,
-      "change_pct": 29.9
-    },
-    {
-      "tld": "space",
-      "registrar_id": "spaceship",
-      "field": "renewal_usd",
-      "previous_usd": 19.68,
-      "current_usd": 13.88,
-      "change_pct": -29.5
-    },
-    {
-      "tld": "online",
-      "registrar_id": "spaceship",
-      "field": "renewal_usd",
-      "previous_usd": 21.58,
-      "current_usd": 15.28,
-      "change_pct": -29.2
-    },
-    {
-      "tld": "site",
-      "registrar_id": "spaceship",
-      "field": "renewal_usd",
-      "previous_usd": 21.58,
-      "current_usd": 15.28,
-      "change_pct": -29.2
-    },
-    {
-      "tld": "studio",
-      "registrar_id": "spaceship",
-      "field": "renewal_usd",
-      "previous_usd": 32.29,
-      "current_usd": 41.6,
-      "change_pct": 28.8
-    },
-    {
-      "tld": "surf",
-      "registrar_id": "spaceship",
-      "field": "register_usd",
-      "previous_usd": 1.74,
-      "current_usd": 1.24,
-      "change_pct": -28.7
-    },
-    {
-      "tld": "io",
-      "registrar_id": "squarespace",
-      "field": "renewal_usd",
-      "previous_usd": 55,
-      "current_usd": 70,
-      "change_pct": 27.3
-    },
-    {
-      "tld": "online",
-      "registrar_id": "namecheap",
-      "field": "renewal_usd",
-      "previous_usd": 34.98,
-      "current_usd": 43.98,
-      "change_pct": 25.7
-    },
-    {
-      "tld": "community",
-      "registrar_id": "spaceship",
-      "field": "register_usd",
-      "previous_usd": 36.43,
-      "current_usd": 45.74,
-      "change_pct": 25.6
-    },
-    {
-      "tld": "community",
-      "registrar_id": "spaceship",
-      "field": "renewal_usd",
-      "previous_usd": 36.43,
-      "current_usd": 45.74,
-      "change_pct": 25.6
-    },
-    {
-      "tld": "xyz",
-      "registrar_id": "namecheap",
-      "field": "register_usd",
-      "previous_usd": 2,
-      "current_usd": 1.5,
-      "change_pct": -25
-    },
-    {
-      "tld": "solutions",
-      "registrar_id": "spaceship",
-      "field": "renewal_usd",
-      "previous_usd": 25.04,
-      "current_usd": 31.25,
-      "change_pct": 24.8
-    },
-    {
-      "tld": "beer",
-      "registrar_id": "spaceship",
-      "field": "register_usd",
-      "previous_usd": 1.64,
-      "current_usd": 1.24,
-      "change_pct": -24.4
-    },
-    {
-      "tld": "space",
-      "registrar_id": "namecheap",
-      "field": "renewal_usd",
-      "previous_usd": 32.48,
-      "current_usd": 39.98,
-      "change_pct": 23.1
-    },
-    {
-      "tld": "tech",
-      "registrar_id": "namecheap",
-      "field": "register_usd",
-      "previous_usd": 9.99,
-      "current_usd": 7.68,
-      "change_pct": -23.1
-    },
-    {
-      "tld": "live",
-      "registrar_id": "namecheap",
-      "field": "renewal_usd",
-      "previous_usd": 39.48,
-      "current_usd": 47.48,
-      "change_pct": 20.3
-    },
-    {
-      "tld": "live",
-      "registrar_id": "namecheap",
-      "field": "transfer_usd",
-      "previous_usd": 34.48,
-      "current_usd": 41.48,
-      "change_pct": 20.3
-    },
-    {
-      "tld": "co",
-      "registrar_id": "squarespace",
-      "field": "transfer_usd",
-      "previous_usd": 30,
-      "current_usd": null,
-      "change_pct": null
-    },
-    {
-      "tld": "io",
-      "registrar_id": "squarespace",
-      "field": "transfer_usd",
-      "previous_usd": 55,
-      "current_usd": null,
-      "change_pct": null
+      "previous_usd": 2.49,
+      "current_usd": 1.99,
+      "change_pct": -20.1
     }
   ],
   "degraded_sources": [
