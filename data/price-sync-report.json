@@ -1,25 +1,25 @@
 {
-  "run_at": "2026-11-25T14:55:45.041Z",
-  "dataset_generated_at": "2026-11-25T14:55:45.041Z",
+  "run_at": "2026-11-26T14:25:59.687Z",
+  "dataset_generated_at": "2026-11-26T14:25:59.687Z",
   "schema_version": 2,
   "totals": {
-    "offers": 4247,
+    "offers": 4249,
     "tlids": 811,
     "registrars": 10,
     "by_verification": {
-      "verified": 2854,
+      "verified": 2856,
       "source_snapshot": 1131,
       "model_derived": 0,
       "unverified": 262
     },
     "by_freshness": {
-      "recent": 2427,
+      "recent": 2429,
       "aging": 1394,
       "stale": 164,
       "unknown": 262
     },
     "oldest_observed_at": "2026-05-12",
-    "newest_observed_at": "2026-11-25T14:55:45.041Z",
+    "newest_observed_at": "2026-11-26T14:25:59.687Z",
     "previous_offers": 4247,
     "offer_count_change_pct": 0
   },
@@ -37,15 +37,15 @@
         "unknown-tld": 366,
         "invalid-price": 5
       },
-      "fetched_at": "2026-11-25T14:55:45.041Z",
-      "last_attempt_at": "2026-11-25T14:55:45.041Z",
-      "last_successful_fetch_at": "2026-11-25T14:55:45.041Z",
-      "price_evidence_at": "2026-11-25T14:55:45.041Z",
-      "previous_price_evidence_at": "2026-11-24T15:15:57.655Z",
+      "fetched_at": "2026-11-26T14:25:59.687Z",
+      "last_attempt_at": "2026-11-26T14:25:59.687Z",
+      "last_successful_fetch_at": "2026-11-26T14:25:59.687Z",
+      "price_evidence_at": "2026-11-26T14:25:59.687Z",
+      "previous_price_evidence_at": "2026-11-25T14:55:45.041Z",
       "evidence_advanced": true,
       "evidence_state": "current",
       "retained_from_previous": 0,
-      "oldest_observed_at": "2026-11-25T14:55:45.041Z",
+      "oldest_observed_at": "2026-11-26T14:25:59.687Z",
       "error": null
     },
     {
@@ -53,23 +53,23 @@
       "source_name": "Dynadot pricing page",
       "status": "ok",
       "verification_status": "verified",
-      "rows": 626,
-      "attempted": 820,
-      "published_rows": 626,
+      "rows": 628,
+      "attempted": 822,
+      "published_rows": 628,
       "rejected": 194,
       "rejections": {
         "unknown-tld": 190,
         "invalid-price": 4
       },
-      "fetched_at": "2026-11-25T14:55:45.041Z",
-      "last_attempt_at": "2026-11-25T14:55:45.041Z",
-      "last_successful_fetch_at": "2026-11-25T14:55:45.041Z",
-      "price_evidence_at": "2026-11-25T14:55:45.041Z",
-      "previous_price_evidence_at": "2026-11-24T15:15:57.655Z",
+      "fetched_at": "2026-11-26T14:25:59.687Z",
+      "last_attempt_at": "2026-11-26T14:25:59.687Z",
+      "last_successful_fetch_at": "2026-11-26T14:25:59.687Z",
+      "price_evidence_at": "2026-11-26T14:25:59.687Z",
+      "previous_price_evidence_at": "2026-11-25T14:55:45.041Z",
       "evidence_advanced": true,
       "evidence_state": "current",
       "retained_from_previous": 0,
-      "oldest_observed_at": "2026-11-25T14:55:45.041Z",
+      "oldest_observed_at": "2026-11-26T14:25:59.687Z",
       "error": null
     },
     {
@@ -84,15 +84,15 @@
       "rejections": {
         "unknown-tld": 95
       },
-      "fetched_at": "2026-11-25T14:55:45.041Z",
-      "last_attempt_at": "2026-11-25T14:55:45.041Z",
-      "last_successful_fetch_at": "2026-11-25T14:55:45.041Z",
-      "price_evidence_at": "2026-11-25T14:55:45.041Z",
-      "previous_price_evidence_at": "2026-11-24T15:15:57.655Z",
+      "fetched_at": "2026-11-26T14:25:59.687Z",
+      "last_attempt_at": "2026-11-26T14:25:59.687Z",
+      "last_successful_fetch_at": "2026-11-26T14:25:59.687Z",
+      "price_evidence_at": "2026-11-26T14:25:59.687Z",
+      "previous_price_evidence_at": "2026-11-25T14:55:45.041Z",
       "evidence_advanced": true,
       "evidence_state": "current",
       "retained_from_previous": 0,
-      "oldest_observed_at": "2026-11-25T14:55:45.041Z",
+      "oldest_observed_at": "2026-11-26T14:25:59.687Z",
       "error": null
     },
     {
@@ -108,15 +108,15 @@
         "unknown-tld": 16,
         "invalid-price": 1
       },
-      "fetched_at": "2026-11-25T14:55:45.041Z",
-      "last_attempt_at": "2026-11-25T14:55:45.041Z",
-      "last_successful_fetch_at": "2026-11-25T14:55:45.041Z",
-      "price_evidence_at": "2026-11-25T14:55:45.041Z",
-      "previous_price_evidence_at": "2026-11-24T15:15:57.655Z",
+      "fetched_at": "2026-11-26T14:25:59.687Z",
+      "last_attempt_at": "2026-11-26T14:25:59.687Z",
+      "last_successful_fetch_at": "2026-11-26T14:25:59.687Z",
+      "price_evidence_at": "2026-11-26T14:25:59.687Z",
+      "previous_price_evidence_at": "2026-11-25T14:55:45.041Z",
       "evidence_advanced": true,
       "evidence_state": "current",
       "retained_from_previous": 0,
-      "oldest_observed_at": "2026-11-25T14:55:45.041Z",
+      "oldest_observed_at": "2026-11-26T14:25:59.687Z",
       "error": null
     },
     {
@@ -130,7 +130,7 @@
       "rejected": 0,
       "rejections": {},
       "fetched_at": "2026-11-10T12:58:16.148Z",
-      "last_attempt_at": "2026-11-25T14:55:45.041Z",
+      "last_attempt_at": "2026-11-26T14:25:59.687Z",
       "last_successful_fetch_at": "2026-11-10T12:58:16.148Z",
       "price_evidence_at": "2026-11-10T12:58:16.148Z",
       "previous_price_evidence_at": "2026-11-10T12:58:16.148Z",
@@ -151,7 +151,7 @@
       "rejected": 0,
       "rejections": {},
       "fetched_at": null,
-      "last_attempt_at": "2026-11-25T14:55:45.041Z",
+      "last_attempt_at": "2026-11-26T14:25:59.687Z",
       "last_successful_fetch_at": null,
       "price_evidence_at": null,
       "previous_price_evidence_at": null,
@@ -174,9 +174,9 @@
         "unknown-tld": 43,
         "invalid-price": 4
       },
-      "fetched_at": "2026-11-25T14:55:45.041Z",
-      "last_attempt_at": "2026-11-25T14:55:45.041Z",
-      "last_successful_fetch_at": "2026-11-25T14:55:45.041Z",
+      "fetched_at": "2026-11-26T14:25:59.687Z",
+      "last_attempt_at": "2026-11-26T14:25:59.687Z",
+      "last_successful_fetch_at": "2026-11-26T14:25:59.687Z",
       "price_evidence_at": "2026-11-23",
       "previous_price_evidence_at": "2026-11-23",
       "evidence_advanced": false,
@@ -198,9 +198,9 @@
         "unknown-tld": 94,
         "invalid-price": 3
       },
-      "fetched_at": "2026-11-25T14:55:45.041Z",
-      "last_attempt_at": "2026-11-25T14:55:45.041Z",
-      "last_successful_fetch_at": "2026-11-25T14:55:45.041Z",
+      "fetched_at": "2026-11-26T14:25:59.687Z",
+      "last_attempt_at": "2026-11-26T14:25:59.687Z",
+      "last_successful_fetch_at": "2026-11-26T14:25:59.687Z",
       "price_evidence_at": "2026-11-10",
       "previous_price_evidence_at": "2026-11-10",
       "evidence_advanced": false,
@@ -222,9 +222,9 @@
         "unknown-tld": 10,
         "invalid-price": 2
       },
-      "fetched_at": "2026-11-25T14:55:45.041Z",
-      "last_attempt_at": "2026-11-25T14:55:45.041Z",
-      "last_successful_fetch_at": "2026-11-25T14:55:45.041Z",
+      "fetched_at": "2026-11-26T14:25:59.687Z",
+      "last_attempt_at": "2026-11-26T14:25:59.687Z",
+      "last_successful_fetch_at": "2026-11-26T14:25:59.687Z",
       "price_evidence_at": "2026-05-12",
       "previous_price_evidence_at": "2026-05-12",
       "evidence_advanced": false,
@@ -253,15 +253,15 @@
     {
       "registrar_id": "dynadot",
       "registrar_name": "Dynadot",
-      "offers": 630,
-      "current": 630,
+      "offers": 632,
+      "current": 632,
       "stale": 0,
       "unknown": 0,
       "sources": [
         "dynadot",
         "pikkly"
       ],
-      "newest_evidence_at": "2026-11-25T14:55:45.041Z",
+      "newest_evidence_at": "2026-11-26T14:25:59.687Z",
       "oldest_evidence_at": "2026-11-10",
       "evidence_state": "current"
     },
@@ -276,7 +276,7 @@
         "gandi",
         "pikkly"
       ],
-      "newest_evidence_at": "2026-11-25T14:55:45.041Z",
+      "newest_evidence_at": "2026-11-26T14:25:59.687Z",
       "oldest_evidence_at": "2026-11-10",
       "evidence_state": "current"
     },
@@ -305,7 +305,7 @@
         "hover",
         "pikkly"
       ],
-      "newest_evidence_at": "2026-11-25T14:55:45.041Z",
+      "newest_evidence_at": "2026-11-26T14:25:59.687Z",
       "oldest_evidence_at": "2026-11-10",
       "evidence_state": "current"
     },
@@ -347,8 +347,8 @@
       "sources": [
         "porkbun"
       ],
-      "newest_evidence_at": "2026-11-25T14:55:45.041Z",
-      "oldest_evidence_at": "2026-11-25T14:55:45.041Z",
+      "newest_evidence_at": "2026-11-26T14:25:59.687Z",
+      "oldest_evidence_at": "2026-11-26T14:25:59.687Z",
       "evidence_state": "current"
     },
     {
@@ -408,33 +408,57 @@
   ],
   "significant_changes": [
     {
+      "tld": "eat",
+      "registrar_id": "dynadot",
+      "field": "register_usd",
+      "previous_usd": 13.06,
+      "current_usd": 5.5,
+      "change_pct": -57.9
+    },
+    {
+      "tld": "fly",
+      "registrar_id": "dynadot",
+      "field": "register_usd",
+      "previous_usd": 13.06,
+      "current_usd": 5.5,
+      "change_pct": -57.9
+    },
+    {
+      "tld": "here",
+      "registrar_id": "dynadot",
+      "field": "register_usd",
+      "previous_usd": 13.06,
+      "current_usd": 5.5,
+      "change_pct": -57.9
+    },
+    {
       "tld": "one",
-      "registrar_id": "dynadot",
+      "registrar_id": "porkbun",
       "field": "register_usd",
-      "previous_usd": 4.5,
-      "current_usd": 2,
-      "change_pct": -55.6
-    },
-    {
-      "tld": "icu",
-      "registrar_id": "dynadot",
-      "field": "register_usd",
-      "previous_usd": 2.49,
-      "current_usd": 1.75,
-      "change_pct": -29.7
-    },
-    {
-      "tld": "bond",
-      "registrar_id": "dynadot",
-      "field": "register_usd",
-      "previous_usd": 2.49,
+      "previous_usd": 4.63,
       "current_usd": 1.99,
-      "change_pct": -20.1
+      "change_pct": -57
+    },
+    {
+      "tld": "app",
+      "registrar_id": "dynadot",
+      "field": "register_usd",
+      "previous_usd": 8,
+      "current_usd": 5.6,
+      "change_pct": -30
+    },
+    {
+      "tld": "dev",
+      "registrar_id": "dynadot",
+      "field": "register_usd",
+      "previous_usd": 8,
+      "current_usd": 5.6,
+      "change_pct": -30
     }
   ],
   "degraded_sources": [
     "ionos (kept-previous)",
     "namecheap (kept-previous)"
   ],
-  "summary": "4247 offers across 811 TLDs and 10 registrars. 2854 (67%) were read directly from the registrar's own published price list; 1131 come from openly licensed dated snapshots; 0 are policy-derived; 262 cannot be dated. 164 offers (4%) are older than 30 days and are shown as stale. Oldest evidence: 2026-05-12. Coverage: incomplete — 1 source downloaded successfully but carries no evidence newer than 30 days (opendomaindata); 3 sources did not deliver usable data (ionos, namecheap, pikkly); no current quote exists for squarespace — their figures are historical snapshots. Sources not fully refreshed: ionos (kept-previous), namecheap (kept-previous)."
+  "summary": "4249 offers across 811 TLDs and 10 registrars. 2856 (67%) were read directly from the registrar's own published price list; 1131 come from openly licensed dated snapshots; 0 are policy-derived; 262 cannot be dated. 164 offers (4%) are older than 30 days and are shown as stale. Oldest evidence: 2026-05-12. Coverage: incomplete — 1 source downloaded successfully but carries no evidence newer than 30 days (opendomaindata); 3 sources did not deliver usable data (ionos, namecheap, pikkly); no current quote exists for squarespace — their figures are historical snapshots. Sources not fully refreshed: ionos (kept-previous), namecheap (kept-previous)."
 }
