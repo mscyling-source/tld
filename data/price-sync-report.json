@@ -1,6 +1,6 @@
 {
-  "run_at": "2026-11-26T14:25:59.687Z",
-  "dataset_generated_at": "2026-11-26T14:25:59.687Z",
+  "run_at": "2026-11-27T14:19:14.744Z",
+  "dataset_generated_at": "2026-11-27T14:19:14.744Z",
   "schema_version": 2,
   "totals": {
     "offers": 4249,
@@ -19,8 +19,8 @@
       "unknown": 262
     },
     "oldest_observed_at": "2026-05-12",
-    "newest_observed_at": "2026-11-26T14:25:59.687Z",
-    "previous_offers": 4247,
+    "newest_observed_at": "2026-11-27T14:19:14.744Z",
+    "previous_offers": 4249,
     "offer_count_change_pct": 0
   },
   "sources": [
@@ -37,15 +37,15 @@
         "unknown-tld": 366,
         "invalid-price": 5
       },
-      "fetched_at": "2026-11-26T14:25:59.687Z",
-      "last_attempt_at": "2026-11-26T14:25:59.687Z",
-      "last_successful_fetch_at": "2026-11-26T14:25:59.687Z",
-      "price_evidence_at": "2026-11-26T14:25:59.687Z",
-      "previous_price_evidence_at": "2026-11-25T14:55:45.041Z",
+      "fetched_at": "2026-11-27T14:19:14.744Z",
+      "last_attempt_at": "2026-11-27T14:19:14.744Z",
+      "last_successful_fetch_at": "2026-11-27T14:19:14.744Z",
+      "price_evidence_at": "2026-11-27T14:19:14.744Z",
+      "previous_price_evidence_at": "2026-11-26T14:25:59.687Z",
       "evidence_advanced": true,
       "evidence_state": "current",
       "retained_from_previous": 0,
-      "oldest_observed_at": "2026-11-26T14:25:59.687Z",
+      "oldest_observed_at": "2026-11-27T14:19:14.744Z",
       "error": null
     },
     {
@@ -61,15 +61,15 @@
         "unknown-tld": 190,
         "invalid-price": 4
       },
-      "fetched_at": "2026-11-26T14:25:59.687Z",
-      "last_attempt_at": "2026-11-26T14:25:59.687Z",
-      "last_successful_fetch_at": "2026-11-26T14:25:59.687Z",
-      "price_evidence_at": "2026-11-26T14:25:59.687Z",
-      "previous_price_evidence_at": "2026-11-25T14:55:45.041Z",
+      "fetched_at": "2026-11-27T14:19:14.744Z",
+      "last_attempt_at": "2026-11-27T14:19:14.744Z",
+      "last_successful_fetch_at": "2026-11-27T14:19:14.744Z",
+      "price_evidence_at": "2026-11-27T14:19:14.744Z",
+      "previous_price_evidence_at": "2026-11-26T14:25:59.687Z",
       "evidence_advanced": true,
       "evidence_state": "current",
       "retained_from_previous": 0,
-      "oldest_observed_at": "2026-11-26T14:25:59.687Z",
+      "oldest_observed_at": "2026-11-27T14:19:14.744Z",
       "error": null
     },
     {
@@ -84,15 +84,15 @@
       "rejections": {
         "unknown-tld": 95
       },
-      "fetched_at": "2026-11-26T14:25:59.687Z",
-      "last_attempt_at": "2026-11-26T14:25:59.687Z",
-      "last_successful_fetch_at": "2026-11-26T14:25:59.687Z",
-      "price_evidence_at": "2026-11-26T14:25:59.687Z",
-      "previous_price_evidence_at": "2026-11-25T14:55:45.041Z",
+      "fetched_at": "2026-11-27T14:19:14.744Z",
+      "last_attempt_at": "2026-11-27T14:19:14.744Z",
+      "last_successful_fetch_at": "2026-11-27T14:19:14.744Z",
+      "price_evidence_at": "2026-11-27T14:19:14.744Z",
+      "previous_price_evidence_at": "2026-11-26T14:25:59.687Z",
       "evidence_advanced": true,
       "evidence_state": "current",
       "retained_from_previous": 0,
-      "oldest_observed_at": "2026-11-26T14:25:59.687Z",
+      "oldest_observed_at": "2026-11-27T14:19:14.744Z",
       "error": null
     },
     {
@@ -108,15 +108,15 @@
         "unknown-tld": 16,
         "invalid-price": 1
       },
-      "fetched_at": "2026-11-26T14:25:59.687Z",
-      "last_attempt_at": "2026-11-26T14:25:59.687Z",
-      "last_successful_fetch_at": "2026-11-26T14:25:59.687Z",
-      "price_evidence_at": "2026-11-26T14:25:59.687Z",
-      "previous_price_evidence_at": "2026-11-25T14:55:45.041Z",
+      "fetched_at": "2026-11-27T14:19:14.744Z",
+      "last_attempt_at": "2026-11-27T14:19:14.744Z",
+      "last_successful_fetch_at": "2026-11-27T14:19:14.744Z",
+      "price_evidence_at": "2026-11-27T14:19:14.744Z",
+      "previous_price_evidence_at": "2026-11-26T14:25:59.687Z",
       "evidence_advanced": true,
       "evidence_state": "current",
       "retained_from_previous": 0,
-      "oldest_observed_at": "2026-11-26T14:25:59.687Z",
+      "oldest_observed_at": "2026-11-27T14:19:14.744Z",
       "error": null
     },
     {
@@ -130,7 +130,7 @@
       "rejected": 0,
       "rejections": {},
       "fetched_at": "2026-11-10T12:58:16.148Z",
-      "last_attempt_at": "2026-11-26T14:25:59.687Z",
+      "last_attempt_at": "2026-11-27T14:19:14.744Z",
       "last_successful_fetch_at": "2026-11-10T12:58:16.148Z",
       "price_evidence_at": "2026-11-10T12:58:16.148Z",
       "previous_price_evidence_at": "2026-11-10T12:58:16.148Z",
@@ -151,7 +151,7 @@
       "rejected": 0,
       "rejections": {},
       "fetched_at": null,
-      "last_attempt_at": "2026-11-26T14:25:59.687Z",
+      "last_attempt_at": "2026-11-27T14:19:14.744Z",
       "last_successful_fetch_at": null,
       "price_evidence_at": null,
       "previous_price_evidence_at": null,
@@ -174,9 +174,9 @@
         "unknown-tld": 43,
         "invalid-price": 4
       },
-      "fetched_at": "2026-11-26T14:25:59.687Z",
-      "last_attempt_at": "2026-11-26T14:25:59.687Z",
-      "last_successful_fetch_at": "2026-11-26T14:25:59.687Z",
+      "fetched_at": "2026-11-27T14:19:14.744Z",
+      "last_attempt_at": "2026-11-27T14:19:14.744Z",
+      "last_successful_fetch_at": "2026-11-27T14:19:14.744Z",
       "price_evidence_at": "2026-11-23",
       "previous_price_evidence_at": "2026-11-23",
       "evidence_advanced": false,
@@ -198,9 +198,9 @@
         "unknown-tld": 94,
         "invalid-price": 3
       },
-      "fetched_at": "2026-11-26T14:25:59.687Z",
-      "last_attempt_at": "2026-11-26T14:25:59.687Z",
-      "last_successful_fetch_at": "2026-11-26T14:25:59.687Z",
+      "fetched_at": "2026-11-27T14:19:14.744Z",
+      "last_attempt_at": "2026-11-27T14:19:14.744Z",
+      "last_successful_fetch_at": "2026-11-27T14:19:14.744Z",
       "price_evidence_at": "2026-11-10",
       "previous_price_evidence_at": "2026-11-10",
       "evidence_advanced": false,
@@ -222,9 +222,9 @@
         "unknown-tld": 10,
         "invalid-price": 2
       },
-      "fetched_at": "2026-11-26T14:25:59.687Z",
-      "last_attempt_at": "2026-11-26T14:25:59.687Z",
-      "last_successful_fetch_at": "2026-11-26T14:25:59.687Z",
+      "fetched_at": "2026-11-27T14:19:14.744Z",
+      "last_attempt_at": "2026-11-27T14:19:14.744Z",
+      "last_successful_fetch_at": "2026-11-27T14:19:14.744Z",
       "price_evidence_at": "2026-05-12",
       "previous_price_evidence_at": "2026-05-12",
       "evidence_advanced": false,
@@ -261,7 +261,7 @@
         "dynadot",
         "pikkly"
       ],
-      "newest_evidence_at": "2026-11-26T14:25:59.687Z",
+      "newest_evidence_at": "2026-11-27T14:19:14.744Z",
       "oldest_evidence_at": "2026-11-10",
       "evidence_state": "current"
     },
@@ -276,7 +276,7 @@
         "gandi",
         "pikkly"
       ],
-      "newest_evidence_at": "2026-11-26T14:25:59.687Z",
+      "newest_evidence_at": "2026-11-27T14:19:14.744Z",
       "oldest_evidence_at": "2026-11-10",
       "evidence_state": "current"
     },
@@ -305,7 +305,7 @@
         "hover",
         "pikkly"
       ],
-      "newest_evidence_at": "2026-11-26T14:25:59.687Z",
+      "newest_evidence_at": "2026-11-27T14:19:14.744Z",
       "oldest_evidence_at": "2026-11-10",
       "evidence_state": "current"
     },
@@ -347,8 +347,8 @@
       "sources": [
         "porkbun"
       ],
-      "newest_evidence_at": "2026-11-26T14:25:59.687Z",
-      "oldest_evidence_at": "2026-11-26T14:25:59.687Z",
+      "newest_evidence_at": "2026-11-27T14:19:14.744Z",
+      "oldest_evidence_at": "2026-11-27T14:19:14.744Z",
       "evidence_state": "current"
     },
     {
@@ -408,52 +408,68 @@
   ],
   "significant_changes": [
     {
-      "tld": "eat",
-      "registrar_id": "dynadot",
+      "tld": "me",
+      "registrar_id": "porkbun",
       "field": "register_usd",
-      "previous_usd": 13.06,
-      "current_usd": 5.5,
-      "change_pct": -57.9
+      "previous_usd": 17.27,
+      "current_usd": 2.17,
+      "change_pct": -87.4
     },
     {
-      "tld": "fly",
-      "registrar_id": "dynadot",
+      "tld": "co",
+      "registrar_id": "porkbun",
       "field": "register_usd",
-      "previous_usd": 13.06,
-      "current_usd": 5.5,
-      "change_pct": -57.9
+      "previous_usd": 15.76,
+      "current_usd": 2.37,
+      "change_pct": -85
     },
     {
-      "tld": "here",
+      "tld": "co",
       "registrar_id": "dynadot",
       "field": "register_usd",
-      "previous_usd": 13.06,
-      "current_usd": 5.5,
-      "change_pct": -57.9
+      "previous_usd": 15.5,
+      "current_usd": 2.6,
+      "change_pct": -83.2
+    },
+    {
+      "tld": "me",
+      "registrar_id": "dynadot",
+      "field": "register_usd",
+      "previous_usd": 9.21,
+      "current_usd": 1.81,
+      "change_pct": -80.3
+    },
+    {
+      "tld": "id",
+      "registrar_id": "dynadot",
+      "field": "register_usd",
+      "previous_usd": 14,
+      "current_usd": 9.85,
+      "change_pct": -29.6
+    },
+    {
+      "tld": "cloud",
+      "registrar_id": "porkbun",
+      "field": "register_usd",
+      "previous_usd": 3.88,
+      "current_usd": 2.87,
+      "change_pct": -26
     },
     {
       "tld": "one",
       "registrar_id": "porkbun",
       "field": "register_usd",
-      "previous_usd": 4.63,
-      "current_usd": 1.99,
-      "change_pct": -57
+      "previous_usd": 1.99,
+      "current_usd": 1.53,
+      "change_pct": -23.1
     },
     {
-      "tld": "app",
-      "registrar_id": "dynadot",
+      "tld": "mx",
+      "registrar_id": "porkbun",
       "field": "register_usd",
-      "previous_usd": 8,
-      "current_usd": 5.6,
-      "change_pct": -30
-    },
-    {
-      "tld": "dev",
-      "registrar_id": "dynadot",
-      "field": "register_usd",
-      "previous_usd": 8,
-      "current_usd": 5.6,
-      "change_pct": -30
+      "previous_usd": 17.99,
+      "current_usd": 13.99,
+      "change_pct": -22.2
     }
   ],
   "degraded_sources": [
