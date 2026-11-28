@@ -1,6 +1,6 @@
 {
-  "last_success_at": "2026-11-27T14:19:14.744Z",
-  "last_attempt_at": "2026-11-27T14:19:14.744Z",
+  "last_success_at": "2026-11-28T13:35:11.147Z",
+  "last_attempt_at": "2026-11-28T13:35:11.147Z",
   "status": "partial",
   "last_error": "ionos: IONOS price list has no __NEXT_DATA__ payload | namecheap: missing env: NAMECHEAP_API_USER, NAMECHEAP_API_KEY, NAMECHEAP_USERNAME",
   "coverage": {
@@ -52,6 +52,12 @@
     }
   },
   "history": [
+    {
+      "at": "2026-11-28T13:35:11.147Z",
+      "status": "partial",
+      "offers": 4249,
+      "note": "ionos: IONOS price list has no __NEXT_DATA__ payload | namecheap: missing env: NAMECHEAP_API_USER, NAMECHEAP_API_KEY, NAMECHEAP_USERNAME"
+    },
     {
       "at": "2026-11-27T14:19:14.744Z",
       "status": "partial",
@@ -337,11 +343,6 @@
       "at": "2026-10-22T10:24:42.526Z",
       "status": "ok",
       "offers": 3549
-    },
-    {
-      "at": "2026-10-22T10:22:32.189Z",
-      "status": "ok",
-      "offers": 3306
     }
   ]
 }
